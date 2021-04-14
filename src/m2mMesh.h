@@ -29,6 +29,115 @@
 	}
 #endif
 
+//Error messages if debug enabled
+
+const char errorReadBeyondEndOfPacket[] PROGMEM = "\r\nm2mMesh tried to read beyond end of packet";
+const char nm2mMeshstartedwithcapacityfordnodes[] PROGMEM = "\r\nm2mMesh started with capacity for %d nodes";
+const char nm2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN[] PROGMEM = "\r\nm2mMesh OGM ECHO R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d HOP:%d LEN:%d";
+const char m2mMesh02x02x02x02x02x02xsequencenumberprotectionenabled[] PROGMEM = "\r\nm2mMesh %02x:%02x:%02x:%02x:%02x:%02x sequence number protection enabled";
+const char m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod[] PROGMEM = "\r\nm2mMesh %s originator %02x:%02x:%02x:%02x:%02x:%02x changed interval from %d to %d";
+const char nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x[] PROGMEM = "\r\nm2mMesh WARNING: unknown type %d from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd[] PROGMEM = "\r\nm2mMesh %s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d";
+const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed[] PROGMEM = "\r\nm2mMesh %s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d failed";
+const char m2mMesh02x02x02x02x02x02xsequencenumberprotectiondisabledpossiblereboot[] PROGMEM = "\r\nm2mMesh %02x:%02x:%02x:%02x:%02x:%02x sequence number protection disabled, possible reboot";
+const char m2mMeshWARNINGincorrectprotocolversiondfrom02x02x02x02x02x02x[] PROGMEM = "\r\nm2mMesh WARNING: incorrect protocol version %d from %02x:%02x:%02x:%02x:%02x:%02x";
+const char TTL02dFLG02xSEQ08xLENdNBRd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%08x LEN:%d NBR:%d";
+const char m2mMeshSent[] PROGMEM = "\r\nm2mMesh Sent ";
+const char m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdNBRS02dLENd[] PROGMEM = "\r\nm2mMesh ELP RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d NBRS:%02d LEN:%d";
+const char m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLENd[] PROGMEM = "\r\nm2mMesh ELP RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d LEN:%d";
+const char m2mMeshELPneighbour02x02x02x02x02x02xthisnode[] PROGMEM = "\r\nm2mMesh ELP neighbour %02x:%02x:%02x:%02x:%02x:%02x - this node";
+const char m2mMeshELPneighbour02x02x02x02x02x02xnewnode[] PROGMEM =  "\r\nm2mMesh ELP neighbour %02x:%02x:%02x:%02x:%02x:%02x - new node";
+const char m2mMeshELPneighbour02x02x02x02x02x02x[] PROGMEM =  "\r\nm2mMesh ELP neighbour %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshELP[] PROGMEM =  "\r\nm2mMesh ELP ";
+const char m2mMeshOGMSNDTTL02dFLG02xSEQ08xLENd[] PROGMEM =  "\r\nm2mMesh OGM SND TTL:%02d FLG:%02x SEQ:%08x LEN:%d";
+const char m2mMeshOGMSNDfailedTTL02dFlags02xSeq08xLENd[] PROGMEM =  "\r\nm2mMesh OGM SND failed TTL:%02d Flags:%02x Seq:%08x LEN:%d";
+const char m2mMeshOGMRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLENd[] PROGMEM =  "\r\nm2mMesh OGM RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d HOP:%d LEN:%d";
+const char m2mMeshOGMR02x02x02x02x02x02xselectedforO02x02x02x02x02x02xTQ04x[] PROGMEM =  "\r\nm2mMesh OGM R:%02x%02x%02x%02x%02x%02x selected for O:%02x%02x%02x%02x%02x%02x TQ:%04x";
+const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xinferiorTQ04x[] PROGMEM =  "\r\nm2mMesh OGM R:%02x%02x%02x%02x%02x%02x for O:%02x%02x%02x%02x%02x%02x inferior TQ:%04x";
+const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xupdateTQ04x[] PROGMEM = "\r\nm2mMesh OGM R:%02x%02x%02x%02x%02x%02x for O:%02x%02x%02x%02x%02x%02x update TQ:%04x";
+const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xTQ04x[] PROGMEM = "\r\nm2mMesh OGM R:%02x%02x%02x%02x%02x%02x for O:%02x%02x%02x%02x%02x%02x TQ:%04x";
+const char m2mMeshOGMforwardingchain02x02x02x02x02x02x[] PROGMEM = "\r\nm2mMesh OGM forwarding chain %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshOGMhoppenaltyappliedTQnow02x[] PROGMEM = "\r\nm2mMesh OGM hop penalty applied, TQ now %02x";
+const char m2mMeshOGM02x02x02x02x02x02xhasbecomereachable[] PROGMEM = "\r\nm2mMesh OGM %02x%02x%02x%02x%02x%02x has become reachable";
+const char m2mMeshOGM02x02x02x02x02x02xhasbecomeunreachable[] PROGMEM = "\r\nm2mMesh OGM %02x%02x%02x%02x%02x%02x has become unreachable";
+const char m2mMeshNHSSND[] PROGMEM = "\r\nm2mMesh NHS SND";
+const char TTL02dFLG02xSEQ08xLENd[] PROGMEM = " TTL:%02d FLG:%02x SEQ:%08x LEN:%d";
+const char ORGd[] PROGMEM = " ORG:%d";
+const char m2mMeshsuccess[] PROGMEM = "- success";
+const char failed[] PROGMEM = " failed";
+const char m2mMeshNHSR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nm2mMesh NHS R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d Length:%d";
+const char m2mMeshNHSUptimedms[] PROGMEM = "\r\nm2mMesh NHS Uptime %dms";
+const char m2mMeshNHSCurrentFreeHeapdd[] PROGMEM = "\r\nm2mMesh NHS Current Free Heap %d/%d";
+const char m2mMeshNHSdroppedpacketsddRXddTX[] PROGMEM = "\r\nm2mMesh NHS dropped packets %d/%dRX %d/%dTX";
+const char m2mMeshNHSActiveneighboursddMAC02x02x02x02x02x02x[] PROGMEM = "\r\nm2mMesh NHS Active neighbours %d/%d MAC:%02x:%02x:%02x:%02x:%02x:%02x";
+const char differs[] PROGMEM = " - differs";
+const char m2mMeshNHSCurrentTXpowerf[] PROGMEM = "\r\nm2mMesh NHS Current TX power %f";
+const char m2mMeshNHSSupplyvoltagefV[] PROGMEM = "\r\nm2mMesh NHS Supply voltage %fV";
+const char m2mMeshNHSMeshtimedms[] PROGMEM = "\r\nm2mMesh NHS Mesh time %dms";
+const char m2mMeshNHSnodenamelendschangedfroms[] PROGMEM = "\r\nm2mMesh NHS node name len=%d '%s' changed from '%s'!";
+const char m2mMeshNHSnodenamelends[] PROGMEM = "\r\nm2mMesh NHS node name len=%d '%s'";
+const char m2mMeshNHScontainsdoriginators[] PROGMEM = "\r\nm2mMesh NHS contains %d originators";
+const char m2mMeshNHSoriginatordata02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nm2mMesh NHS originator data %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
+const char m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nm2mMesh USR R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d Length:%d";
+const char m2mMeshUSRpacketcontainsdfields[] PROGMEM =		"\r\nm2mMesh USR packet contains %d fields";
+const char m2mMeshUSRdatafieldduint8_td[] PROGMEM =			"\r\nm2mMesh USR data field %d uint8_t %d";
+const char m2mMeshUSRdatafieldduint16_td[] PROGMEM =		"\r\nm2mMesh USR data field %d uint16_t %d";
+const char m2mMeshUSRdatafieldduint32_td[] PROGMEM =		"\r\nm2mMesh USR data field %d uint32_t %d";
+const char m2mMeshUSRdatafielddint8_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int8_t %d";
+const char m2mMeshUSRdatafielddint16_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int16_t %d";
+const char m2mMeshUSRdatafielddint32_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int32_t %d";
+const char m2mMeshUSRdatafielddfloatf[] PROGMEM =			"\r\nm2mMesh USR data field %d float %f";
+const char m2mMeshUSRdatafielddcharc[] PROGMEM =			"\r\nm2mMesh USR data field %d char '%c'";
+const char m2mMeshUSRdatafielddStringlends[] PROGMEM =		" \r\nm2mMesh USR data field %d String len=%d '%s'";
+const char m2mMeshUSRdatafielddchararraylends[] PROGMEM =	" \r\nm2mMesh USR data field %d char array len=%d '%s'";
+const char m2mMeshUSRdatafielddunknowntypedstoppingdecode[] PROGMEM = " \r\nm2mMesh USR data field %d unknown type %d, stopping decode ";
+const char m2mMeshNHS02x02x02x02x02x02xisnowthetimeserver[] PROGMEM = "\r\nm2mMesh NHS %02x:%02x:%02x:%02x:%02x:%02x is now the time server";
+const char m2mMeshNHStimeoffsetnegdms[] PROGMEM = "\r\nm2mMesh NHS time offset -%dms";
+const char m2mMeshNHStimeoffsetposdms[] PROGMEM = "\r\nm2mMesh NHS time offset +%dms";
+const char m2mMeshNHSmeshtimesettos[] PROGMEM = "\r\nm2mMesh NHS mesh time set to %s";
+const char m2mMesh02x02x02x02x02x02xdbytesm2mMeshType[] PROGMEM = "%02x:%02x:%02x:%02x:%02x:%02x %d bytes\r\nm2mMesh Type:";
+const char m2mMeshVersiond[] PROGMEM = " Version:%d";
+const char m2mMeshTTLd[] PROGMEM = " TTL:%d";
+const char m2mMeshFlagsd[] PROGMEM = " Flags:%d";
+const char m2mMeshSequencenumberd[] PROGMEM = " Sequence number:%d\r\n";
+const char m2mMeshSrc02x02x02x02x02x02x[] PROGMEM = "m2mMesh Src:%02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshDst02x02x02x02x02x02x[] PROGMEM = " Dst:%02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshData02x02x02x02x02x02x02x02x[] PROGMEM =	"\r\nm2mMesh Data:%02x %02x %02x %02x %02x %02x %02x %02x";
+const char m2mMeshData02x02x02x02x02x02x02x[] PROGMEM =		"\r\nm2mMesh Data:%02x %02x %02x %02x %02x %02x %02x --";
+const char m2mMeshData02x02x02x02x02x02x[] PROGMEM =		"\r\nm2mMesh Data:%02x %02x %02x %02x %02x %02x --";
+const char m2mMeshData02x02x02x02x02x[] PROGMEM =			"\r\nm2mMesh Data:%02x %02x %02x %02x %02x --";
+const char m2mMeshData02x02x02x02x[] PROGMEM =				"\r\nm2mMesh Data:%02x %02x %02x %02x --";
+const char m2mMeshData02x02x02x[] PROGMEM =					"\r\nm2mMesh Data:%02x %02x %02x --";
+const char m2mMeshData02x02x[] PROGMEM =					"\r\nm2mMesh Data:%02x %02x --";
+const char m2mMeshData02x[] PROGMEM =						"\r\nm2mMesh Data:%02x --";
+const char m2mMesh02x02x02x02x02x02xaddedidd[] PROGMEM = 		"%02x:%02x:%02x:%02x:%02x:%02x added id=%d";
+const char m2mMesh02x02x02x02x02x02xcouldnotbeadded[] PROGMEM = "%02x:%02x:%02x:%02x:%02x:%02x could not be added";
+const char m2mMeshNodenamesettos[] PROGMEM = "\r\nNode name set to '%s'";
+const char m2mMeshSendingpackettype02xversion02x[] PROGMEM = "\r\nm2mMesh Sending packet type %02x version %02x";
+const char m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x[] PROGMEM = "\r\nm2mMesh USR SND O:%02x%02x%02x%02x%02x%02x TTL:%02d Flags:%02x";
+const char m2mMeshstartedwithautomaticallocationofmemoryStabilitymaybeimpacted[] PROGMEM = "\r\nm2mMesh started with automatic allocation of memory. Stability may be impacted.";
+const char m2mMeshTTL02dFLG02xSEQ08xLENd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%08x LEN:%d";
+const char m2mMeshTIMEs[] PROGMEM = " TIME:%s";
+const char m2mMeshd02x[] PROGMEM = "%d/%02x ";
+const char m2mMeshDstALL[] PROGMEM = " Dst:ALL";
+const char m2mMeshInterval[] PROGMEM = " Interval:";
+const char m2mMeshdebuggingenabled[] PROGMEM = "m2mMesh debugging enabled";
+const char m2mMeshdebuggingdisabled[] PROGMEM = "m2mMesh debugging disabled";
+const char m2mMeshinitialisingESPNOW[] PROGMEM = "m2mMesh initialising ESP-NOW ";
+const char m2mMeshfailedrestartingin3s[] PROGMEM = "- failed, restarting in 3s";
+const char m2mMeshaddingbroadcastMACaddressasapeertoenablemeshdiscovery[] PROGMEM = "m2mMesh adding broadcast MAC address as a 'peer' to enable mesh discovery ";
+const char m2mMeshReceivedfrom[] PROGMEM = "m2mMesh Received from ";
+const char m2mMeshRTR[] PROGMEM = "\r\nm2mMesh RTR ";
+const char m2mMeshSoftAPison[] PROGMEM = " SoftAP is on";
+const char m2mMeshNHSUnabletostorenodenamenotenoughmemory[] PROGMEM = "\r\nm2mMesh NHS Unable to store node name, not enough memory";
+const char m2mMeshnew[] PROGMEM = " - new";
+const char m2mMeshthisnode[] PROGMEM = " - this node";
+const char m2mMeshPreviousUSRmessagenotreadpacketdropped[] PROGMEM = "\r\nm2mMesh Previous USR message not read, packet dropped";
+const char m2mMeshTimeserverhasgoneofflinetakingovertimeserverrole[] PROGMEM = "Time server has gone offline, taking over time server role";
+//const char m2mMeshPacketsentto02x02x02x02x02x02x[] PROGMEM = "Packet sent to %02x:%02x:%02x:%02x:%02x:%02x";
+//const char m2mMeshNHSincluded02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nm2mMesh NHS included %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
+//const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nm2mMesh NHS included %d originators";
+
 //Unions used to pack data into packets
 
 union unsignedIntToBytes
@@ -274,6 +383,9 @@ class m2mMesh
 		bool sourceMacAddress(uint8_t *);	//Which MAC address is the message from
 		bool dataAvailable();				//Is there data to read
 		uint8_t nextDataType();				//Which type the next piece of data is
+		
+		bool retrieve(uint8_t&);
+
 		uint8_t retrieveUint8_t();
 		uint16_t retrieveUint16_t();
 		uint32_t retrieveUint32_t();
