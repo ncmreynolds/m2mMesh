@@ -61,6 +61,7 @@ void ICACHE_FLASH_ATTR m2mMesh::begin(const uint8_t i)
 	{
 		_originator = new originatorInfo[1];
 	}
+	#ifdef m2mMeshIncludeDebugFeatures
 	//ESP8266/ESP8285 and ESP32 need different handling and have subtly different APIs
 	#if defined(ESP8266)
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
@@ -86,6 +87,7 @@ void ICACHE_FLASH_ATTR m2mMesh::begin(const uint8_t i)
 			_debugStream->print(m2mMeshstartedwithautomaticallocationofmemoryStabilitymaybeimpacted);
 		}
 	}
+	#endif
 	#if defined(ESP32)
 	if(WiFi.getMode() == WIFI_OFF)
 	{
@@ -137,70 +139,6 @@ void ICACHE_FLASH_ATTR m2mMesh::end()
 	//Remove callback functions
 	//Free memory
 }
-//Enable debugging on a stream, usually Serial but let's not assume that. This version accepts the default log level
-void m2mMesh::enableDebugging(Stream &debugStream)
-{
-	enableDebugging(debugStream,_loggingLevel);
-}
-//Enable debugging on a stream, usually Serial but let's not assume that
-void m2mMesh::enableDebugging(Stream &debugStream, uint32_t level)
-{
-	_debugStream = &debugStream;	//Set the stream used for debugging
-	_debugEnabled = true;			//Flag that debugging is enabled
-	_loggingLevel = level;			//Set the logging level
-	if(_loggingLevel & MESH_UI_LOG_INFORMATION)
-	{
-		_debugStream->println();
-		_debugStream->print(m2mMeshdebuggingenabled);	//Announce this joyous event
-	}
-}
-//Enable debugging on a stream, after being paused
-void m2mMesh::enableDebugging(uint32_t level)
-{
-	if(_debugStream != nullptr)
-	{
-		_loggingLevel = level;			//Set the logging level
-		_debugEnabled = true;			//Flag that debugging is enabled
-		if(_loggingLevel & MESH_UI_LOG_INFORMATION)
-		{
-			_debugStream->println();
-			_debugStream->print(m2mMeshdebuggingenabled);	//Announce this joyous event
-		}
-	}
-}
-//Enable debugging on a stream, after being paused
-void m2mMesh::enableDebugging()
-{
-	if(_debugStream != nullptr)
-	{
-		_debugEnabled = true;
-		if(_loggingLevel & MESH_UI_LOG_INFORMATION)
-		{
-			_debugStream->println();
-			_debugStream->print(m2mMeshdebuggingenabled);	//Announce this joyous event
-		}
-	}
-}
-//Disable debugging
-void m2mMesh::disableDebugging()
-{
-	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
-	{
-		_debugStream->println();
-		_debugStream->print(m2mMeshdebuggingdisabled);	//Warn that debugging is disabled
-	}
-	_debugEnabled = false;			//Flag that debugging is enabled
-}
-
-void m2mMesh::nodeToLog(uint8_t id)	//Sets the node to log
-{
-	_nodeToLog = id;
-}
-void m2mMesh::logAllNodes()	//Sets logging to all nodes
-{
-	_nodeToLog = MESH_ORIGINATOR_NOT_FOUND;
-}
-
 
 void m2mMesh::_initESPNow()
 {
@@ -210,24 +148,30 @@ void m2mMesh::_initESPNow()
 	#elif defined(ESP32)
 	esp_err_t result = esp_now_init();
 	#endif
+	#ifdef m2mMeshIncludeDebugFeatures
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
 		_debugStream->println();
 		_debugStream->print(m2mMeshinitialisingESPNOW);
 	}
+	#endif
 	if (result != ESP_OK)
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 		{
 			_debugStream->print(m2mMeshfailedrestartingin3s);
 		}
+		#endif
 		delay(3000ul);
 		ESP.restart();
 	}
+	#ifdef m2mMeshIncludeDebugFeatures
 	else if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
 		_debugStream->print(m2mMeshsuccess);
 	}
+	#endif
 	//The ESP8266/ESP8285 require a 'role' to be set, which is vaguely analogous to the ifidx on ESP32. Without this you cannot send packets.
 	#if defined(ESP8266)
 	esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
@@ -237,11 +181,13 @@ void m2mMesh::_initESPNow()
 	esp_now_register_send_cb(espNowSendCallbackWrapper);
 	esp_now_register_recv_cb(espNowReceiveCallbackWrapper);
 	// Add the broadcast MAC address as an ESP-NOW peer. This is used for any message that needs to 'flood' the network. Without this node discovery will not work.
+	#ifdef m2mMeshIncludeDebugFeatures
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
 		_debugStream->println();
 		_debugStream->print(m2mMeshaddingbroadcastMACaddressasapeertoenablemeshdiscovery);
 	}
+	#endif
 	#if defined(ESP8266)
 	result = esp_now_add_peer(_broadcastMacAddress, ESP_NOW_ROLE_COMBO, _currentChannel, NULL, 0);
 	#elif defined(ESP32)
@@ -263,17 +209,21 @@ void m2mMesh::_initESPNow()
 	#endif
 	if (result != ESP_OK)
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 		{
 			_debugStream->print(m2mMeshfailedrestartingin3s);
 		}
+		#endif
 		delay(3000ul);
 		ESP.restart();
 	}
+	#ifdef m2mMeshIncludeDebugFeatures
 	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
 		_debugStream->print(m2mMeshsuccess);
 	}
+	#endif
 }
 
 #ifdef ESP8266
@@ -448,12 +398,14 @@ void ICACHE_FLASH_ATTR m2mMesh::housekeeping()
 
 void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 {
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ALL_RECEIVED_PACKETS)
 	{
 		_debugStream->println();
 		_debugStream->print(m2mMeshReceivedfrom);
 		_debugPacket(packet);
 	}
+	#endif
 	//Start processing the packet
 	if(packet.data[1] == MESH_PROTOCOL_VERSION)	//Check the protocol version is valid
 	{
@@ -477,10 +429,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 			routerId = _originatorIdFromMac(packet.macAddress);
 			if(routerId == MESH_ORIGINATOR_NOT_FOUND)
 			{
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 				{
 					_debugStream->print(m2mMeshRTR);
 				}
+				#endif
 				routerId = _addOriginator(packet.macAddress,_currentChannel);
 			}
 		}
@@ -496,10 +450,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 			originatorId = _originatorIdFromMac(originatorMacAddress);
 			if(originatorId == MESH_ORIGINATOR_NOT_FOUND)
 			{
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 				{
 					_debugStream->print(F("\r\nm2mMesh SRC "));
 				}
+				#endif
 				originatorId = _addOriginator(originatorMacAddress,_currentChannel);
 			}
 		}
@@ -516,10 +472,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 				destinationId = _originatorIdFromMac(destinationMacAddress);
 				if(destinationId == MESH_ORIGINATOR_NOT_FOUND)
 				{
+					#ifdef m2mMeshIncludeDebugFeatures
 					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 					{
 						_debugStream->print(F("\r\nm2mMesh DST "));
 					}
+					#endif
 					destinationId = _addOriginator(destinationMacAddress,_currentChannel);
 				}
 			}
@@ -535,10 +493,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 					_originator[routerId].ogmEchoes = _originator[routerId].ogmEchoes | 0x8000;		//Set the most significant bit of the OGM Echo receipt confirmation bitmask, which MAY make it 'better'
 					_originator[routerId].ogmEchoLastConfirmed = millis();							//Record when this happened, so the node can spot 'missed' echoes
 					_calculateLtq(routerId);														//Recalculate Local Transmission Quality
+					#ifdef m2mMeshIncludeDebugFeatures
 					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog))
 					{
 						_debugStream->printf_P(nm2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.data[20],packet.length);
 					}
+					#endif
 				}
 			}
 		}
@@ -557,10 +517,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 				{
 					//Re-enable the sequence number protection window
 					_originator[originatorId].sequenceNumberProtectionWindowActive = true;
+					#ifdef m2mMeshIncludeDebugFeatures
 					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 					{
 						_debugStream->printf_P(m2mMesh02x02x02x02x02x02xsequencenumberprotectionenabled,originatorMacAddress[0],originatorMacAddress[1],originatorMacAddress[2],originatorMacAddress[3],originatorMacAddress[4],originatorMacAddress[5]);
 					}
+					#endif
 				}
 				//Update the sequence number
 				_originator[originatorId].lastSequenceNumber = packetSequenceNumber.value;
@@ -582,12 +544,14 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 				packetInterval.b[3] = packet.data[packetIndex++];
 				if(packetInterval.value != _originator[originatorId].interval[packet.data[0]])
 				{
+					#ifdef m2mMeshIncludeDebugFeatures
 					if(_debugEnabled == true && _originator[originatorId].interval[packet.data[0]] > 0 && _loggingLevel & MESH_UI_LOG_INFORMATION && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 					{
 						char packetTypeDescription[] = "UNK";
 						_packetTypeDescription(packetTypeDescription,packet.data[0]);
 						_debugStream->printf_P(m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod,packetTypeDescription,packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],_originator[originatorId].interval[packet.data[0]],packetInterval.value);
 					}
+					#endif
 					_originator[originatorId].interval[packet.data[0]] = packetInterval.value;
 				}
 				//Consider the packet for processing so check the destination. Either it is has to be a flood or have this node as the destination
@@ -612,10 +576,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 					{
 						_processUsr(routerId, originatorId, packet);									//Process the contents of the USR packet
 					}
+					#ifdef m2mMeshIncludeDebugFeatures
 					else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 					{
 						_debugStream->printf_P(nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x,packet.data[0],packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5]);
 					}
+					#endif
 				}
 				//Consider a packet for forwarding, it may already have been changed in earlier processing
 				//The TTL must be >0 and either a flood or NOT have this node at its source or destination
@@ -682,6 +648,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 						#elif defined(ESP32)
 						esp_err_t result = _sendPacket(packet);	//Send packet on ESP32
 						#endif
+						#ifdef m2mMeshIncludeDebugFeatures
 						if(result == ESP_OK && logTheForward == true)
 						{
 							char packetTypeDescription[] = "UNK";
@@ -694,6 +661,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 							_packetTypeDescription(packetTypeDescription,packet.data[0]);
 							_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed,packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2]);
 						}
+						#endif
 					}
 				}
 			}
@@ -702,17 +670,21 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 				//If it's a very old sequence number disable the protection window to allow the next packet to reset the sequence number
 				//this logic is here to handle a reboot, but ignore a single stray weird sequence number
 				_originator[originatorId].sequenceNumberProtectionWindowActive = false;
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					_debugStream->printf_P(m2mMesh02x02x02x02x02x02xsequencenumberprotectiondisabledpossiblereboot,originatorMacAddress[0],originatorMacAddress[1],originatorMacAddress[2],originatorMacAddress[3],originatorMacAddress[4],originatorMacAddress[5]);
 				}
+				#endif
 			}
 		}
 	}
+	#ifdef m2mMeshIncludeDebugFeatures
 	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)	//This is the wrong protocol version
 	{
 		_debugStream->printf_P(m2mMeshWARNINGincorrectprotocolversiondfrom02x02x02x02x02x02x,packet.data[1],packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5]);
 	}
+	#endif
 	packet.length = 0;	//Mark the buffer empty
 }
 
@@ -830,6 +802,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(bool includeNeighbours,uint8_t elpTtl,p
 	#elif defined(ESP32)
 	esp_err_t result = _sendPacket(packet);			//Send packet on ESP32
 	#endif
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(result == ESP_OK && _debugEnabled == true)
 	{
 		if(_loggingLevel & MESH_UI_LOG_ELP_SEND)
@@ -854,6 +827,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(bool includeNeighbours,uint8_t elpTtl,p
 	{
 		_debugStream->print(F("\r\nm2mMesh ELP SND fail"));
 	}
+	#endif
 	_sequenceNumber++;
 	if(result == ESP_OK)
 	{
@@ -867,6 +841,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(bool includeNeighbours,uint8_t elpTtl,p
 
 void ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originatorId, packetBuffer &packet)
 {
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 	{
 		if(packet.data[3] & ELP_FLAGS_INCLUDES_PEERS && packet.data[18]>0)
@@ -878,6 +853,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originator
 			_debugStream->printf_P(m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLENd,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.length);
 		}
 	}
+	#endif
 	if(packet.data[3] & ELP_FLAGS_INCLUDES_PEERS && packet.data[18]>0)	//No further processing is necessary unless the ELP contains neighbours
 	{
 		uint8_t sharedNeighbours = packet.data[18];
@@ -885,10 +861,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originator
 		{
 			if(_isLocalMacAddress(&packet.data[19+neighbour*6]))	//Ignore this node
 			{
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog)) //Print this neighbour
 				{
 					_debugStream->printf_P(m2mMeshELPneighbour02x02x02x02x02x02xthisnode,packet.data[19+neighbour*6],packet.data[20+neighbour*6],packet.data[21+neighbour*6],packet.data[22+neighbour*6],packet.data[23+neighbour*6],packet.data[24+neighbour*6]);
 				}
+				#endif
 			}
 			else
 			{
@@ -897,6 +875,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originator
 				if(neighbourId == MESH_ORIGINATOR_NOT_FOUND)
 				{
 					//This is a new originator
+					#ifdef m2mMeshIncludeDebugFeatures
 					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_RECEIVED) //Print this neighbour and show it's new
 					{
 						_debugStream->printf_P(m2mMeshELPneighbour02x02x02x02x02x02xnewnode,packet.data[19+neighbour*6],packet.data[20+neighbour*6],packet.data[21+neighbour*6],packet.data[22+neighbour*6],packet.data[23+neighbour*6],packet.data[24+neighbour*6]);
@@ -905,8 +884,10 @@ void ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originator
 					{
 						_debugStream->print(m2mMeshELP);
 					}
+					#endif
 					neighbourId = _addOriginator(&packet.data[19+neighbour*6],_currentChannel);
 				}
+				#ifdef m2mMeshIncludeDebugFeatures
 				else
 				{
 					//This is an existing originator
@@ -915,6 +896,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originator
 						_debugStream->printf_P(m2mMeshELPneighbour02x02x02x02x02x02x,packet.data[19+neighbour*6],packet.data[20+neighbour*6],packet.data[21+neighbour*6],packet.data[22+neighbour*6],packet.data[23+neighbour*6],packet.data[24+neighbour*6]);
 					}
 				}
+				#endif
 			}
 		}
 	}
@@ -982,6 +964,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendOgm(packetBuffer &packet)
 	#elif defined(ESP32)
 	esp_err_t result = _sendPacket(packet);	//Send packet on ESP32
 	#endif
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(result == ESP_OK && _debugEnabled == true)
 	{
 		if(_loggingLevel & MESH_UI_LOG_OGM_SEND)
@@ -999,6 +982,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendOgm(packetBuffer &packet)
 	{
 		_debugStream->printf_P(m2mMeshOGMSNDfailedTTL02dFlags02xSeq08xLENd,packet.data[2],packet.data[3],_sequenceNumber,packet.length);
 	}
+	#endif
 	_sequenceNumber++;
 	if(result == ESP_OK)
 	{
@@ -1012,10 +996,12 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendOgm(packetBuffer &packet)
 
 void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originatorId, packetBuffer &packet)
 {
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 	{
 		_debugStream->printf_P(m2mMeshOGMRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLENd,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.data[20],packet.length);
 	}
+	#endif
 	union unsignedIntToBytes tq;				//Retrieve the transmission quality in the packet
 	tq.b[0] = packet.data[18];
 	tq.b[1] = packet.data[19];
@@ -1031,11 +1017,14 @@ void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originator
 				_originator[originatorId].selectedRouter = routerId;
 				_originator[originatorId].gtq = tq.value;
 				_meshLastChanged = millis();
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xselectedforO02x02x02x02x02x02xTQ04x,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq.value);
 				}
+				#endif
 			}
+			#ifdef m2mMeshIncludeDebugFeatures
 			else
 			{
 				//This does not change the routing
@@ -1044,6 +1033,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originator
 					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xinferiorTQ04x,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq.value);
 				}
 			}
+			#endif
 		}
 		else if(routerId == _originator[originatorId].selectedRouter)
 		{
@@ -1052,16 +1042,20 @@ void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originator
 				//Update the TQ of the existing route
 				_originator[originatorId].gtq = tq.value;
 				//This does not change the routing
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xupdateTQ04x,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq.value);
 				}
+				#endif
 			}
+			#ifdef m2mMeshIncludeDebugFeatures
 			//This does not change the routing
 			else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
 				_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xTQ04x,packet.data[2],packet.data[3],packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq.value);
 			}
+			#endif
 		}
 		//Update the stats on reachable nodes
 		if(currentGtq == 0 && _originator[originatorId].gtq > 0)
@@ -1073,6 +1067,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originator
 			_originatorHasBecomeUnroutable(originatorId);
 		}
 	}
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && packet.data[20]>0 && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 	{
 		for(uint8_t id = 0; id<packet.data[20]; id++)
@@ -1080,6 +1075,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originator
 			_debugStream->printf_P(m2mMeshOGMforwardingchain02x02x02x02x02x02x,packet.data[21+id*6],packet.data[22+id*6],packet.data[23+id*6],packet.data[24+id*6],packet.data[25+id*6],packet.data[26+id*6]);
 		}
 	}
+	#endif
 	//Consider the packet for forwarding, whether or not it was selected as router or not
 	if(packet.data[2] > 0)
 	{
@@ -1104,10 +1100,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originator
 		}
 		if(packet.data[2] > 0)	//Packet will be forwarded despite penalties
 		{
+			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
 				_debugStream->printf_P(m2mMeshOGMhoppenaltyappliedTQnow02x, tq.value);
 			}
+			#endif
 			if(21+(packet.data[20]+1)*6 < ESP_NOW_MAX_PACKET_SIZE)	//Add in this node's address to the forwarding chain if there's space.
 			{
 				memcpy (&packet.data[21+packet.data[20]*6], &_localMacAddress, 6);			
@@ -1116,10 +1114,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originator
 				{
 					packet.length=21+packet.data[20]*6;
 				}
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					_debugStream->print(F("\r\nm2mMesh OGM added this node to forwarding chain"));
 				}
+				#endif
 			}
 		}
 	}
@@ -1130,10 +1130,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_originatorHasBecomeRoutable(uint8_t originatorI
 	//Originator has become reachable
 	_numberOfReachableOriginators++;
 	_meshLastChanged = millis();
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
 	{
 		_debugStream->printf_P(m2mMeshOGM02x02x02x02x02x02xhasbecomereachable,_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5]);
 	}
+	#endif
 }
 
 void ICACHE_FLASH_ATTR m2mMesh::_originatorHasBecomeUnroutable(uint8_t originatorId)
@@ -1146,10 +1148,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_originatorHasBecomeUnroutable(uint8_t originato
 	_originator[originatorId].gtq = 0;
 	_originator[originatorId].selectedRouter = MESH_ORIGINATOR_NOT_FOUND;
 	_meshLastChanged = millis();
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
 	{
 		_debugStream->printf_P(m2mMeshOGM02x02x02x02x02x02xhasbecomeunreachable,_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5]);
 	}
+	#endif
 }
 
 
@@ -1325,15 +1329,18 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(packetBuffer &packet)
 		packet.data[packet.length++] = 0x00;
 	}
 	memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);	//Set the destination MAC address
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
 	{
 		_debugStream->print(m2mMeshNHSSND);
-	}	
+	}
+	#endif
 	#if defined(ESP8266)
 	uint8_t result = _sendPacket(packet);	//Send packet on ESP8266/ESP8285
 	#elif defined(ESP32)
 	esp_err_t result = _sendPacket(packet);	//Send packet on ESP32
 	#endif
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(result == ESP_OK && _debugEnabled == true)
 	{
 		if(_loggingLevel & MESH_UI_LOG_NHS_SEND)
@@ -1360,6 +1367,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(packetBuffer &packet)
 	{
 		_debugStream->print(failed);
 	}
+	#endif
 	_sequenceNumber++;
 	if(result == ESP_OK)
 	{
@@ -1373,18 +1381,22 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(packetBuffer &packet)
 
 void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originatorId, packetBuffer &packet)
 {
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 	{
 		_debugStream->printf_P(m2mMeshNHSR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.length);
 	}
+	#endif
 	if(originatorId != MESH_ORIGINATOR_NOT_FOUND)	//Update details about the originator
 	{
 		//Extract the flags
 		_originator[originatorId].flags = packet.data[3];
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && _originator[originatorId].flags & NHS_FLAGS_SOFTAP_ON && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
 			_debugStream->print(m2mMeshSoftAPison);
 		}
+		#endif
 		//Extract the uptime
 		union unsignedLongToBytes tempUint32;
 		tempUint32.b[0] = packet.data[18];
@@ -1392,10 +1404,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 		tempUint32.b[2] = packet.data[20];
 		tempUint32.b[3] = packet.data[21];
 		_originator[originatorId].uptime = tempUint32.value;
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
 			_debugStream->printf_P(m2mMeshNHSUptimedms,tempUint32.value);
 		}
+		#endif
 		//Extract the current free Heap
 		tempUint32.b[0] = packet.data[22];
 		tempUint32.b[1] = packet.data[23];
@@ -1408,10 +1422,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 		tempUint32.b[2] = packet.data[28];
 		tempUint32.b[3] = packet.data[29];
 		_originator[originatorId].initialFreeHeap = tempUint32.value;
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
 			_debugStream->printf_P(m2mMeshNHSCurrentFreeHeapdd,_originator[originatorId].currentFreeHeap,_originator[originatorId].initialFreeHeap);
 		}
+		#endif
 		//Extract the packet statistics
 		tempUint32.b[0] = packet.data[30];
 		tempUint32.b[1] = packet.data[31];
@@ -1433,42 +1449,51 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 		tempUint32.b[2] = packet.data[44];
 		tempUint32.b[3] = packet.data[45];
 		_originator[originatorId].droppedTxPackets = tempUint32.value;
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
 			_debugStream->printf_P(m2mMeshNHSdroppedpacketsddRXddTX,_originator[originatorId].droppedRxPackets,_originator[originatorId].rxPackets,_originator[originatorId].txPackets,_originator[originatorId].droppedTxPackets);
 		}
+		#endif
 		//Extract the number of active neighbours
 		_originator[originatorId].numberOfActiveNeighbours = packet.data[46];
 		//Extract the number of originators
 		_originator[originatorId].numberOfOriginators = packet.data[47];
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
 			_debugStream->printf_P(m2mMeshNHSActiveneighboursddMAC02x02x02x02x02x02x,_originator[originatorId].numberOfActiveNeighbours,_originator[originatorId].numberOfOriginators,packet.data[48],packet.data[49],packet.data[50],packet.data[51],packet.data[52],packet.data[53]);
 		}
-		
+		#endif
 		//Check the consistency of the network
 		if(_originator[originatorId].numberOfOriginators != _numberOfOriginators)
 		{
 			_meshLastChanged = millis();
+			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
 				_debugStream->print(differs);
 			}
+			#endif
 		}
 		else if(packet.data[48] != _meshMacAddress[0] | packet.data[49] != _meshMacAddress[1] | packet.data[50] != _meshMacAddress[2] | packet.data[51] != _meshMacAddress[3] | packet.data[52] != _meshMacAddress[4] | packet.data[53] != _meshMacAddress[5])
 		{
 			_meshLastChanged = millis();
+			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
 				_debugStream->print(differs);
 			}
+			#endif
 		}
 		//Extract the Tx power
 		_originator[originatorId].currentTxPower = float(packet.data[54])/4;
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
 			_debugStream->printf_P(m2mMeshNHSCurrentTXpowerf,4*_originator[originatorId].currentTxPower);
 		}
+		#endif
 		uint8_t receivedPacketIndex = 55;		//Use this to index through the packet
 		//Extract the supply voltage, if included
 		if(packet.data[3] & NHS_FLAGS_INCLUDES_VCC)
@@ -1480,10 +1505,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 			nhsSupplyVoltage.b[2] = packet.data[receivedPacketIndex++];
 			nhsSupplyVoltage.b[3] = packet.data[receivedPacketIndex++];
 			_originator[originatorId].supplyVoltage = nhsSupplyVoltage.value;
+			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
 				_debugStream->printf_P(m2mMeshNHSSupplyvoltagefV,nhsSupplyVoltage.value);
 			}
+			#endif
 		}
 		if(_currentMeshTimeServer == originatorId && not (packet.data[3] & NHS_FLAGS_TIMESERVER))	//Check if the time server has shut down
 		{
@@ -1498,10 +1525,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 			tempUint32.b[2] = packet.data[receivedPacketIndex++];
 			tempUint32.b[3] = packet.data[receivedPacketIndex++];
 			_updateMeshTime(tempUint32.value,originatorId);
+			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
 				_debugStream->printf_P(m2mMeshNHSMeshtimedms,tempUint32.value);
 			}
+			#endif
 		}
 		//Look for a node name
 		if(packet.data[3] & NHS_FLAGS_NODE_NAME_SET)
@@ -1512,20 +1541,24 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 			temp[nodeNameLength]=0;
 			if(_originator[originatorId].nodeName !=nullptr && String(_originator[originatorId].nodeName) != String(temp)) //Node name has changed, free the memory
 			{
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					_debugStream->printf_P(m2mMeshNHSnodenamelendschangedfroms,nodeNameLength,temp,_originator[originatorId].nodeName);
 				}
+				#endif
 				//New node name, delete the previously allocated memory and reallocate
 				delete[] _originator[originatorId].nodeName;
 			}
 			if(_originator[originatorId].nodeName == nullptr)	//Name not set
 			{
 				//Node name not set
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					_debugStream->printf_P(m2mMeshNHSnodenamelends,nodeNameLength,temp);
 				}
+				#endif
 				//Allocate memory
 				_originator[originatorId].nodeName = new char[nodeNameLength+1];
 				if(_originator[originatorId].nodeName)
@@ -1535,6 +1568,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 					//Terminate the string with a null
 					_originator[originatorId].nodeName[nodeNameLength]=0;
 				}
+				#ifdef m2mMeshIncludeDebugFeatures
 				else
 				{
 					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -1542,6 +1576,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 						_debugStream->print(m2mMeshNHSUnabletostorenodenamenotenoughmemory);
 					}
 				}
+				#endif
 			}
 			//Advance the packet index past the name
 			receivedPacketIndex+=nodeNameLength;
@@ -1550,25 +1585,30 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 		if(packet.data[3] & NHS_FLAGS_INCLUDES_ORIGINATORS)
 		{
 			uint8_t originatorCount = packet.data[receivedPacketIndex++];	//Retrieve the number of originators in the end of the packet
+			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
 				_debugStream->printf_P(m2mMeshNHScontainsdoriginators,originatorCount);
 			}
+			#endif
 			for(uint8_t i = 0; i<originatorCount && receivedPacketIndex + 8 < ESP_NOW_MAX_PACKET_SIZE; i++) //The node will have filled in as many as it can in the space in the packet
 			{
 				unsignedIntToBytes packetLtq;
 				packetLtq.b[0] = packet.data[receivedPacketIndex+6];
 				packetLtq.b[1] = packet.data[receivedPacketIndex+7];
+				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					_debugStream->printf_P(m2mMeshNHSoriginatordata02x02x02x02x02x02xTQ02x,packet.data[receivedPacketIndex],packet.data[receivedPacketIndex+1],packet.data[receivedPacketIndex+2],packet.data[receivedPacketIndex+3],packet.data[receivedPacketIndex+4],packet.data[receivedPacketIndex+5],packetLtq);
 				}
+				#endif
 				if(not _isLocalMacAddress(&packet.data[receivedPacketIndex]))
 				{
 					//The included originator MIGHT also be a completely new device, so look for it.
 					uint8_t includedOriginatorId = _originatorIdFromMac(&packet.data[receivedPacketIndex]);
 					if(includedOriginatorId == MESH_ORIGINATOR_NOT_FOUND)
 					{
+						#ifdef m2mMeshIncludeDebugFeatures
 						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 						{
 							_debugStream->print(m2mMeshnew);
@@ -1578,13 +1618,16 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 						{
 							_debugStream->print(F("\r\nm2mMesh NHS "));
 						}
+						#endif
 						includedOriginatorId = _addOriginator(&packet.data[receivedPacketIndex],_currentChannel);
 					}
 				}
+				#ifdef m2mMeshIncludeDebugFeatures
 				else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					_debugStream->print(m2mMeshthisnode);
 				}
+				#endif
 				receivedPacketIndex+=8;
 			}
 		}
@@ -1593,10 +1636,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 
 void ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originatorId, packetBuffer &packet)
 {
+	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 	{
 		_debugStream->printf_P(m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.length);
 	}
+	#endif
 	if(not _userPacketReceived)
 	{
 		_userPacketReceived = true;									//Mark that there is packet waiting for the user application and copy it to the buffer for retrieval
@@ -1610,6 +1655,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originator
 		_receivedUserPacketIndex = receivedPacketIndex;							//Record where we are in reading the packet for later data retrieval
 		_receivedUserPacketIndex++;
 		_receivedUserPacketFieldCounter = packet.data[receivedPacketIndex++];	//Retrieve the number of fields in the packet
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
 			_debugStream->printf_P(m2mMeshUSRpacketcontainsdfields,_receivedUserPacketFieldCounter);
@@ -1711,16 +1757,19 @@ void ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originator
 				}
 			}
 		}
+		#endif
 		packet.length = 0;						//Mark the packet buffer as read, but really we've just copied it
 
 	}
 	else
 	{
 		_droppedRxPackets++;	//Increase the dropped packet count even though the radio dropped it
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(m2mMeshPreviousUSRmessagenotreadpacketdropped);
 		}
+		#endif
 	}
 
 }
@@ -1759,47 +1808,49 @@ void ICACHE_FLASH_ATTR m2mMesh::_updateMeshTime(uint32_t newMeshTime, uint8_t or
 
 void ICACHE_FLASH_ATTR m2mMesh::_setMeshTime(uint32_t newMeshTime, uint8_t originatorId)
 {
-  //Stop being a time server if we currently are
-  if(_actingAsTimeServer == true)
-  {
-    _actingAsTimeServer = false;
-  }
-  //Temporarily record the old time offset
-  int32_t oldMeshTimeOffset = _meshTimeOffset;
-  _meshTimeOffset = newMeshTime - millis();
-  //Track clock drift
-  if(abs(oldMeshTimeOffset - _meshTimeOffset)<1000)
-  {
-    //track cumlative drift
-    _meshTimeDrift += oldMeshTimeOffset - _meshTimeOffset;
-  }
-  else
-  {
-    //It was a big jump, so clear drift
-    _meshTimeDrift = 0;
-  }
-  if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
-  {
-    if(originatorId != _currentMeshTimeServer)
-    {
-      _debugStream->printf_P(m2mMeshNHS02x02x02x02x02x02xisnowthetimeserver,_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5]);
-    }
-    if(oldMeshTimeOffset > _meshTimeOffset)
-    {
-      _debugStream->printf_P(m2mMeshNHStimeoffsetnegdms,oldMeshTimeOffset - _meshTimeOffset);
-    }
-    else if(oldMeshTimeOffset != _meshTimeOffset && _meshTimeOffset - oldMeshTimeOffset < 5000)
-    {
-      _debugStream->printf_P(m2mMeshNHStimeoffsetposdms,_meshTimeOffset - oldMeshTimeOffset);
-    }
-    else if(oldMeshTimeOffset != _meshTimeOffset)
-    {
-      char uptime[] = "00h00m00s";
-      _friendlyUptime(millis() + _meshTimeOffset,uptime);
-      _debugStream->printf_P(m2mMeshNHSmeshtimesettos,uptime);
-    }
-  }
-  _currentMeshTimeServer = originatorId;
+	//Stop being a time server if we currently are
+	if(_actingAsTimeServer == true)
+	{
+		_actingAsTimeServer = false;
+	}
+	//Temporarily record the old time offset
+	int32_t oldMeshTimeOffset = _meshTimeOffset;
+	_meshTimeOffset = newMeshTime - millis();
+	//Track clock drift
+	if(abs(oldMeshTimeOffset - _meshTimeOffset)<1000)
+	{
+		//track cumlative drift
+		_meshTimeDrift += oldMeshTimeOffset - _meshTimeOffset;
+	}
+	else
+	{
+		//It was a big jump, so clear drift
+		_meshTimeDrift = 0;
+	}
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
+	{
+		if(originatorId != _currentMeshTimeServer)
+		{
+			_debugStream->printf_P(m2mMeshNHS02x02x02x02x02x02xisnowthetimeserver,_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5]);
+		}
+		if(oldMeshTimeOffset > _meshTimeOffset)
+		{
+			_debugStream->printf_P(m2mMeshNHStimeoffsetnegdms,oldMeshTimeOffset - _meshTimeOffset);
+		}
+		else if(oldMeshTimeOffset != _meshTimeOffset && _meshTimeOffset - oldMeshTimeOffset < 5000)
+		{
+			_debugStream->printf_P(m2mMeshNHStimeoffsetposdms,_meshTimeOffset - oldMeshTimeOffset);
+		}
+		else if(oldMeshTimeOffset != _meshTimeOffset)
+		{
+			char uptime[] = "00h00m00s";
+			_friendlyUptime(millis() + _meshTimeOffset,uptime);
+			_debugStream->printf_P(m2mMeshNHSmeshtimesettos,uptime);
+		}
+	}
+	#endif
+	_currentMeshTimeServer = originatorId;
 }
 
 
@@ -1823,10 +1874,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_chooseNewTimeServer()
   if(_currentMeshTimeServer == MESH_ORIGINATOR_NOT_FOUND)
   {
     _becomeTimeServer();
+	#ifdef m2mMeshIncludeDebugFeatures
     if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
     {
       _debugStream->print(m2mMeshTimeserverhasgoneofflinetakingovertimeserverrole);
     }
+	#endif
   }
 }
 
@@ -1837,141 +1890,6 @@ void ICACHE_FLASH_ATTR m2mMesh::_becomeTimeServer()
   _currentMeshTimeServer = MESH_ORIGINATOR_NOT_FOUND; 
 }
 
-
-
-#if defined(ESP8266)
-void m2mMesh::_errorDescription(uint8_t result)
-#elif defined(ESP32)
-void m2mMesh::_errorDescription(esp_err_t result)
-#endif
-{
-	if (result == ESP_OK)
-	{
-		_debugStream->print(F("Success"));
-	}
-	else if (result == ESP_ERR_ESPNOW_NOT_INIT)
-	{
-		_debugStream->println(F("ESPNOW is not initialized"));
-	}
-	else if (result == ESP_ERR_ESPNOW_ARG)
-	{
-		_debugStream->print(F("Invalid argument"));
-	}
-	else if (result == ESP_ERR_ESPNOW_INTERNAL)
-	{
-		_debugStream->print(F("Internal error"));
-	}
-	else if (result == ESP_ERR_ESPNOW_NO_MEM)
-	{
-		_debugStream->print(F("Out of memory"));
-	}
-	else if (result == ESP_ERR_ESPNOW_NOT_FOUND)
-	{
-		_debugStream->print(F("Peer is not found"));
-	}
-	else if (result == ESP_ERR_ESPNOW_IF)
-	{
-		_debugStream->print(F("Current WiFi interface doesn’t match that of peer"));
-	}
-	else
-	{
-		_debugStream->print(F("Unknown error"));
-	}
-}
-
-void m2mMesh::_friendlyUptime(uint32_t uptime, char * formattedUptime)
-{
-  uint8_t seconds = (uptime/   1000ul)%60;
-  uint8_t minutes = (uptime/  60000ul)%60;
-  uint8_t hours =   (uptime/3600000ul);
-  sprintf(formattedUptime,"%02dh%02dm%02ds",hours,minutes,seconds);
-}
-
-#ifdef ESP8266
-void m2mMesh::_debugPacket(packetBuffer &packet)
-#elif defined(ESP32)
-void m2mMesh::_debugPacket(packetBuffer &packet)
-#endif
-{
-	_debugStream->printf_P(m2mMesh02x02x02x02x02x02xdbytesm2mMeshType,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.length);
-	if(packet.data[0] == ELP_PACKET_TYPE)
-	{
-		_debugStream->print(F("ELP"));
-	}
-	else if(packet.data[0] == OGM_PACKET_TYPE)
-	{
-		_debugStream->print(F("OGM"));
-	}
-	else if(packet.data[0] == NHS_PACKET_TYPE)
-	{
-		_debugStream->print(F("NHS"));
-	}
-	else if(packet.data[0] == USR_PACKET_TYPE)
-	{
-		_debugStream->print(F("USR"));
-	}
-	else
-	{
-		_debugStream->print(F("Unknown"));
-	}
-	_debugStream->printf_P(m2mMeshVersiond,packet.data[1]);
-	_debugStream->printf_P(m2mMeshTTLd,packet.data[2]);
-	_debugStream->printf_P(m2mMeshFlagsd,packet.data[3]);
-	union unsignedLongToBytes packetSequenceNumber;
-	packetSequenceNumber.b[0] = packet.data[4];
-	packetSequenceNumber.b[1] = packet.data[5];
-	packetSequenceNumber.b[2] = packet.data[6];
-	packetSequenceNumber.b[3] = packet.data[7];
-	_debugStream->printf_P(m2mMeshSequencenumberd,packetSequenceNumber.value);
-	_debugStream->printf_P(m2mMeshSrc02x02x02x02x02x02x,packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13]);
-	uint8_t packetIndex = 14;
-	if(packet.data[3] & SEND_TO_ALL_NODES)
-	{
-		_debugStream->print(m2mMeshDstALL);
-	}
-	else
-	{
-		_debugStream->printf_P(m2mMeshDst02x02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
-	}
-	unsignedLongToBytes packetInterval;
-	packetInterval.b[0] = packet.data[packetIndex++];
-	packetInterval.b[1] = packet.data[packetIndex++];
-	packetInterval.b[2] = packet.data[packetIndex++];
-	packetInterval.b[3] = packet.data[packetIndex++];
-	_debugStream->printf_P(m2mMeshInterval,packetInterval.value);
-	while(packetIndex + 7 < packet.length)
-	{
-		_debugStream->printf_P(m2mMeshData02x02x02x02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
-	}
-	if(packetIndex < packet.length - 6)
-	{
-		_debugStream->printf_P(m2mMeshData02x02x02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
-	}
-	else if(packetIndex < packet.length - 5)
-	{
-		_debugStream->printf_P(m2mMeshData02x02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
-	}
-	else if(packetIndex < packet.length - 4)
-	{
-		_debugStream->printf_P(m2mMeshData02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
-	}
-	else if(packetIndex < packet.length - 3)
-	{
-		_debugStream->printf_P(m2mMeshData02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
-	}
-	else if(packetIndex < packet.length - 2)
-	{
-		_debugStream->printf_P(m2mMeshData02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
-	}
-	else if(packetIndex < packet.length - 1)
-	{
-		_debugStream->printf_P(m2mMeshData02x02x,packet.data[packetIndex++],packet.data[packetIndex++]);
-	}
-	else if(packetIndex < packet.length)
-	{
-		_debugStream->printf_P(m2mMeshData02x,packet.data[packetIndex++]);
-	}
-}
 
 float ICACHE_FLASH_ATTR m2mMesh::supplyVoltage()
 {
@@ -2074,19 +1992,23 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::_addOriginator(uint8_t* mac,uint8_t originato
 		_originator[_numberOfOriginators].macAddress[5] = mac[5];
 		_originator[_numberOfOriginators].channel = originatorChannel;
 		_originator[_numberOfOriginators].selectedRouter = MESH_ORIGINATOR_NOT_FOUND;
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 		{
 			_debugStream->printf_P(m2mMesh02x02x02x02x02x02xaddedidd,mac[0],mac[1],mac[2],mac[3],mac[4],mac[5],_numberOfOriginators);
 		}
+		#endif
 		_numberOfOriginators++;
 		_meshLastChanged = millis();
 		return(_numberOfOriginators - 1);
 	}
+	#ifdef m2mMeshIncludeDebugFeatures
 	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 	{
 		_debugStream->println();
 		_debugStream->printf_P(m2mMesh02x02x02x02x02x02xcouldnotbeadded,mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
 	}
+	#endif
 	_meshLastChanged = millis();
 	return(MESH_NO_MORE_ORIGINATORS_LEFT);
 }
@@ -2599,20 +2521,24 @@ bool ICACHE_FLASH_ATTR m2mMesh::send()
 	_userPacket[5] = temp.b[1];
 	_userPacket[6] = temp.b[2];
 	_userPacket[7] = temp.b[3];
+	#ifdef m2mMeshIncludeDebugFeatures
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 	{
 		_debugStream->printf_P(m2mMeshSendingpackettype02xversion02x,_userPacket[0],_userPacket[1]);
 	}
+	#endif
 	if(esp_now_send(_broadcastMacAddress, _userPacket, _userPacketIndex) == ESP_OK)
 	{
 		if(_activityLedEnabled)
 		{
 			_blinkActivityLed();
 		}
+		#ifdef m2mMeshIncludeDebugFeatures
 		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_SEND)
 		{
 			_debugStream->printf_P(m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x,_userPacket[8],_userPacket[9],_userPacket[10],_userPacket[11],_userPacket[12],_userPacket[13],_userPacket[2],_userPacket[3]);
 		}
+		#endif
 		_userPacketIndex = 0;
 		_buildingUserPacket = false;
 		return(true);
@@ -2727,10 +2653,12 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_t()
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 		return(0x00);
 	}
@@ -2752,10 +2680,12 @@ bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint8_t &recipient)
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 		return(false);
 	}
@@ -2778,10 +2708,12 @@ uint16_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint16_t()
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 		return(0x0000);
 	}
@@ -2805,10 +2737,12 @@ uint32_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint32_t()
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 		return(0x00000000);
 	}
@@ -2834,10 +2768,12 @@ int8_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt8_t()
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 		return(0x00);
 	}
@@ -2858,10 +2794,12 @@ int16_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt16_t()
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 		return(0x0000);
 	}
@@ -2885,10 +2823,12 @@ int32_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt32_t()
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 		return(0x00000000);
 	}
@@ -2914,10 +2854,12 @@ float ICACHE_FLASH_ATTR m2mMesh::retrieveFloat()
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 		return(0.0f);
 	}
@@ -2943,10 +2885,12 @@ char ICACHE_FLASH_ATTR m2mMesh::retrieveChar()
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 		return(' ');
 	}
@@ -2963,12 +2907,14 @@ String ICACHE_FLASH_ATTR m2mMesh::retrieveString()
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
-		return("Nothing");
+		return("Error: No String");
 	}
 	else
 	{
@@ -2993,10 +2939,12 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveCharArray(char *data)
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 	}
 	else
@@ -3020,10 +2968,12 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_tArray(uint8_t *data)
 {
 	if(not dataAvailable())
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
 			_debugStream->print(errorReadBeyondEndOfPacket);
 		}
+		#endif
 		//Return a dummy value if nothing available
 	}
 	else
@@ -3042,6 +2992,41 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_tArray(uint8_t *data)
 	}
 }
 
+uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfOriginators()
+{
+	return(_numberOfOriginators);
+}
+uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfReachableOriginators()
+{
+	return(_numberOfReachableOriginators);
+}
+uint32_t ICACHE_FLASH_ATTR m2mMesh::expectedUptime(uint8_t originatorId) //Returns the current uptime of a node, on the assumption it has continued to run uninterrupted since we last heard from it
+{
+  return(_originator[originatorId].uptime + (millis() - _originator[originatorId].lastSeen[NHS_PACKET_TYPE]));
+}
+bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet()
+{
+	if(_nodeName != nullptr)
+	{
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+}
+bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet(uint8_t id)
+{
+	if(_originator[id].nodeName != nullptr)
+	{
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+}
+
 
 /* Public functions used for the 'network analyser' sketch
  *
@@ -3049,7 +3034,208 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_tArray(uint8_t *data)
  * be omitted by commenting out the #define in m2mMesh.h
  *
  */
-#ifdef m2mMeshExtraInfoFuntions
+#ifdef m2mMeshIncludeDebugFeatures
+
+//Enable debugging on a stream, usually Serial but let's not assume that. This version accepts the default log level
+void m2mMesh::enableDebugging(Stream &debugStream)
+{
+	enableDebugging(debugStream,_loggingLevel);
+}
+//Enable debugging on a stream, usually Serial but let's not assume that
+void m2mMesh::enableDebugging(Stream &debugStream, uint32_t level)
+{
+	_debugStream = &debugStream;	//Set the stream used for debugging
+	_debugEnabled = true;			//Flag that debugging is enabled
+	_loggingLevel = level;			//Set the logging level
+	if(_loggingLevel & MESH_UI_LOG_INFORMATION)
+	{
+		_debugStream->println();
+		_debugStream->print(m2mMeshdebuggingenabled);	//Announce this joyous event
+	}
+}
+//Enable debugging on a stream, after being paused
+void m2mMesh::enableDebugging(uint32_t level)
+{
+	if(_debugStream != nullptr)
+	{
+		_loggingLevel = level;			//Set the logging level
+		_debugEnabled = true;			//Flag that debugging is enabled
+		if(_loggingLevel & MESH_UI_LOG_INFORMATION)
+		{
+			_debugStream->println();
+			_debugStream->print(m2mMeshdebuggingenabled);	//Announce this joyous event
+		}
+	}
+}
+//Enable debugging on a stream, after being paused
+void m2mMesh::enableDebugging()
+{
+	if(_debugStream != nullptr)
+	{
+		_debugEnabled = true;
+		if(_loggingLevel & MESH_UI_LOG_INFORMATION)
+		{
+			_debugStream->println();
+			_debugStream->print(m2mMeshdebuggingenabled);	//Announce this joyous event
+		}
+	}
+}
+//Disable debugging
+void m2mMesh::disableDebugging()
+{
+	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+	{
+		_debugStream->println();
+		_debugStream->print(m2mMeshdebuggingdisabled);	//Warn that debugging is disabled
+	}
+	_debugEnabled = false;			//Flag that debugging is enabled
+}
+
+void m2mMesh::nodeToLog(uint8_t id)	//Sets the node to log
+{
+	_nodeToLog = id;
+}
+void m2mMesh::logAllNodes()	//Sets logging to all nodes
+{
+	_nodeToLog = MESH_ORIGINATOR_NOT_FOUND;
+}
+
+
+#if defined(ESP8266)
+void m2mMesh::_errorDescription(uint8_t result)
+#elif defined(ESP32)
+void m2mMesh::_errorDescription(esp_err_t result)
+#endif
+{
+	if (result == ESP_OK)
+	{
+		_debugStream->print(F("Success"));
+	}
+	else if (result == ESP_ERR_ESPNOW_NOT_INIT)
+	{
+		_debugStream->println(F("ESPNOW is not initialized"));
+	}
+	else if (result == ESP_ERR_ESPNOW_ARG)
+	{
+		_debugStream->print(F("Invalid argument"));
+	}
+	else if (result == ESP_ERR_ESPNOW_INTERNAL)
+	{
+		_debugStream->print(F("Internal error"));
+	}
+	else if (result == ESP_ERR_ESPNOW_NO_MEM)
+	{
+		_debugStream->print(F("Out of memory"));
+	}
+	else if (result == ESP_ERR_ESPNOW_NOT_FOUND)
+	{
+		_debugStream->print(F("Peer is not found"));
+	}
+	else if (result == ESP_ERR_ESPNOW_IF)
+	{
+		_debugStream->print(F("Current WiFi interface doesn’t match that of peer"));
+	}
+	else
+	{
+		_debugStream->print(F("Unknown error"));
+	}
+}
+
+void m2mMesh::_friendlyUptime(uint32_t uptime, char * formattedUptime)
+{
+  uint8_t seconds = (uptime/   1000ul)%60;
+  uint8_t minutes = (uptime/  60000ul)%60;
+  uint8_t hours =   (uptime/3600000ul);
+  sprintf(formattedUptime,"%02dh%02dm%02ds",hours,minutes,seconds);
+}
+
+#ifdef ESP8266
+void m2mMesh::_debugPacket(packetBuffer &packet)
+#elif defined(ESP32)
+void m2mMesh::_debugPacket(packetBuffer &packet)
+#endif
+{
+	_debugStream->printf_P(m2mMesh02x02x02x02x02x02xdbytesm2mMeshType,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.length);
+	if(packet.data[0] == ELP_PACKET_TYPE)
+	{
+		_debugStream->print(F("ELP"));
+	}
+	else if(packet.data[0] == OGM_PACKET_TYPE)
+	{
+		_debugStream->print(F("OGM"));
+	}
+	else if(packet.data[0] == NHS_PACKET_TYPE)
+	{
+		_debugStream->print(F("NHS"));
+	}
+	else if(packet.data[0] == USR_PACKET_TYPE)
+	{
+		_debugStream->print(F("USR"));
+	}
+	else
+	{
+		_debugStream->print(F("Unknown"));
+	}
+	_debugStream->printf_P(m2mMeshVersiond,packet.data[1]);
+	_debugStream->printf_P(m2mMeshTTLd,packet.data[2]);
+	_debugStream->printf_P(m2mMeshFlagsd,packet.data[3]);
+	union unsignedLongToBytes packetSequenceNumber;
+	packetSequenceNumber.b[0] = packet.data[4];
+	packetSequenceNumber.b[1] = packet.data[5];
+	packetSequenceNumber.b[2] = packet.data[6];
+	packetSequenceNumber.b[3] = packet.data[7];
+	_debugStream->printf_P(m2mMeshSequencenumberd,packetSequenceNumber.value);
+	_debugStream->printf_P(m2mMeshSrc02x02x02x02x02x02x,packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13]);
+	uint8_t packetIndex = 14;
+	if(packet.data[3] & SEND_TO_ALL_NODES)
+	{
+		_debugStream->print(m2mMeshDstALL);
+	}
+	else
+	{
+		_debugStream->printf_P(m2mMeshDst02x02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
+	}
+	unsignedLongToBytes packetInterval;
+	packetInterval.b[0] = packet.data[packetIndex++];
+	packetInterval.b[1] = packet.data[packetIndex++];
+	packetInterval.b[2] = packet.data[packetIndex++];
+	packetInterval.b[3] = packet.data[packetIndex++];
+	_debugStream->printf_P(m2mMeshInterval,packetInterval.value);
+	while(packetIndex + 7 < packet.length)
+	{
+		_debugStream->printf_P(m2mMeshData02x02x02x02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
+	}
+	if(packetIndex < packet.length - 6)
+	{
+		_debugStream->printf_P(m2mMeshData02x02x02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
+	}
+	else if(packetIndex < packet.length - 5)
+	{
+		_debugStream->printf_P(m2mMeshData02x02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
+	}
+	else if(packetIndex < packet.length - 4)
+	{
+		_debugStream->printf_P(m2mMeshData02x02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
+	}
+	else if(packetIndex < packet.length - 3)
+	{
+		_debugStream->printf_P(m2mMeshData02x02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
+	}
+	else if(packetIndex < packet.length - 2)
+	{
+		_debugStream->printf_P(m2mMeshData02x02x02x,packet.data[packetIndex++],packet.data[packetIndex++],packet.data[packetIndex++]);
+	}
+	else if(packetIndex < packet.length - 1)
+	{
+		_debugStream->printf_P(m2mMeshData02x02x,packet.data[packetIndex++],packet.data[packetIndex++]);
+	}
+	else if(packetIndex < packet.length)
+	{
+		_debugStream->printf_P(m2mMeshData02x,packet.data[packetIndex++]);
+	}
+}
+
+
 void ICACHE_FLASH_ATTR m2mMesh::macAddress(uint8_t id,uint8_t *array)
 {
 	array[0] = _originator[id].macAddress[0];
@@ -3063,17 +3249,9 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::maxNumberOfOriginators()
 {
 	return(_maxNumberOfOriginators);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfOriginators()
-{
-	return(_numberOfOriginators);
-}
 uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfOriginators(uint8_t id)
 {
 	return(_originator[id].numberOfOriginators);
-}
-uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfReachableOriginators()
-{
-	return(_numberOfReachableOriginators);
 }
 uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfActiveNeighbours()
 {
@@ -3209,32 +3387,6 @@ float  ICACHE_FLASH_ATTR m2mMesh::currentTxPower(uint8_t id)
 float ICACHE_FLASH_ATTR m2mMesh::txPowerFloor()
 {
 	return(_txPowerFloor);
-}
-bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet()
-{
-	if(_nodeName != nullptr)
-	{
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet(uint8_t id)
-{
-	if(_originator[id].nodeName != nullptr)
-	{
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-uint32_t ICACHE_FLASH_ATTR m2mMesh::expectedUptime(uint8_t originatorId) //Returns the current uptime of a node, on the assumption it has continued to run uninterrupted since we last heard from it
-{
-  return(_originator[originatorId].uptime + (millis() - _originator[originatorId].lastSeen[NHS_PACKET_TYPE]));
 }
 uint8_t ICACHE_FLASH_ATTR m2mMesh::currentMeshTimeServer()
 {

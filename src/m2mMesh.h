@@ -1,7 +1,7 @@
 #ifndef m2mMesh_h
 #define m2mMesh_h
 //Comment out the following line to remove some unnecessary functions for interrogating the mesh in user applications
-#define m2mMeshExtraInfoFuntions
+//#define m2mMeshIncludeDebugFeatures
 #include <Arduino.h>
 
 //Different base libraries are needed for ESP8266/ESP8285 and ESP32
@@ -30,7 +30,7 @@
 #endif
 
 //Error messages if debug enabled
-
+#ifdef m2mMeshIncludeDebugFeatures
 const char errorReadBeyondEndOfPacket[] PROGMEM = "\r\nm2mMesh tried to read beyond end of packet";
 const char nm2mMeshstartedwithcapacityfordnodes[] PROGMEM = "\r\nm2mMesh started with capacity for %d nodes";
 const char nm2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN[] PROGMEM = "\r\nm2mMesh OGM ECHO R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d HOP:%d LEN:%d";
@@ -137,6 +137,7 @@ const char m2mMeshTimeserverhasgoneofflinetakingovertimeserverrole[] PROGMEM = "
 //const char m2mMeshPacketsentto02x02x02x02x02x02x[] PROGMEM = "Packet sent to %02x:%02x:%02x:%02x:%02x:%02x";
 //const char m2mMeshNHSincluded02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nm2mMesh NHS included %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
 //const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nm2mMesh NHS included %d originators";
+#endif
 
 //Unions used to pack data into packets
 
@@ -354,6 +355,10 @@ class m2mMesh
 		bool meshIsStable();								//Has the mesh membership changed recently
 		float supplyVoltage();								//Returns the supply voltage once the resistor ladder value is set
 		uint32_t time();									//Returns 'mesh time' which should be broadly synced across all the nodes, useful for syncing events
+		uint8_t numberOfOriginators();						//Returns the total number of originators in the mesh
+		uint8_t numberOfReachableOriginators();				//Returns the number of originators reachable from this node
+		uint32_t expectedUptime(uint8_t);					//Uptime of a node, assuming it has continued running
+		bool nodeNameIsSet(uint8_t);						//Is a node's name set
 
 		//Sending data
 		//bool destination(uint8_t);			//Add a destination ID to a message. Without a destination it is flooded to the whole mesh.
@@ -406,12 +411,10 @@ class m2mMesh
 		 * be omitted by commenting out the #define in m2mMesh.h
 		 *
 		 */
-		#ifdef m2mMeshExtraInfoFuntions
+		#ifdef m2mMeshIncludeDebugFeatures
 		//Used for the 'network analyser' sketch
 		uint8_t maxNumberOfOriginators();
-		uint8_t numberOfOriginators();						//Returns the total number of originators in the mesh for this node
 		uint8_t numberOfOriginators(uint8_t);				//Returns the total number of originators in the mesh for this node
-		uint8_t numberOfReachableOriginators();
 		uint8_t numberOfActiveNeighbours();					//Number of active neighbours for this node
 		uint8_t numberOfActiveNeighbours(uint8_t);			//Number of active neighbours for another node
 		void macAddress(uint8_t,uint8_t *);					//Supplies the MAC address of an originator when passed an array
@@ -445,8 +448,6 @@ class m2mMesh
 		float currentTxPower();								//Returns current TxPower for this node
 		float currentTxPower(uint8_t);						//Returns current TxPower for another node
 		float txPowerFloor();								//Returns the current tx power floor
-		bool nodeNameIsSet(uint8_t);
-		uint32_t expectedUptime(uint8_t);					//Uptime of a node, assuming it has continued running
 		uint8_t currentMeshTimeServer();					//The node this one is using as a time server
 		int32_t meshTimeDrift();							//Returns 'mesh time' drift
 		uint32_t rxPackets();								//Stats on received packets
