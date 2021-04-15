@@ -28,13 +28,13 @@ It is not any form of 'Internet access' for other devices, it is intended purely
 
 m2mMesh abstracts away a lot of unpleasantness around mesh networking to try and make it easy to implement in a project. Member nodes can have 'names' and you then package and send data to the name (or MAC address) and the library keeps everything ticking over in the background.
 
-The library was written to allow network between large numbers of cheap battery powered devices over a small-ish area that would nonetheless be hard to cover with conventional Wi-Fi. For long range communication another technology, eg. LORA is better suited.
+The library was written to allow networking between large numbers of cheap battery powered devices over a small-ish area that would nonetheless be hard to cover with conventional Wi-Fi. For long range communication another technology, eg. LORA is better suited.
 
-In principle this appears to overlap with Espressif's ESP-Mesh library, but this is focused on IoT connectivity and expects 'controller' and 'gateway' nodes. m2mMesh is non-IP and completely self-organising and 'flat'.
+In principle m2mMesh appears to overlap with Espressif's ESP-Mesh library, but this is focused on IoT connectivity and expects 'controller' and 'gateway' nodes. m2mMesh is non-IP, completely self-organising and 'flat'.
 
-The routing protocol behind the scenes is inspired by [Open-Mesh](https://www.open-mesh.org/projects/open-mesh) and the routing algorithm is a simplified hybrid of the B.A.T.M.A.N. III and IV protocols, but shares no code.
+The routing protocol behind the scenes is inspired by [Open-Mesh](https://www.open-mesh.org/projects/open-mesh) and the routing algorithm is a simplified hybrid of the B.A.T.M.A.N. III and IV algorithms, but shares no code.
 
-m2mMesh nodes can also speak conventional Wi-Fi and IP, connecting to, or acting as access points but care should be taken to ensure they do not become isolated on different channels to the other nodes.
+m2mMesh nodes can also speak conventional Wi-Fi and IP, connecting to, or acting as access points but care should be taken to ensure they do not become isolated on different channels from the other nodes.
 
 **[Back to top](#table-of-contents)**
 
