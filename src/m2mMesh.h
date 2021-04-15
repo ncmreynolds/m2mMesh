@@ -474,6 +474,7 @@ class m2mMesh
 		void espNowSendCallback(const uint8_t*, esp_now_send_status_t);
 		#endif
 
+		#ifdef m2mMeshIncludeDebugFeatures
 		//Debugging functions
 		void enableDebugging(Stream &);						//Start debugging on a Stream, probably Serial but could be elsewhere
 		void enableDebugging(Stream &, uint32_t);			//Start debugging on a Stream, probably Serial but could be elsewhere, and change the default logging level
@@ -505,6 +506,7 @@ class m2mMesh
 		const uint32_t MESH_UI_LOG_INFORMATION = 4ul;
 		const uint32_t MESH_UI_LOG_WARNINGS = 2ul;
 		const uint32_t MESH_UI_LOG_ERRORS = 1ul;
+		#endif
 
 		const uint16_t PROTOCOL_USR_FORWARD = 32768;		//Node will forward user data - node will forward user application, essential for a relay but perhaps undesirable on end nodes
 		const uint16_t PROTOCOL_USR_RECEIVE = 16384;		//Node will process user data - node will process user application data, not necessary on some devices
@@ -744,6 +746,7 @@ class m2mMesh
 		void _buildUserPacketHeader(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);	//Create the user packet header based off a MAC address
 		
 		//Debugging related functions
+		#ifdef m2mMeshIncludeDebugFeatures
 		uint32_t _loggingLevel = MESH_UI_LOG_INFORMATION | MESH_UI_LOG_WARNINGS | MESH_UI_LOG_ERRORS | MESH_UI_LOG_PEER_MANAGEMENT;
 		uint8_t _nodeToLog = MESH_ORIGINATOR_NOT_FOUND;
 		#if defined(ESP8266)
@@ -760,6 +763,7 @@ class m2mMesh
 		#endif
 		void _friendlyUptime(uint32_t, char *);				//Formats uptime as a duration string
 		void _packetTypeDescription(char*,uint8_t);			//Formats a packet type into a char array
+		#endif
 
 		
 };

@@ -590,37 +590,47 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(packetBuffer &packet)
 					//Reduce the TTL, regardless whether we end up forwarding or not
 					packet.data[2]--;
 					bool doTheForward = false;
+					#ifdef m2mMeshIncludeDebugFeatures
 					bool logTheForward = false;
+					#endif
 					if(packet.data[0] == ELP_PACKET_TYPE && _serviceFlags & PROTOCOL_ELP_FORWARD)		//This is an ELP packet
 					{
+						#ifdef m2mMeshIncludeDebugFeatures
 						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 						{
 							logTheForward = true;
 						}
+						#endif
 						doTheForward = true;
 					}
 					else if(packet.data[0] == OGM_PACKET_TYPE && _serviceFlags & PROTOCOL_OGM_FORWARD)	//This is an OGM packet
 					{
+						#ifdef m2mMeshIncludeDebugFeatures
 						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 						{
 							logTheForward = true;
 						}
+						#endif
 						doTheForward = true;
 					}
 					else if(packet.data[0] == NHS_PACKET_TYPE && _serviceFlags & PROTOCOL_NHS_FORWARD)		//This is a NHS packet
 					{
+						#ifdef m2mMeshIncludeDebugFeatures
 						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 						{
 							logTheForward = true;
 						}
+						#endif
 						doTheForward = true;
 					}
 					else if(packet.data[0] == USR_PACKET_TYPE && _serviceFlags & PROTOCOL_USR_FORWARD)	//This is a USR packet
 					{
+						#ifdef m2mMeshIncludeDebugFeatures
 						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 						{
 							logTheForward = true;
 						}
+						#endif
 						doTheForward = true;
 					}
 					if(doTheForward == true)	//Forward is OK, we simply use the receive buffer and send from there to avoid copying data
@@ -2029,33 +2039,6 @@ void ICACHE_FLASH_ATTR m2mMesh::_calculateLtq(uint8_t originatorId)
 	}
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_packetTypeDescription(char *desc, uint8_t type)
-{
-	switch (type)
-	{
-		case 0x00:
-			desc[0] = 'E';
-			desc[1] = 'L';
-			desc[2] = 'P';
-		break;
-		case 0x01:
-			desc[0] = 'O';
-			desc[1] = 'G';
-			desc[2] = 'M';
-		break;
-		case 0x02:
-			desc[0] = 'N';
-			desc[1] = 'H';
-			desc[2] = 'S';
-		break;
-		case 0x04:
-			desc[0] = 'U';
-			desc[1] = 'S';
-			desc[2] = 'R';
-		break;
-	}
-}
-
 bool ICACHE_FLASH_ATTR m2mMesh::_dataIsValid(uint8_t originatorId, uint8_t dataType)
 {
   if(_originator[originatorId].lastSeen[dataType] == 0)
@@ -2122,10 +2105,12 @@ bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(const char *newName)
 		{
 			//Copy the node name into the newly allocated memory
 			memcpy(_nodeName, newName, strlen(newName) + 1);
+			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 			{
 				_debugStream->printf_P("\r\nNode name set to '%s'",&newName);
 			}
+			#endif
 			return(true);
 		}
 		else
@@ -3100,6 +3085,32 @@ void m2mMesh::logAllNodes()	//Sets logging to all nodes
 	_nodeToLog = MESH_ORIGINATOR_NOT_FOUND;
 }
 
+void ICACHE_FLASH_ATTR m2mMesh::_packetTypeDescription(char *desc, uint8_t type)
+{
+	switch (type)
+	{
+		case 0x00:
+			desc[0] = 'E';
+			desc[1] = 'L';
+			desc[2] = 'P';
+		break;
+		case 0x01:
+			desc[0] = 'O';
+			desc[1] = 'G';
+			desc[2] = 'M';
+		break;
+		case 0x02:
+			desc[0] = 'N';
+			desc[1] = 'H';
+			desc[2] = 'S';
+		break;
+		case 0x04:
+			desc[0] = 'U';
+			desc[1] = 'S';
+			desc[2] = 'R';
+		break;
+	}
+}
 
 #if defined(ESP8266)
 void m2mMesh::_errorDescription(uint8_t result)
