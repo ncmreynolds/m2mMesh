@@ -1,7 +1,7 @@
 #ifndef m2mMesh_h
 #define m2mMesh_h
 //Comment out the following line to remove some unnecessary functions for interrogating the mesh in user applications
-//#define m2mMeshIncludeDebugFeatures
+#define m2mMeshIncludeDebugFeatures
 #include <Arduino.h>
 
 //Different base libraries are needed for ESP8266/ESP8285 and ESP32
@@ -27,6 +27,14 @@
 	extern "C" {
 	#include <esp_now.h>
 	}
+#endif
+
+#if defined(ESP8266)
+#define M2MMESHRECEIVEBUFFERSIZE 6
+#define M2MMESHAPPLICATIONBUFFERSIZE 3
+#elif defined(ESP32)
+#define M2MMESHRECEIVEBUFFERSIZE 12
+#define M2MMESHAPPLICATIONBUFFERSIZE 6
 #endif
 
 //Error messages if debug enabled
@@ -80,9 +88,9 @@ const char m2mMeshNHScontainsdoriginators[] PROGMEM = "\r\nm2mMesh NHS contains 
 const char m2mMeshNHSoriginatordata02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nm2mMesh NHS originator data %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
 const char m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nm2mMesh USR R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d Length:%d";
 const char m2mMeshUSRpacketcontainsdfields[] PROGMEM =		"\r\nm2mMesh USR packet contains %d fields";
-const char m2mMeshUSRdatafieldduint8_td[] PROGMEM =			"\r\nm2mMesh USR data field %d uint8_t %d";
-const char m2mMeshUSRdatafieldduint16_td[] PROGMEM =		"\r\nm2mMesh USR data field %d uint16_t %d";
-const char m2mMeshUSRdatafieldduint32_td[] PROGMEM =		"\r\nm2mMesh USR data field %d uint32_t %d";
+const char m2mMeshUSRdatafieldduint8_td[] PROGMEM =			"\r\nm2mMesh USR data field %d uint8_t %u";
+const char m2mMeshUSRdatafieldduint16_td[] PROGMEM =		"\r\nm2mMesh USR data field %d uint16_t %u";
+const char m2mMeshUSRdatafieldduint32_td[] PROGMEM =		"\r\nm2mMesh USR data field %d uint32_t %u";
 const char m2mMeshUSRdatafielddint8_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int8_t %d";
 const char m2mMeshUSRdatafielddint16_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int16_t %d";
 const char m2mMeshUSRdatafielddint32_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int32_t %d";
@@ -134,6 +142,10 @@ const char m2mMeshnew[] PROGMEM = " - new";
 const char m2mMeshthisnode[] PROGMEM = " - this node";
 const char m2mMeshPreviousUSRmessagenotreadpacketdropped[] PROGMEM = "\r\nm2mMesh Previous USR message not read, packet dropped";
 const char m2mMeshTimeserverhasgoneofflinetakingovertimeserverrole[] PROGMEM = "Time server has gone offline, taking over time server role";
+const char m2mMeshfillRCVbufferslotd[] PROGMEM = 	"\r\nm2mMesh fill RCV buffer slot %d";
+const char m2mMeshreadRCVbufferslotd[] PROGMEM =	"\r\nm2mMesh read RCV buffer slot %d";
+const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nm2mMesh fill APP buffer slot %d";
+const char m2mMeshreadAPPbufferslotd[] PROGMEM =	"\r\nm2mMesh read APP buffer slot %d";
 //const char m2mMeshPacketsentto02x02x02x02x02x02x[] PROGMEM = "Packet sent to %02x:%02x:%02x:%02x:%02x:%02x";
 //const char m2mMeshNHSincluded02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nm2mMesh NHS included %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
 //const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nm2mMesh NHS included %d originators";
@@ -204,124 +216,13 @@ struct originatorInfo									//A structure for storing information about origin
 	uint32_t droppedTxPackets = 0;						//Monitor buffer send problems
 };
 
-struct packetBuffer										//A structure for storing ESP-Now packets
+struct m2mMeshPacketBuffer										//A structure for storing ESP-Now packets
 {
 	uint8_t macAddress[6] = {0, 0, 0, 0, 0, 0};			//Source or destination MAC address
 	uint8_t length;										//Amount of data in the packet
 	uint8_t data[250];									//Size the data for the largest possible packet
 	uint32_t timestamp = 0;								//Time when the packet went into the buffer
 };
-
-/*
- * Circular buffer class, taken from Embedded Artistry but with the thread safe locking removed for the ESP8266
- *
- * https://embeddedartistry.com/blog/2017/05/17/creating-a-circular-buffer-in-c-and-c/
- * https://github.com/embeddedartistry/embedded-resources/blob/master/examples/cpp/circular_buffer.cpp
- *
- * Used for receive packet buffers
- *
- */
-/*template <class T>
-class circular_buffer {
-public:
-	explicit circular_buffer(size_t size) :
-		buf_(std::unique_ptr<T[]>(new T[size])),
-		max_size_(size)
-	{
-
-	}
-
-	void put(T item)
-	{
-		#if not defined(ESP8266)
-		std::lock_guard<std::mutex> lock(mutex_);
-		#endif
-		buf_[head_] = item;
-
-		if(full_)
-		{
-			tail_ = (tail_ + 1) % max_size_;
-		}
-
-		head_ = (head_ + 1) % max_size_;
-
-		full_ = head_ == tail_;
-	}
-
-	T get()
-	{
-		#if not defined(ESP8266)
-		std::lock_guard<std::mutex> lock(mutex_);
-		#endif
-
-		if(empty())
-		{
-			return T();
-		}
-
-		//Read data and advance the tail (we now have a free space)
-		auto val = buf_[tail_];
-		full_ = false;
-		tail_ = (tail_ + 1) % max_size_;
-
-		return val;
-	}
-
-	void reset()
-	{
-		#if not defined(ESP8266)
-		std::lock_guard<std::mutex> lock(mutex_);
-		#endif
-		head_ = tail_;
-		full_ = false;
-	}
-
-	bool empty() const
-	{
-		//if head and tail are equal, we are empty
-		return (!full_ && (head_ == tail_));
-	}
-
-	bool full() const
-	{
-		//If tail is ahead the head by 1, we are full
-		return full_;
-	}
-
-	size_t capacity() const
-	{
-		return max_size_;
-	}
-
-	size_t size() const
-	{
-		size_t size = max_size_;
-
-		if(!full_)
-		{
-			if(head_ >= tail_)
-			{
-				size = head_ - tail_;
-			}
-			else
-			{
-				size = max_size_ + head_ - tail_;
-			}
-		}
-
-		return size;
-	}
-
-private:
-	#if not defined(ESP8266)
-	std::mutex mutex_;
-	#endif
-	std::unique_ptr<T[]> buf_;
-	size_t head_ = 0;
-	size_t tail_ = 0;
-	const size_t max_size_;
-	bool full_ = 0;
-};*/
 
 class m2mMesh
 {
@@ -344,7 +245,8 @@ class m2mMesh
 
 		//Configuration functions
 		bool nodeNameIsSet();								//Returns true if the node name is set, false otherwise
-		bool setNodeName(const char *);							//Set the node name
+		bool setNodeName(const char *);						//Set the node name
+		bool setNodeName(char *);							//Set the node name
 		bool setNodeName(String);							//Set the node name
 		char * getNodeName();								//Get a pointer to the node name
 		char * getNodeName(uint8_t);						//Get a pointer to the node name for another node
@@ -390,6 +292,7 @@ class m2mMesh
 		uint8_t nextDataType();				//Which type the next piece of data is
 		
 		bool retrieve(uint8_t&);
+		bool retrieve(uint32_t&);
 
 		uint8_t retrieveUint8_t();
 		uint16_t retrieveUint16_t();
@@ -405,10 +308,24 @@ class m2mMesh
 		void retrieveUint8_tArray(uint8_t *);
 
 
+		//Built in peripheral support
+		void enableActivityLed(uint8_t,bool);				//Enables an activity LED, argument are the pin and the 'on' state. This blinks on send/receive.
+		void enableStatusLed(uint8_t,bool);					//Enables a status LED, arguments are the pin and the 'on' state. This counts out the number of neighbours.
+
+		//Callback functions
+		#ifdef ESP8266
+		void espNowReceiveCallback(uint8_t*, uint8_t*, uint8_t);	//Callbacks for the espnow library have to be public due to the wrapper function, but we do not expect somebody to call them
+		void espNowSendCallback(uint8_t*, uint8_t);
+		#elif defined(ESP32)
+		void espNowReceiveCallback(const uint8_t* , const uint8_t*, int32_t);
+		void espNowSendCallback(const uint8_t*, esp_now_send_status_t);
+		#endif
+
+
 		/* Public functions used for the 'network analyser' sketch
 		 *
-		 * If building a LARGE application that does no need them they can
-		 * be omitted by commenting out the #define in m2mMesh.h
+		 * If building a LARGE application that does not need them they can
+		 * be omitted by commenting out the #define m2mMeshIncludeDebugFeatures in m2mMesh.h
 		 *
 		 */
 		#ifdef m2mMeshIncludeDebugFeatures
@@ -438,8 +355,6 @@ class m2mMesh
 		uint32_t sequenceNumber();							//Last sequence number seen from a node
 		uint32_t lastSequenceNumber(uint8_t);				//Last sequence number seen from a node
 		float supplyVoltage(uint8_t);						//Supply or battery voltage for another node
-		bool softApState();									//State of the SoftAP on this node
-		bool softApState(uint8_t);							//State of the SoftAP on a node
 		uint32_t localTransmissionQuality(uint8_t);			//Local Transmission quality to a node
 		uint32_t globalTransmissionQuality(uint8_t);		//Global Transmission quality to a node
 		uint8_t selectedRouter(uint8_t);					//Selected router for a destination
@@ -458,23 +373,6 @@ class m2mMesh
 		uint32_t droppedRxPackets(uint8_t);					//Stats on dropped receive packets for another node
 		uint32_t droppedTxPackets();						//Stats on dropped transmit packets
 		uint32_t droppedTxPackets(uint8_t);					//Stats on dropped transmit packets for another node
-		#endif
-
-
-		//Built in peripheral support
-		void enableActivityLed(uint8_t,bool);				//Enables an activity LED, argument are the pin and the 'on' state. This blinks on send/receive.
-		void enableStatusLed(uint8_t,bool);					//Enables a status LED, arguments are the pin and the 'on' state. This counts out the number of neighbours.
-
-		
-		#ifdef ESP8266
-		void espNowReceiveCallback(uint8_t*, uint8_t*, uint8_t);	//Callbacks for the espnow library have to be public due to the wrapper function, but we do not expect somebody to call them
-		void espNowSendCallback(uint8_t*, uint8_t);
-		#elif defined(ESP32)
-		void espNowReceiveCallback(const uint8_t* , const uint8_t*, int32_t);
-		void espNowSendCallback(const uint8_t*, esp_now_send_status_t);
-		#endif
-
-		#ifdef m2mMeshIncludeDebugFeatures
 		//Debugging functions
 		void enableDebugging(Stream &);						//Start debugging on a Stream, probably Serial but could be elsewhere
 		void enableDebugging(Stream &, uint32_t);			//Start debugging on a Stream, probably Serial but could be elsewhere, and change the default logging level
@@ -488,7 +386,7 @@ class m2mMesh
 		const uint32_t MESH_UI_LOG_ALL_SENT_PACKETS = 1048576ul;
 		const uint32_t MESH_UI_LOG_ALL_RECEIVED_PACKETS = 524288ul;
 		const uint32_t MESH_UI_LOG_WIFI_POWER_MANAGEMENT = 262144ul;
-		const uint32_t MESH_UI_LOG_AP_MANAGEMENT = 131072ul;
+		const uint32_t MESH_UI_LOG_BUFFER_MANAGEMENT = 131072ul;
 		const uint32_t MESH_UI_LOG_SCANNING = 65536ul;
 		const uint32_t MESH_UI_LOG_PEER_MANAGEMENT = 32768ul;
 		const uint32_t MESH_UI_LOG_USR_SEND = 16384ul;
@@ -554,17 +452,29 @@ class m2mMesh
 		uint32_t _currentInterval[5];						//Packet sending intervals, per packet type
 		uint32_t _lastSent[5];								//Internal timers, per packet type
 		uint32_t _currentTtl[5];							//TTLs, per packet type
-		bool _softAPstate = false;							//SoftAp enabled?
-		bool _softAPstateChanged = false;					//Does the SoftAp need changing
 		uint32_t _meshLastChanged = 0;
-		bool _activityOcurred = false;
 		uint32_t _lastHousekeeping = 0;
 		const uint32_t _housekeepingInterval = 1000ul;
 
 		//Packet buffers
-		//circular_buffer<packetBuffer> _receiveBuffer(4);	//Circular packet buffer for incoming packets
-		packetBuffer _receiveBuffer;						//Single receive buffer is available for mesh traffic
-		packetBuffer _sendBuffer;							//Single send buffer is available
+		#if M2MMESHRECEIVEBUFFERSIZE > 1							//Use circular buffers
+		m2mMeshPacketBuffer _receiveBuffer[M2MMESHRECEIVEBUFFERSIZE];		//Receive buffer for mesh traffic
+		uint8_t _receiveBufferIndex = 0;							//Receive buffer index
+		uint8_t _processBufferIndex = 0;							//Receive buffer index
+		m2mMeshPacketBuffer _applicationBuffer[M2MMESHAPPLICATIONBUFFERSIZE];	//Application data buffer
+		uint8_t _applicationBufferWriteIndex = 0;						//Receive buffer index
+		uint8_t _applicationBufferReadIndex = 0;						//Receive buffer index
+		#else
+		m2mMeshPacketBuffer _receiveBuffer;						//Single receive buffer for mesh traffic
+		uint8_t _receivedUserPacket[250];					//Buffer into which the waiting packet is copied
+		uint8_t _receivedUserPacketLength = 0;				//Length of packet to decode
+		bool _userPacketReceived = false;							//Is there a packet waiting to be read
+		#endif
+		m2mMeshPacketBuffer _sendBuffer;							//Single send buffer is available
+
+		//Separate buffer for the user packet
+		uint8_t _receivedUserPacketIndex = 0;						//Index during decode
+		uint8_t _receivedUserPacketFieldCounter = 0;				//Fields left in packet
 
 		
 		//Debugging variables
@@ -581,7 +491,7 @@ class m2mMesh
 
 		//Global packet flags & values
 		const uint8_t ESP_NOW_MIN_PACKET_SIZE = 64;			//Minimum packet size
-		const uint8_t ESP_NOW_MAX_PACKET_SIZE = 250;		//Maximum packet size
+		static const uint8_t ESP_NOW_MAX_PACKET_SIZE = 250;	//Maximum packet size
 		const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
 		const uint8_t NO_FLAGS = 0x00;						//No flags on packet
 		const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
@@ -673,9 +583,9 @@ class m2mMesh
 		//ESP-NOW related functions in many of these there are lots of preprocessor directives to handle API differences between ESP8266/8285 and ESP32 at compile time
 		void _initESPNow();									//Initialises ESP-NOW
 		#if defined(ESP8266)
-		uint8_t _sendPacket(packetBuffer &);					//Sends ESP-NOW from a packet buffer
+		uint8_t _sendPacket(m2mMeshPacketBuffer &);					//Sends ESP-NOW from a packet buffer
 		#elif defined(ESP32)
-		esp_err_t _sendPacket(packetBuffer &);
+		esp_err_t _sendPacket(m2mMeshPacketBuffer &);
 		#endif
 
 		//Originator management functions
@@ -686,22 +596,22 @@ class m2mMesh
 		bool _isLocalMacAddress(uint8_t *);					//Checks if a MAC address is the local one
 
 		//Routing protocol functions
-		bool _sendElp(packetBuffer &);						//Send ELP with default settings
-		bool _sendElp(bool, packetBuffer &);				//Send ELP with or without peers
-		bool _sendElp(uint8_t, packetBuffer &);				//Send ELP with specific TTL
-		bool _sendElp(bool,uint8_t, packetBuffer &);		//Send ELP with or without peers and specific TTL
-		void _processElp(uint8_t, uint8_t, packetBuffer &);	//Process incoming ELP payload
+		bool _sendElp(m2mMeshPacketBuffer &);						//Send ELP with default settings
+		bool _sendElp(bool, m2mMeshPacketBuffer &);				//Send ELP with or without peers
+		bool _sendElp(uint8_t, m2mMeshPacketBuffer &);				//Send ELP with specific TTL
+		bool _sendElp(bool,uint8_t, m2mMeshPacketBuffer &);		//Send ELP with or without peers and specific TTL
+		bool _processElp(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming ELP payload
 
 
-		bool _sendOgm(packetBuffer &);						//Send OGM with default settings
-		void _processOgm(uint8_t, uint8_t, packetBuffer &);	//Process incoming OGM payload
+		bool _sendOgm(m2mMeshPacketBuffer &);						//Send OGM with default settings
+		bool _processOgm(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming OGM payload
 
-		bool _sendNhs(packetBuffer &);						//Send NHS with default settings, using the supplied buffer to build the packet
-		void _processNhs(uint8_t, uint8_t, packetBuffer &);	//Process incoming NHS payload
+		bool _sendNhs(m2mMeshPacketBuffer &);						//Send NHS with default settings, using the supplied buffer to build the packet
+		bool _processNhs(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming NHS payload
 		
-		void _processUsr(uint8_t, uint8_t, packetBuffer &);	//Process incoming USR payload
+		bool _processUsr(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming USR payload
 
-		void _processPacket(packetBuffer &);				//Process packet headers and handle forwarding
+		void _processPacket(m2mMeshPacketBuffer &);				//Process packet headers and handle forwarding
 		bool _dataIsValid(uint8_t, uint8_t);				//Is a particular protocol up?
 		void _originatorHasBecomeRoutable(uint8_t);
 		void _originatorHasBecomeUnroutable(uint8_t);
@@ -729,16 +639,7 @@ class m2mMesh
 		//User data related variables
 		uint8_t _userPacketIndex = 0;								//Current position in the user packet
 		uint8_t _userPacketFieldCounterIndex = 0;					//The index where the field count is
-		//uint8_t _userPacket[USR_MAX_PACKET_SIZE];					//The user packet
-		uint8_t _userPacket[250];									//The user packet
-
-		bool _userPacketReceived = false;							//Is there a packet waiting to be read
-		uint8_t _receivedUserPacketIndex = 0;						//Index during decode
-		uint8_t _receivedUserPacketLength = 0;						//Length of packet to decode
-		uint8_t _receivedUserPacketFieldCounter = 0;						//Fields left in packet
-		//uint8_t _receivedUserPacket[USR_MAX_PACKET_SIZE];
-		
-		uint8_t _receivedUserPacket[250];
+		uint8_t _userPacket[ESP_NOW_MAX_PACKET_SIZE];				//The user packet
 		
 		bool _buildingUserPacket = false;													//Are we building a user data packet? Mustn't do it twice
 		void _buildUserPacketHeader();														//Create the user packet header for a broadcast packet
@@ -756,10 +657,10 @@ class m2mMesh
 		#endif
 		#ifdef ESP8266
 		//void _debugPacket(uint8_t *, uint8_t *, uint8_t); //Decode incoming packet for debugging purpose
-		void _debugPacket(packetBuffer &); //Decode incoming packet for debugging purpose
+		void _debugPacket(m2mMeshPacketBuffer &); //Decode incoming packet for debugging purpose
 		#elif defined(ESP32)
 		//void _debugPacket(const uint8_t *, const uint8_t *, int32_t);
-		void _debugPacket(packetBuffer &);
+		void _debugPacket(m2mMeshPacketBuffer &);
 		#endif
 		void _friendlyUptime(uint32_t, char *);				//Formats uptime as a duration string
 		void _packetTypeDescription(char*,uint8_t);			//Formats a packet type into a char array
