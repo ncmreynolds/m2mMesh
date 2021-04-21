@@ -37,6 +37,7 @@ maxNumberOfOriginators	KEYWORD2
 numberOfOriginators	KEYWORD2
 numberOfReachableOriginators	KEYWORD2
 numberOfActiveNeighbours	KEYWORD2
+nodeId	KEYWORD2
 macAddress	KEYWORD2
 flags	KEYWORD2
 elpIsValid	KEYWORD2
@@ -55,6 +56,8 @@ actingAsTimeServer	KEYWORD2
 actingAsTimeServer	KEYWORD2
 initialFreeHeap	KEYWORD2
 currentFreeHeap	KEYWORD2
+largestFreeBlock	KEYWORD2
+heapFragmentation	KEYWORD2
 sequenceNumber	KEYWORD2
 lastSequenceNumber	KEYWORD2
 supplyVoltage	KEYWORD2
