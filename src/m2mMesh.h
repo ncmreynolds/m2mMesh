@@ -2,6 +2,7 @@
 #define m2mMesh_h
 //Comment out the following line to remove some unnecessary functions for interrogating the mesh in user applications
 #define m2mMeshIncludeDebugFeatures
+#define m2mMeshIncludeMeshInfoFeatures
 #include <Arduino.h>
 
 //Different base libraries are needed for ESP8266/ESP8285 and ESP32
@@ -83,7 +84,8 @@ const char m2mMeshNHSCurrentTXpowerf[] PROGMEM = "\r\nm2mMesh NHS Current TX pow
 const char m2mMeshNHSSupplyvoltagefV[] PROGMEM = "\r\nm2mMesh NHS Supply voltage %fV";
 const char m2mMeshNHSMeshtimedms[] PROGMEM = "\r\nm2mMesh NHS Mesh time %dms";
 const char m2mMeshNHSnodenamelendschangedfroms[] PROGMEM = "\r\nm2mMesh NHS node name len=%d '%s' changed from '%s'!";
-const char m2mMeshNHSnodenamelends[] PROGMEM = "\r\nm2mMesh NHS node name len=%d '%s'";
+const char m2mMeshNHSnodenamelendsadded[] PROGMEM = "\r\nm2mMesh NHS node name len=%d '%s' added";
+const char m2mMeshNHSnodenamelendsunchanged[] PROGMEM = "\r\nm2mMesh NHS node name len=%d '%s' unchanged";
 const char m2mMeshNHScontainsdoriginators[] PROGMEM = "\r\nm2mMesh NHS contains %d originators";
 const char m2mMeshNHSoriginatordata02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nm2mMesh NHS originator data %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
 const char m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nm2mMesh USR R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d Length:%d";
@@ -245,9 +247,9 @@ class m2mMesh
 
 		//Configuration functions
 		bool nodeNameIsSet();								//Returns true if the node name is set, false otherwise
-		bool setNodeName(const char *);						//Set the node name
+		//bool setNodeName(const char *);						//Set the node name
 		bool setNodeName(char *);							//Set the node name
-		bool setNodeName(String);							//Set the node name
+		//bool setNodeName(String);							//Set the node name
 		char * getNodeName();								//Get a pointer to the node name
 		char * getNodeName(uint8_t);						//Get a pointer to the node name for another node
 		uint8_t * getMeshAddress();							//Get a pointer to the mesh MAC address
@@ -328,7 +330,7 @@ class m2mMesh
 		 * be omitted by commenting out the #define m2mMeshIncludeDebugFeatures in m2mMesh.h
 		 *
 		 */
-		#ifdef m2mMeshIncludeDebugFeatures
+		#ifdef m2mMeshIncludeMeshInfoFeatures
 		//Used for the 'network analyser' sketch
 		uint8_t maxNumberOfOriginators();
 		uint8_t numberOfOriginators(uint8_t);				//Returns the total number of originators in the mesh for this node
@@ -352,7 +354,7 @@ class m2mMesh
 		bool actingAsTimeServer(uint8_t);					//Is a node acting as a time server
 		uint32_t initialFreeHeap(uint8_t);					//Initial free heap of a node
 		uint32_t currentFreeHeap(uint8_t);					//Current free heap of a node
-		uint32_t sequenceNumber();							//Last sequence number seen from a node
+		uint32_t sequenceNumber();							//Last sequence for this node
 		uint32_t lastSequenceNumber(uint8_t);				//Last sequence number seen from a node
 		float supplyVoltage(uint8_t);						//Supply or battery voltage for another node
 		uint32_t localTransmissionQuality(uint8_t);			//Local Transmission quality to a node
@@ -373,6 +375,9 @@ class m2mMesh
 		uint32_t droppedRxPackets(uint8_t);					//Stats on dropped receive packets for another node
 		uint32_t droppedTxPackets();						//Stats on dropped transmit packets
 		uint32_t droppedTxPackets(uint8_t);					//Stats on dropped transmit packets for another node
+		#endif
+		
+		#ifdef m2mMeshIncludeDebugFeatures
 		//Debugging functions
 		void enableDebugging(Stream &);						//Start debugging on a Stream, probably Serial but could be elsewhere
 		void enableDebugging(Stream &, uint32_t);			//Start debugging on a Stream, probably Serial but could be elsewhere, and change the default logging level
@@ -457,29 +462,25 @@ class m2mMesh
 		const uint32_t _housekeepingInterval = 1000ul;
 
 		//Packet buffers
-		#if M2MMESHRECEIVEBUFFERSIZE > 1							//Use circular buffers
-		m2mMeshPacketBuffer _receiveBuffer[M2MMESHRECEIVEBUFFERSIZE];		//Receive buffer for mesh traffic
-		uint8_t _receiveBufferIndex = 0;							//Receive buffer index
-		uint8_t _processBufferIndex = 0;							//Receive buffer index
+		m2mMeshPacketBuffer _receiveBuffer[M2MMESHRECEIVEBUFFERSIZE];	//Receive buffer for mesh traffic
+		uint8_t _receiveBufferIndex = 0;								//Receive buffer index
+		uint8_t _processBufferIndex = 0;								//Receive buffer index
+
 		m2mMeshPacketBuffer _applicationBuffer[M2MMESHAPPLICATIONBUFFERSIZE];	//Application data buffer
-		uint8_t _applicationBufferWriteIndex = 0;						//Receive buffer index
-		uint8_t _applicationBufferReadIndex = 0;						//Receive buffer index
-		#else
-		m2mMeshPacketBuffer _receiveBuffer;						//Single receive buffer for mesh traffic
-		uint8_t _receivedUserPacket[250];					//Buffer into which the waiting packet is copied
-		uint8_t _receivedUserPacketLength = 0;				//Length of packet to decode
-		bool _userPacketReceived = false;							//Is there a packet waiting to be read
-		#endif
-		m2mMeshPacketBuffer _sendBuffer;							//Single send buffer is available
+		uint8_t _applicationBufferWriteIndex = 0;								//Receive buffer index
+		uint8_t _applicationBufferReadIndex = 0;								//Receive buffer index
+
+		m2mMeshPacketBuffer _sendBuffer;								//Single send buffer
 
 		//Separate buffer for the user packet
 		uint8_t _receivedUserPacketIndex = 0;						//Index during decode
 		uint8_t _receivedUserPacketFieldCounter = 0;				//Fields left in packet
 
-		
+		#ifdef m2mMeshIncludeDebugFeatures
 		//Debugging variables
 		Stream *_debugStream = nullptr;						//Pointer to debugging stream
 		bool _debugEnabled = false;							//Whether stream debugging is enabled or not
+		#endif
 
 		//Originator related variables
 		originatorInfo *_originator;						//Pointer to the originator table, which is allocated in the constructor function
@@ -490,48 +491,48 @@ class m2mMesh
 		uint8_t _meshMacAddress[6] = {0,0,0,0,0,0};			//A synthetic MAC address XORed from all the members used to indicate stability
 
 		//Global packet flags & values
-		const uint8_t ESP_NOW_MIN_PACKET_SIZE = 64;			//Minimum packet size
+		static const uint8_t ESP_NOW_MIN_PACKET_SIZE = 64;			//Minimum packet size
 		static const uint8_t ESP_NOW_MAX_PACKET_SIZE = 250;	//Maximum packet size
-		const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
-		const uint8_t NO_FLAGS = 0x00;						//No flags on packet
-		const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
-		const uint32_t ANTI_COLLISION_JITTER = 250ul;		//Jitter in milliseconds to try and avoid in-air collisions
-		const uint8_t MESH_ORIGINATOR_NOT_FOUND = 255;		//Signifies that a node is unset or unknown
-		const uint8_t MESH_NO_MORE_ORIGINATORS_LEFT = 254;	//Signifies the mesh is 'full' and no more members can join
+		static const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
+		static const uint8_t NO_FLAGS = 0x00;						//No flags on packet
+		static const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
+		static const uint32_t ANTI_COLLISION_JITTER = 250ul;		//Jitter in milliseconds to try and avoid in-air collisions
+		static const uint8_t MESH_ORIGINATOR_NOT_FOUND = 255;		//Signifies that a node is unset or unknown
+		static const uint8_t MESH_NO_MORE_ORIGINATORS_LEFT = 254;	//Signifies the mesh is 'full' and no more members can join
 
 
 		//ELP - Echo Location Protocol packet flags & values
-		const uint8_t ELP_PACKET_SIZE = 19;
-		const uint8_t ELP_PACKET_TYPE = 0x00;				//The first octet of every ESP-Now packet identifies what it is
-		const uint8_t ELP_DEFAULT_TTL = 0;					//A TTL of >0 means it may be forwarded
-		const uint8_t ELP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default ELP flags
-		const uint8_t ELP_FLAGS_INCLUDES_PEERS = 0x01;		//Flag set when ELP includes peer information
-		const uint8_t ELP_FLAGS_PEER_REMOVE_REQUEST = 0x02;	//Flag set indicating sending originator would like to be removed as peer
-		const uint8_t ELP_FLAGS_PEER_REMOVED = 0x04;		//Flag set to indicate destination originator has been removed as peer
+		static const uint8_t ELP_PACKET_SIZE = 19;
+		static const uint8_t ELP_PACKET_TYPE = 0x00;				//The first octet of every ESP-Now packet identifies what it is
+		static const uint8_t ELP_DEFAULT_TTL = 0;					//A TTL of >0 means it may be forwarded
+		static const uint8_t ELP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default ELP flags
+		static const uint8_t ELP_FLAGS_INCLUDES_PEERS = 0x01;		//Flag set when ELP includes peer information
+		static const uint8_t ELP_FLAGS_PEER_REMOVE_REQUEST = 0x02;	//Flag set indicating sending originator would like to be removed as peer
+		static const uint8_t ELP_FLAGS_PEER_REMOVED = 0x04;		//Flag set to indicate destination originator has been removed as peer
 
-		const uint32_t ELP_DEFAULT_INTERVAL = 10000ul;		//How often to send ELP (default every 10s)
-		const uint16_t LTQ_MAX_VALUE = 65535;				//Maximum value for Local Transmit Quality
-		const uint16_t LTQ_STARTING_VALUE = 32768;			//Starting value for Local Transmit Quality given to a new peer
+		static const uint32_t ELP_DEFAULT_INTERVAL = 10000ul;		//How often to send ELP (default every 10s)
+		static const uint16_t LTQ_MAX_VALUE = 65535;				//Maximum value for Local Transmit Quality
+		static const uint16_t LTQ_STARTING_VALUE = 32768;			//Starting value for Local Transmit Quality given to a new peer
 
 		//OGM - Originator Message packet flags & values
-		const uint8_t OGM_PACKET_SIZE = 32;					//OGM packets are a fixed size
-		const uint8_t OGM_PACKET_TYPE = 0x01;				//The first octet of every ESP-Now packet identifies what it is
-		const uint8_t OGM_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
-		const uint8_t OGM_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default OGM flags
-		const uint32_t OGM_DEFAULT_INTERVAL = 60000ul; 		//How often to send OGM (default every 60s)
-		const uint8_t OGM_HOP_PENALTY = 0x00ff;				//Drop the GTQ in OGM packets before forwarding
-		const uint8_t SEQUENCE_NUMBER_MAX_AGE = 8;			//Used for detection of sequence number resets/rollover
+		static const uint8_t OGM_PACKET_SIZE = 32;					//OGM packets are a fixed size
+		static const uint8_t OGM_PACKET_TYPE = 0x01;				//The first octet of every ESP-Now packet identifies what it is
+		static const uint8_t OGM_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
+		static const uint8_t OGM_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default OGM flags
+		static const uint32_t OGM_DEFAULT_INTERVAL = 60000ul; 		//How often to send OGM (default every 60s)
+		static const uint8_t OGM_HOP_PENALTY = 0x00ff;				//Drop the GTQ in OGM packets before forwarding
+		static const uint8_t SEQUENCE_NUMBER_MAX_AGE = 8;			//Used for detection of sequence number resets/rollover
 
 		//NHS - Node Health/Status packet flags & values
-		const uint8_t NHS_PACKET_TYPE = 0x02;          		//The first octet of every ESP-Now packet identifies what it is
-		const uint8_t NHS_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwarded.
-		const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default NHS flags
-		const uint8_t NHS_FLAGS_TIMESERVER = 0x1;        	//Flag set when acting as a time server
-		const uint8_t NHS_FLAGS_SOFTAP_ON = 0x2;        	//Flag set when acting as an AP
-		const uint8_t NHS_FLAGS_NODE_NAME_SET = 0x4;		//Flag set when the NHS packet includes a friendly name
-		const uint8_t NHS_FLAGS_INCLUDES_ORIGINATORS = 0x08;//Flag set when the NHS packet includes peer information
-		const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;		//Flag set when the NHS packet includes supply voltage
-		const uint32_t NHS_DEFAULT_INTERVAL = 300000ul; 	//How often to send NHS (default every 5m)
+		static const uint8_t NHS_PACKET_TYPE = 0x02;          		//The first octet of every ESP-Now packet identifies what it is
+		static const uint8_t NHS_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwarded.
+		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default NHS flags
+		static const uint8_t NHS_FLAGS_TIMESERVER = 0x1;        	//Flag set when acting as a time server
+		static const uint8_t NHS_FLAGS_SOFTAP_ON = 0x2;        	//Flag set when acting as an AP
+		static const uint8_t NHS_FLAGS_NODE_NAME_SET = 0x4;		//Flag set when the NHS packet includes a friendly name
+		static const uint8_t NHS_FLAGS_INCLUDES_ORIGINATORS = 0x08;//Flag set when the NHS packet includes peer information
+		static const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;		//Flag set when the NHS packet includes supply voltage
+		static const uint32_t NHS_DEFAULT_INTERVAL = 300000ul; 	//How often to send NHS (default every 5m)
 
 		bool _actingAsTimeServer = true;					//Everything starts out as a potential time server, but defers to longer running nodes
 		uint8_t _currentMeshTimeServer 						//The current time server
@@ -542,8 +543,9 @@ class m2mMesh
 		uint32_t _currentFreeHeap = _initialFreeHeap;		//Monitor free heap
 		uint32_t _rxPackets = 0;							//Monitor received packets
 		uint32_t _txPackets = 0;							//Monitor sent packets
-		uint32_t _droppedRxPackets = 0;						//Monitor buffer receive problems
-		uint32_t _droppedTxPackets = 0;						//Monitor buffer send problems
+		uint32_t _droppedRxPackets = 0;						//Monitor rcv buffer receive problems
+		uint32_t _droppedTxPackets = 0;						//Monitor rcv buffer send problems
+		uint32_t _droppedAppPackets = 0;					//Monitor app buffer receive problems
 
 		//USR - User data packet flags and values
 		const uint8_t USR_PACKET_SIZE = 15;					//USR packets are variable length but have a 32 byte header
@@ -600,16 +602,16 @@ class m2mMesh
 		bool _sendElp(bool, m2mMeshPacketBuffer &);				//Send ELP with or without peers
 		bool _sendElp(uint8_t, m2mMeshPacketBuffer &);				//Send ELP with specific TTL
 		bool _sendElp(bool,uint8_t, m2mMeshPacketBuffer &);		//Send ELP with or without peers and specific TTL
-		bool _processElp(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming ELP payload
+		void _processElp(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming ELP payload
 
 
 		bool _sendOgm(m2mMeshPacketBuffer &);						//Send OGM with default settings
-		bool _processOgm(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming OGM payload
+		void _processOgm(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming OGM payload
 
 		bool _sendNhs(m2mMeshPacketBuffer &);						//Send NHS with default settings, using the supplied buffer to build the packet
-		bool _processNhs(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming NHS payload
+		void _processNhs(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming NHS payload
 		
-		bool _processUsr(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming USR payload
+		void _processUsr(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming USR payload
 
 		void _processPacket(m2mMeshPacketBuffer &);				//Process packet headers and handle forwarding
 		bool _dataIsValid(uint8_t, uint8_t);				//Is a particular protocol up?

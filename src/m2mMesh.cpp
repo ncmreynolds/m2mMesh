@@ -243,7 +243,6 @@ void ICACHE_RAM_ATTR m2mMesh::espNowReceiveCallback(uint8_t *macAddress, uint8_t
 void ICACHE_RAM_ATTR m2mMesh::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
 #endif
 {
-	#if M2MMESHRECEIVEBUFFERSIZE > 1
 	if(_receiveBuffer[_receiveBufferIndex].length == 0)	//The buffer slot is empty
 	{
 		//Mark the timestamp
@@ -266,22 +265,6 @@ void ICACHE_RAM_ATTR m2mMesh::espNowReceiveCallback(const uint8_t *macAddress, c
 		_receiveBufferIndex++;												//Advance the buffer index
 		_receiveBufferIndex = _receiveBufferIndex%M2MMESHRECEIVEBUFFERSIZE;	//Rollover buffer index
 	}
-	#else
-	if(_receiveBuffer.length == 0)	//The buffer is empty
-	{
-		//Mark the timestamp
-		_receiveBuffer.timestamp = millis();
-		//Copy the packet into a packet buffer
-		memcpy(_receiveBuffer.macAddress, macAddress, 6);	//Copy MAC address
-		if(length > 250)	//This is unlikely to be excessive, but should avoid a crash
-		{
-			length = 250;
-		}
-		memcpy(_receiveBuffer.data, data, length);
-		_receiveBuffer.length = length;
-		_rxPackets++;
-	}
-	#endif
 	else
 	{
 		_droppedRxPackets++;	//Increase the count of dropped packets
@@ -322,7 +305,6 @@ void ICACHE_FLASH_ATTR m2mMesh::housekeeping()
 {
 	bool _activityOcurred = false;
 	//Process received packets first, if available
-	#if M2MMESHRECEIVEBUFFERSIZE > 1
 	if(_receiveBufferIndex != _processBufferIndex ||					//Some data in buffer
 		_receiveBuffer[_processBufferIndex].length > 0)					//Buffer is full
 	{
@@ -337,13 +319,6 @@ void ICACHE_FLASH_ATTR m2mMesh::housekeeping()
 		_processBufferIndex = _processBufferIndex%M2MMESHRECEIVEBUFFERSIZE;	//Rollover the buffer index
 		_activityOcurred = true;
 	}
-	#else
-	if(_receiveBuffer.length > 0)	//There's something waiting to process
-	{
-		_processPacket(_receiveBuffer);
-		_activityOcurred = true;
-	}
-	#endif
 	if (_serviceFlags & PROTOCOL_ELP_SEND && millis() - (_lastSent[ELP_PACKET_TYPE] - random(ANTI_COLLISION_JITTER)) > _currentInterval[ELP_PACKET_TYPE]) 	//Apply some jitter to the send times
 	{
 		if(_sendElp(_sendBuffer))
@@ -884,7 +859,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(bool includeNeighbours,uint8_t elpTtl,m
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
+void ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -945,7 +920,6 @@ bool ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originator
 			}
 		}
 	}
-	return(true);
 }
 
 
@@ -1040,7 +1014,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendOgm(m2mMeshPacketBuffer &packet)
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
+void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -1169,7 +1143,6 @@ bool ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originator
 			}
 		}
 	}
-	return(true);
 }
 
 void ICACHE_FLASH_ATTR m2mMesh::_originatorHasBecomeRoutable(uint8_t originatorId)
@@ -1326,14 +1299,12 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(m2mMeshPacketBuffer &packet)
 		packet.data[packet.length++] = temp.b[2];
 		packet.data[packet.length++] = temp.b[3];
 	}
-	if(nodeNameIsSet())															//Insert the node name, if set
+	if(_nodeName != nullptr)													//Insert the node name, if set
 	{
 		packet.data[3] = packet.data[3] | NHS_FLAGS_NODE_NAME_SET;				//Mark this in the flags
-		packet.length += strlen(_nodeName) + 1;									//Node name includes the length and a null termination!
 		packet.data[packet.length++] = strlen(_nodeName);						//Include the length
 		memcpy(&packet.data[packet.length], _nodeName, strlen(_nodeName));		//Copy in the node name
-		packet.length+=strlen(_nodeName);										//Advance the index
-		packet.data[packet.length-1] = 0;										//Ensure it's null terminated, the buffer WILL have had values in from before
+		packet.length += strlen(_nodeName);										//Advance the index
 	}
 	uint8_t originatorCountIndex = packet.length++;									//Store the count of included originators here
 	if(_serviceFlags & PROTOCOL_NHS_INCLUDE_ORIGINATORS && _numberOfOriginators>0)	//This packet will include all the nodes in the mesh
@@ -1368,7 +1339,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(m2mMeshPacketBuffer &packet)
 	}
 	while(packet.length < ESP_NOW_MIN_PACKET_SIZE)		//Fill any spare space with nonsense
 	{
-		packet.data[packet.length++] = 0x00;
+		packet.data[packet.length++] = 0xAA;
 	}
 	memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);	//Set the destination MAC address
 	#ifdef m2mMeshIncludeDebugFeatures
@@ -1421,7 +1392,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(m2mMeshPacketBuffer &packet)
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
+void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -1574,41 +1545,39 @@ bool ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 			}
 			#endif
 		}
-		//Look for a node name
-		if(packet.data[3] & NHS_FLAGS_NODE_NAME_SET)
+		if(packet.data[3] & NHS_FLAGS_NODE_NAME_SET)	//Look for a node name
 		{
-			uint8_t nodeNameLength = packet.data[receivedPacketIndex++];
-			char temp[nodeNameLength+1];
-			memcpy(temp, &packet.data[receivedPacketIndex], nodeNameLength);
-			temp[nodeNameLength]=0;
-			if(_originator[originatorId].nodeName !=nullptr && String(_originator[originatorId].nodeName) != String(temp)) //Node name has changed, free the memory
+			#ifdef m2mMeshIncludeDebugFeatures
+			bool nameChanged = false;
+			#endif
+			uint8_t nodeNameLength = packet.data[receivedPacketIndex++];					//Name length is stored first
+			char receivedNodeName[nodeNameLength + 1];										//Temporary string
+			memcpy(receivedNodeName, &packet.data[receivedPacketIndex], nodeNameLength);	//Can't use strcpy, there's no null termination
+			receivedNodeName[nodeNameLength] = 0;											//Null terminate the supplied name, as it is not null terminated in the packet
+			if(_originator[originatorId].nodeName !=nullptr &&
+				strcmp(_originator[originatorId].nodeName,receivedNodeName) != 0)			//Node name has changed, free the memory
 			{
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshNHSnodenamelendschangedfroms,nodeNameLength,temp,_originator[originatorId].nodeName);
+					_debugStream->printf_P(m2mMeshNHSnodenamelendschangedfroms,nodeNameLength,receivedNodeName,_originator[originatorId].nodeName);
+					nameChanged = true;
 				}
 				#endif
-				//New node name, delete the previously allocated memory and reallocate
-				delete[] _originator[originatorId].nodeName;
+				delete[] _originator[originatorId].nodeName;								//New node name, delete the previously allocated memory and reallocate
 			}
-			if(_originator[originatorId].nodeName == nullptr)	//Name not set
+			if(_originator[originatorId].nodeName == nullptr)	//Name not set, or has been removed
 			{
-				//Node name not set
 				#ifdef m2mMeshIncludeDebugFeatures
-				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+				if(_debugEnabled == true && nameChanged == false && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshNHSnodenamelends,nodeNameLength,temp);
+					_debugStream->printf_P(m2mMeshNHSnodenamelendsadded,nodeNameLength,receivedNodeName);
 				}
 				#endif
-				//Allocate memory
-				_originator[originatorId].nodeName = new char[nodeNameLength+1];
+				_originator[originatorId].nodeName = new char[nodeNameLength + 1];	//Allocate memory on heap
 				if(_originator[originatorId].nodeName)
 				{
-					//Copy the node name into the newly allocated memory
-					memcpy(_originator[originatorId].nodeName, &packet.data[receivedPacketIndex], nodeNameLength);
-					//Terminate the string with a null
-					_originator[originatorId].nodeName[nodeNameLength]=0;
+					strcpy(_originator[originatorId].nodeName,receivedNodeName);	//Copy the node name into the newly allocated memory
 				}
 				#ifdef m2mMeshIncludeDebugFeatures
 				else
@@ -1620,11 +1589,15 @@ bool ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 				}
 				#endif
 			}
-			//Advance the packet index past the name
-			receivedPacketIndex+=nodeNameLength;
+			#ifdef m2mMeshIncludeDebugFeatures
+			else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+			{
+				_debugStream->printf_P(m2mMeshNHSnodenamelendsunchanged,nodeNameLength,receivedNodeName);
+			}
+			#endif
+			receivedPacketIndex += nodeNameLength;	//Advance the packet index past the name
 		}
-		//Extract originator information, if included
-		if(packet.data[3] & NHS_FLAGS_INCLUDES_ORIGINATORS)
+		if(packet.data[3] & NHS_FLAGS_INCLUDES_ORIGINATORS)	//Extract originator information, if included
 		{
 			uint8_t originatorCount = packet.data[receivedPacketIndex++];	//Retrieve the number of originators in the end of the packet
 			#ifdef m2mMeshIncludeDebugFeatures
@@ -1674,10 +1647,9 @@ bool ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 			}
 		}
 	}
-	return(true);
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
+void ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -1685,8 +1657,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originator
 		_debugStream->printf_P(m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.length);
 	}
 	#endif
-	#if M2MMESHRECEIVEBUFFERSIZE > 1
-	if(_applicationBuffer[_applicationBufferWriteIndex].length == 0)
+	if(_applicationBuffer[_applicationBufferWriteIndex].length == 0) //There's a free slot in the app buffer
 	{
 		memcpy(_applicationBuffer[_applicationBufferWriteIndex].macAddress, packet.macAddress, 6);
 		_applicationBuffer[_applicationBufferWriteIndex].length = packet.length;
@@ -1811,129 +1782,12 @@ bool ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originator
 			}
 		}
 		#endif
-		packet.length = 0;						//Mark the packet buffer as read, but really we've just copied it
 	}
-	#else
-	if(not _userPacketReceived)
+	else
 	{
-		_userPacketReceived = true;									//Mark that there is packet waiting for the user application and copy it to the buffer for retrieval
-		memcpy(_receivedUserPacket, packet.data, packet.length);
-		_receivedUserPacketLength = packet.length;
-		uint8_t receivedPacketIndex = 18;
-		if(not packet.data[3] & SEND_TO_ALL_NODES)	//If there's a destination, skip past
-		{
-			receivedPacketIndex+=6;
-		}
-		_receivedUserPacketIndex = receivedPacketIndex;							//Record where we are in reading the packet for later data retrieval
-		_receivedUserPacketIndex++;
-		_receivedUserPacketFieldCounter = packet.data[receivedPacketIndex++];	//Retrieve the number of fields in the packet
-		#ifdef m2mMeshIncludeDebugFeatures
-		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-		{
-			_debugStream->printf_P(m2mMeshUSRpacketcontainsdfields,_receivedUserPacketFieldCounter);
-			uint8_t field = 0;
-			while(receivedPacketIndex < _receivedUserPacketLength && field < _receivedUserPacketFieldCounter)
-			{
-				if(packet.data[receivedPacketIndex] == USR_DATA_UINT8_T)
-				{
-					receivedPacketIndex++;
-					_debugStream->printf_P(m2mMeshUSRdatafieldduint8_td,field++,packet.data[receivedPacketIndex++]);
-				}
-				else if(packet.data[receivedPacketIndex] == USR_DATA_UINT16_T)
-				{
-					receivedPacketIndex++;
-					unsignedIntToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafieldduint16_td,field++,temp.value);
-				}
-				else if(packet.data[receivedPacketIndex] == USR_DATA_UINT32_T)
-				{
-					receivedPacketIndex++;
-					unsignedLongToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					temp.b[2] = packet.data[receivedPacketIndex++];
-					temp.b[3] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafieldduint32_td,field++,temp.value);
-				}
-				else if(packet.data[receivedPacketIndex] == USR_DATA_INT8_T)
-				{
-					receivedPacketIndex++;
-					_debugStream->printf_P(m2mMeshUSRdatafielddint8_td,field++,int8_t(packet.data[receivedPacketIndex++]));
-				}
-				else if(packet.data[receivedPacketIndex] == USR_DATA_INT16_T)
-				{
-					receivedPacketIndex++;
-					intToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafielddint16_td,field++,temp.value);
-				}
-				else if(packet.data[receivedPacketIndex] == USR_DATA_INT32_T)
-				{
-					receivedPacketIndex++;
-					longToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					temp.b[2] = packet.data[receivedPacketIndex++];
-					temp.b[3] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafielddint32_td,field++,temp.value);
-				}
-				else if(packet.data[receivedPacketIndex] == USR_DATA_FLOAT)
-				{
-					receivedPacketIndex++;
-					floatToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					temp.b[2] = packet.data[receivedPacketIndex++];
-					temp.b[3] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafielddfloatf,field++,temp.value);
-				}
-				else if(packet.data[receivedPacketIndex] == USR_DATA_CHAR)
-				{
-					receivedPacketIndex++;
-					_debugStream->printf_P(m2mMeshUSRdatafielddcharc,field++,char(packet.data[receivedPacketIndex++]));
-				}
-				else if(packet.data[receivedPacketIndex] == USR_DATA_STRING)
-				{
-					receivedPacketIndex++;
-					uint8_t userDataStringLength = packet.data[receivedPacketIndex++];
-					char userDataString[userDataStringLength+1];
-					for(uint8_t i = 0; i<userDataStringLength ; i++)
-					{
-						userDataString[i] = char(packet.data[receivedPacketIndex++]);
-					}
-					userDataString[userDataStringLength] = char(0);
-					_debugStream->printf_P(m2mMeshUSRdatafielddStringlends,field++,userDataStringLength,&userDataString);
-				}
-				else if(packet.data[receivedPacketIndex] == USR_DATA_CHAR_ARRAY)
-				{
-					receivedPacketIndex++;
-					uint8_t userDataStringLength = packet.data[receivedPacketIndex++];
-					char userDataString[userDataStringLength+1];
-					for(uint8_t i = 0; i<userDataStringLength ; i++)
-					{
-						userDataString[i] = char(packet.data[receivedPacketIndex++]);
-					}
-					userDataString[userDataStringLength] = char(0);
-					_debugStream->printf_P(m2mMeshUSRdatafielddchararraylends,field++,userDataStringLength,&userDataString);
-				}
-				else
-				{
-					_debugStream->printf_P(m2mMeshUSRdatafielddunknowntypedstoppingdecode,field++,packet.data[receivedPacketIndex]);
-					while(receivedPacketIndex < packet.length)
-					{
-						_debugStream->printf_P(m2mMeshd02x,packet.data[receivedPacketIndex],packet.data[receivedPacketIndex++]);
-					}
-				}
-			}
-		}
-		#endif
-		packet.length = 0;						//Mark the packet buffer as read, but really we've just copied it
-
+		_droppedAppPackets++;
 	}
-	#endif
+	packet.length = 0;						//Mark the packet buffer as read, but really we've just copied it
 }
 
 
@@ -2241,19 +2095,18 @@ bool ICACHE_FLASH_ATTR m2mMesh::joined()
 }
 
 
-bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(const char *newName)
+/*bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(const char *newName)
 {
 	if(newName != nullptr)	//Check for garbage in
 	{
 		//If the name is already set, delete it and free up the memory
 		if(nodeNameIsSet())
 		{
-			//return(false);
 			delete[] _nodeName;
 		}
 		//Allocate memory for the name, adding one for the null character
 		_nodeName = new char[strlen(newName)+1];
-		if(_nodeName)
+		if(_nodeName != nullptr)
 		{
 			//Copy the node name into the newly allocated memory
 			memcpy(_nodeName, newName, strlen(newName) + 1);
@@ -2280,7 +2133,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(const char *newName)
 	{
 		return(false);
 	}
-}
+}*/
 
 bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(char *newName)
 {
@@ -2289,12 +2142,11 @@ bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(char *newName)
 		//If the name is already set, delete it and free up the memory
 		if(nodeNameIsSet())
 		{
-			//return(false);
 			delete[] _nodeName;
 		}
 		//Allocate memory for the name, adding one for the null character
 		_nodeName = new char[strlen(newName)+1];
-		if(_nodeName)
+		if(_nodeName != nullptr)
 		{
 			//Copy the node name into the newly allocated memory
 			memcpy(_nodeName, newName, strlen(newName) + 1);
@@ -2324,13 +2176,13 @@ bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(char *newName)
 }
 
 
-bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(String newName)
+/*bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(String newName)
 {
 	uint8_t stringLength = newName.length() + 1;
 	char tempArray[stringLength+1];
 	newName.toCharArray(tempArray, stringLength);
 	return(setNodeName(tempArray));
-}
+}*/
 
 //Functions for adding data to a packet before sending. These are overloaded for each type you can send
 //They are all similar, using a union to encode data, a single byte to say which type the data is and incrementing an index as they go
@@ -2740,32 +2592,20 @@ void ICACHE_FLASH_ATTR m2mMesh::clear()	//Clear the message without sending
 
 bool ICACHE_FLASH_ATTR m2mMesh::messageWaiting()
 {
-	#if M2MMESHRECEIVEBUFFERSIZE > 1
 	if(_applicationBuffer[_applicationBufferReadIndex].length > 0)
 	{
 		return(true);
 	}
-	#else
-	if(_userPacketReceived)
-	{
-		return(true);
-	}
-	#endif
 	return(false);
 }
 
 uint8_t ICACHE_FLASH_ATTR m2mMesh::messageSize()
 {
-	#if M2MMESHRECEIVEBUFFERSIZE > 1
 	return(_applicationBuffer[_applicationBufferReadIndex].length);
-	#else
-	return(_receivedUserPacketLength);
-	#endif
 }
 
 void ICACHE_FLASH_ATTR m2mMesh::markMessageRead()
 {
-	#if M2MMESHRECEIVEBUFFERSIZE > 1
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
 	{
@@ -2778,20 +2618,13 @@ void ICACHE_FLASH_ATTR m2mMesh::markMessageRead()
 		_applicationBufferReadIndex++;															//Advance the buffer index
 		_applicationBufferReadIndex = _applicationBufferReadIndex%M2MMESHAPPLICATIONBUFFERSIZE;	//Rollover buffer index
 	}
-	#else
-	_userPacketReceived = false;
-	#endif
 	_receivedUserPacketIndex = ESP_NOW_MAX_PACKET_SIZE;
 	_receivedUserPacketFieldCounter = 0;
 }
 
 uint8_t ICACHE_FLASH_ATTR m2mMesh::sourceId()
 {
-	#if M2MMESHRECEIVEBUFFERSIZE > 1
 	return(_originatorIdFromMac(&_applicationBuffer[_applicationBufferReadIndex].data[8]));
-	#else
-	return(_originatorIdFromMac(&_receivedUserPacket[8]));
-	#endif
 }
 
 bool ICACHE_FLASH_ATTR m2mMesh::sourceMacAddress(uint8_t *macAddressArray)
@@ -2799,21 +2632,12 @@ bool ICACHE_FLASH_ATTR m2mMesh::sourceMacAddress(uint8_t *macAddressArray)
 	//if(_userPacketReceived)
 	if(true)
 	{
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		macAddressArray[0] = _applicationBuffer[_applicationBufferReadIndex].data[8];
 		macAddressArray[1] = _applicationBuffer[_applicationBufferReadIndex].data[9];
 		macAddressArray[2] = _applicationBuffer[_applicationBufferReadIndex].data[10];
 		macAddressArray[3] = _applicationBuffer[_applicationBufferReadIndex].data[11];
 		macAddressArray[4] = _applicationBuffer[_applicationBufferReadIndex].data[12];
 		macAddressArray[5] = _applicationBuffer[_applicationBufferReadIndex].data[13];
-		#else
-		macAddressArray[0] = _receivedUserPacket[8];
-		macAddressArray[1] = _receivedUserPacket[9];
-		macAddressArray[2] = _receivedUserPacket[10];
-		macAddressArray[3] = _receivedUserPacket[11];
-		macAddressArray[4] = _receivedUserPacket[12];
-		macAddressArray[5] = _receivedUserPacket[13];			
-		#endif
 		return(true);
 	}
 	else
@@ -2826,11 +2650,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::nextDataType()
 {
 	if(dataAvailable())
 	{
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		return(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex]);
-		#else
-		return(_receivedUserPacket[_receivedUserPacketIndex]);
-		#endif
 	}
 	else
 	{
@@ -2852,7 +2672,6 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::retrieveDataLength()
 {
 	if(dataAvailable())
 	{
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		if(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex] == USR_DATA_UINT8_T_ARRAY)
 		{
 			//uint8_t array has no null terminator
@@ -2863,18 +2682,6 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::retrieveDataLength()
 			//char array and String have a null terminator
 			return(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex+1]+1);
 		}
-		#else
-		if(_receivedUserPacket[_receivedUserPacketIndex] == USR_DATA_UINT8_T_ARRAY)
-		{
-			//uint8_t array has no null terminator
-			return(_receivedUserPacket[_receivedUserPacketIndex+1]);
-		}
-		else
-		{
-			//char array and String have a null terminator
-			return(_receivedUserPacket[_receivedUserPacketIndex+1]+1);
-		}
-		#endif
 	}
 	else
 	{
@@ -2903,11 +2710,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_t()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		uint8_t temp = uint8_t(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
-		#else
-		uint8_t temp = uint8_t(_receivedUserPacket[_receivedUserPacketIndex++]);
-		#endif
 		if(not dataAvailable())
 		{
 			markMessageRead();
@@ -2934,11 +2737,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint8_t &recipient)
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		recipient = uint8_t(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
-		#else
-		recipient = uint8_t(_receivedUserPacket[_receivedUserPacketIndex++]);
-		#endif
 		if(not dataAvailable())
 		{
 			markMessageRead();
@@ -2967,13 +2766,8 @@ uint16_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint16_t()
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
 		unsignedIntToBytes temp;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		#else
-		temp.b[0] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[1] = _receivedUserPacket[_receivedUserPacketIndex++];
-		#endif
 		if(not dataAvailable())
 		{
 			markMessageRead();
@@ -3001,17 +2795,10 @@ uint32_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint32_t()
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
 		unsignedLongToBytes temp;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		#else
-		temp.b[0] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[1] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[2] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[3] = _receivedUserPacket[_receivedUserPacketIndex++];
-		#endif
 		if(not dataAvailable())
 		{
 			markMessageRead();
@@ -3039,17 +2826,10 @@ bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint32_t &recipient)
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
 		unsignedLongToBytes temp;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		#else
-		temp.b[0] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[1] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[2] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[3] = _receivedUserPacket[_receivedUserPacketIndex++];
-		#endif
 		if(not dataAvailable())
 		{
 			markMessageRead();
@@ -3077,15 +2857,12 @@ int8_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt8_t()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
+		int8_t temp = int8_t(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
 		if(not dataAvailable())
 		{
 			markMessageRead();
 		}
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
-		return(int8_t(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]));
-		#else
-		return(int8_t(_receivedUserPacket[_receivedUserPacketIndex++]));
-		#endif
+		return(temp);
 	}
 }
 int16_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt16_t()
@@ -3108,13 +2885,8 @@ int16_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt16_t()
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
 		intToBytes temp;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		#else
-		temp.b[0] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[1] = _receivedUserPacket[_receivedUserPacketIndex++];
-		#endif
 		if(not dataAvailable())
 		{
 			markMessageRead();
@@ -3142,17 +2914,10 @@ int32_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt32_t()
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
 		longToBytes temp;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		#else
-		temp.b[0] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[1] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[2] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[3] = _receivedUserPacket[_receivedUserPacketIndex++];
-		#endif
 		if(not dataAvailable())
 		{
 			markMessageRead();
@@ -3180,17 +2945,10 @@ float ICACHE_FLASH_ATTR m2mMesh::retrieveFloat()
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
 		floatToBytes temp;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		#else
-		temp.b[0] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[1] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[2] = _receivedUserPacket[_receivedUserPacketIndex++];
-		temp.b[3] = _receivedUserPacket[_receivedUserPacketIndex++];
-		#endif
 		if(not dataAvailable())
 		{
 			markMessageRead();
@@ -3217,11 +2975,13 @@ char ICACHE_FLASH_ATTR m2mMesh::retrieveChar()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
-		return(char(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]));
-		#else
-		return(char(_receivedUserPacket[_receivedUserPacketIndex++]));
-		#endif
+		char temp;
+		temp = char(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
+		if(not dataAvailable())
+		{
+			markMessageRead();
+		}
+		return(temp);
 	}
 }
 String ICACHE_FLASH_ATTR m2mMesh::retrieveString()
@@ -3243,19 +3003,11 @@ String ICACHE_FLASH_ATTR m2mMesh::retrieveString()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		uint8_t stringLength = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		#else
-		uint8_t stringLength = _receivedUserPacket[_receivedUserPacketIndex++];
-		#endif
 		String tempString;
 		for(uint8_t i = 0; i<stringLength ; i++)
 		{
-			#if M2MMESHRECEIVEBUFFERSIZE > 1
 			tempString += char(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
-			#else
-			tempString += char(_receivedUserPacket[_receivedUserPacketIndex++]);
-			#endif
 		}
 		if(not dataAvailable())
 		{
@@ -3282,13 +3034,8 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveCharArray(char *data)
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		uint8_t dataLength = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		memcpy(data,&_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex],dataLength);
-		#else
-		uint8_t dataLength = _receivedUserPacket[_receivedUserPacketIndex++];
-		memcpy(data,&_receivedUserPacket[_receivedUserPacketIndex],dataLength);
-		#endif
 		data[dataLength]=0;
 		_receivedUserPacketIndex+=dataLength;
 		if(not dataAvailable())
@@ -3316,13 +3063,8 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_tArray(uint8_t *data)
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		#if M2MMESHRECEIVEBUFFERSIZE > 1
 		uint8_t dataLength = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		memcpy(data,&_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex],dataLength);
-		#else
-		uint8_t dataLength = _receivedUserPacket[_receivedUserPacketIndex++];
-		memcpy(data,&_receivedUserPacket[_receivedUserPacketIndex],dataLength);
-		#endif
 		_receivedUserPacketIndex+=dataLength;
 		if(not dataAvailable())
 		{
