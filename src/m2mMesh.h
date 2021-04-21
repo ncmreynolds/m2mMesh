@@ -210,8 +210,10 @@ struct originatorInfo									//A structure for storing information about origin
 	uint32_t uptime = 0;								//The time the device has been up
 	float supplyVoltage = 0;							//Supply voltage as measured by the ESP, whether it is the Vcc or battery voltage up to you
 	float currentTxPower = 0;							//Radio transmission power, if managing transmit power
-	uint32_t currentFreeHeap = 0;
-	uint32_t initialFreeHeap = 0;
+	uint32_t currentFreeHeap = 0;						//Current free heap
+	uint32_t initialFreeHeap = 0;						//Initial free heap
+	uint32_t largestFreeBlock = 0;						//Largest free block
+	uint8_t heapFragmentation = 0;						//Heap fragmentation
 	uint32_t rxPackets = 0;								//Monitor buffer receive problems
 	uint32_t txPackets = 0;								//Monitor buffer send problems
 	uint32_t droppedRxPackets = 0;						//Monitor buffer receive problems
@@ -247,9 +249,9 @@ class m2mMesh
 
 		//Configuration functions
 		bool nodeNameIsSet();								//Returns true if the node name is set, false otherwise
-		//bool setNodeName(const char *);						//Set the node name
+		bool setNodeName(const char *);						//Set the node name
 		bool setNodeName(char *);							//Set the node name
-		//bool setNodeName(String);							//Set the node name
+		bool setNodeName(String);							//Set the node name
 		char * getNodeName();								//Get a pointer to the node name
 		char * getNodeName(uint8_t);						//Get a pointer to the node name for another node
 		uint8_t * getMeshAddress();							//Get a pointer to the mesh MAC address
@@ -336,6 +338,8 @@ class m2mMesh
 		uint8_t numberOfOriginators(uint8_t);				//Returns the total number of originators in the mesh for this node
 		uint8_t numberOfActiveNeighbours();					//Number of active neighbours for this node
 		uint8_t numberOfActiveNeighbours(uint8_t);			//Number of active neighbours for another node
+		uint8_t nodeId(uint8_t *);							//Finds the ID of an originator from the MAC address or MESH_ORIGINATOR_NOT_FOUND if it isn't found
+		bool nodeIsReachable(uint8_t);						//Is a node valid
 		void macAddress(uint8_t,uint8_t *);					//Supplies the MAC address of an originator when passed an array
 		uint8_t flags(uint8_t id);							//Flags set by the originator
 		bool elpIsValid(uint8_t);							//Is ELP up?
@@ -354,6 +358,8 @@ class m2mMesh
 		bool actingAsTimeServer(uint8_t);					//Is a node acting as a time server
 		uint32_t initialFreeHeap(uint8_t);					//Initial free heap of a node
 		uint32_t currentFreeHeap(uint8_t);					//Current free heap of a node
+		uint32_t largestFreeBlock(uint8_t);					//Current free heap of a node
+		uint8_t heapFragmentation(uint8_t);					//Heap fragmentation of a node
 		uint32_t sequenceNumber();							//Last sequence for this node
 		uint32_t lastSequenceNumber(uint8_t);				//Last sequence number seen from a node
 		float supplyVoltage(uint8_t);						//Supply or battery voltage for another node
@@ -496,6 +502,8 @@ class m2mMesh
 		static const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
 		static const uint8_t NO_FLAGS = 0x00;						//No flags on packet
 		static const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
+		static const uint8_t PROCESSOR_ESP8266 = 0x20;				//
+		static const uint8_t PROCESSOR_ESP32 =   0x40;				//
 		static const uint32_t ANTI_COLLISION_JITTER = 250ul;		//Jitter in milliseconds to try and avoid in-air collisions
 		static const uint8_t MESH_ORIGINATOR_NOT_FOUND = 255;		//Signifies that a node is unset or unknown
 		static const uint8_t MESH_NO_MORE_ORIGINATORS_LEFT = 254;	//Signifies the mesh is 'full' and no more members can join
@@ -505,10 +513,10 @@ class m2mMesh
 		static const uint8_t ELP_PACKET_SIZE = 19;
 		static const uint8_t ELP_PACKET_TYPE = 0x00;				//The first octet of every ESP-Now packet identifies what it is
 		static const uint8_t ELP_DEFAULT_TTL = 0;					//A TTL of >0 means it may be forwarded
-		static const uint8_t ELP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default ELP flags
+		static const uint8_t ELP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;	//Default ELP flags
 		static const uint8_t ELP_FLAGS_INCLUDES_PEERS = 0x01;		//Flag set when ELP includes peer information
 		static const uint8_t ELP_FLAGS_PEER_REMOVE_REQUEST = 0x02;	//Flag set indicating sending originator would like to be removed as peer
-		static const uint8_t ELP_FLAGS_PEER_REMOVED = 0x04;		//Flag set to indicate destination originator has been removed as peer
+		static const uint8_t ELP_FLAGS_PEER_REMOVED = 0x04;			//Flag set to indicate destination originator has been removed as peer
 
 		static const uint32_t ELP_DEFAULT_INTERVAL = 10000ul;		//How often to send ELP (default every 10s)
 		static const uint16_t LTQ_MAX_VALUE = 65535;				//Maximum value for Local Transmit Quality
@@ -526,7 +534,11 @@ class m2mMesh
 		//NHS - Node Health/Status packet flags & values
 		static const uint8_t NHS_PACKET_TYPE = 0x02;          		//The first octet of every ESP-Now packet identifies what it is
 		static const uint8_t NHS_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwarded.
-		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default NHS flags
+		#if defined(ESP8266)
+		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES | PROCESSOR_ESP8266;	//Default NHS flags
+		#elif defined(ESP32)
+		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES | PROCESSOR_ESP32;	//Default NHS flags
+		#endif
 		static const uint8_t NHS_FLAGS_TIMESERVER = 0x1;        	//Flag set when acting as a time server
 		static const uint8_t NHS_FLAGS_SOFTAP_ON = 0x2;        	//Flag set when acting as an AP
 		static const uint8_t NHS_FLAGS_NODE_NAME_SET = 0x4;		//Flag set when the NHS packet includes a friendly name
