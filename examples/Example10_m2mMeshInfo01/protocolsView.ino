@@ -23,8 +23,8 @@ void protocolsView()
       printAtXy(3,17,F("1 - PROTOCOL_ELP_RECEIVE -------------- "));
       printAtXy(3,18,F("0 - PROTOCOL_ELP_SEND ----------------- "));
       moveToXy(1,24);
-      inverseOn();Serial.print('0');inverseOff();inverseOn();Serial.print('-');Serial.print('f');inverseOff();Serial.print(" toggle service | ");
-      Serial.print("Change ");inverseOn();Serial.print('v');inverseOff();Serial.print("iew");
+      inverseOn();Serial.print('0');inverseOff();inverseOn();Serial.print('-');Serial.print('f');inverseOff();Serial.print(F(" toggle service | "));
+      Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew"));
     }
     if(drawWholeUi || servicesChanged)
     {
@@ -35,11 +35,11 @@ void protocolsView()
         moveToXy(43,18-i);
         if(mesh.serviceFlags() & uint16_t(pow(2, i)))
         {
-          Serial.print("Enabled");
+          Serial.print(F("Enabled"));
         }
         else
         {
-          Serial.print("       ");
+          Serial.print(F("       "));
         }
       }
     }

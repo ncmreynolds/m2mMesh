@@ -18,19 +18,19 @@ void loggingView()
         drawTitle(titleString);
       }
       moveToXy(1,24);
-      inverseOn();Serial.print('P');inverseOff();Serial.print("ause logging | ");
+      inverseOn();Serial.print('P');inverseOff();Serial.print(F("ause logging | "));
       inverseOn();Serial.print('l');inverseOff();
       if(logAllNodes)
       {
-        Serial.print("og specific node | ");
+        Serial.print(F("og specific node | "));
       }
       else
       {
-        Serial.print("og all nodes | ");
-        inverseOn();Serial.print('+');inverseOff();inverseOn();Serial.print('/');Serial.print('-');inverseOff();Serial.print(" Next/Previous originator|");
+        Serial.print(F("og all nodes | "));
+        inverseOn();Serial.print('+');inverseOff();inverseOn();Serial.print('/');Serial.print('-');inverseOff();Serial.print(F(" Next/Previous originator|"));
       }
-      Serial.print("Change ");inverseOn();Serial.print('v');inverseOff();Serial.print("iew | ");
-      Serial.print("Change ");inverseOn();Serial.print('C');inverseOff();Serial.print("hannel");
+      Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew | "));
+      Serial.print(F("Change "));inverseOn();Serial.print('C');inverseOff();Serial.print(F("hannel"));
       setScrollWindow(2, 23);
       drawWholeUi = false;
     }

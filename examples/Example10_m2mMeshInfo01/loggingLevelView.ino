@@ -29,8 +29,8 @@ void loggingLevelView()
       printAtXy(3,22,F("1 - ----------- WARNINGS -------------- "));
       printAtXy(3,23,F("0 - ----------- ERRORS ---------------- "));
       moveToXy(1,24);
-      inverseOn();Serial.print('0');inverseOff();inverseOn();Serial.print('-');Serial.print('l');inverseOff();Serial.print(" toggle logging | ");
-      Serial.print("Change ");inverseOn();Serial.print('v');inverseOff();Serial.print("iew");
+      inverseOn();Serial.print('0');inverseOff();inverseOn();Serial.print('-');Serial.print('l');inverseOff();Serial.print(F(" toggle logging | "));
+      Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew"));
     }
     if(drawWholeUi || loggingLevelChanged == true)
     {
@@ -52,11 +52,11 @@ void loggingLevelView()
         moveToXy(43,23-i);
         if(loggingLevel & uint32_t(pow(2, i)))
         {
-          Serial.print("Logging");
+          Serial.print(F("Logging"));
         }
         else
         {
-          Serial.print("       ");
+          Serial.print(F("       "));
         }
       }
     }

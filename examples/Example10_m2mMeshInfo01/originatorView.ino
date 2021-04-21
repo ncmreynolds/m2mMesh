@@ -55,9 +55,9 @@ void originatorView()
 
       moveToXy(1,24);
       eraseLine();
-      inverseOn();Serial.print('+');inverseOff();inverseOn();Serial.print('/');Serial.print('-');inverseOff();Serial.print(" Next/Previous originator | ");
-      inverseOn();Serial.print('l');inverseOff();Serial.print("og this node only | ");
-      Serial.print("Change ");inverseOn();Serial.print('v');inverseOff();Serial.print("iew");
+      inverseOn();Serial.print('+');inverseOff();inverseOn();Serial.print('/');Serial.print('-');inverseOff();Serial.print(F(" Next/Previous originator | "));
+      inverseOn();Serial.print('l');inverseOff();Serial.print(F("og this node only | "));
+      Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew"));
     }
   }
   if(numberOfOriginators > 0)
@@ -76,15 +76,11 @@ void originatorView()
       moveToXy(30,1);
       if(mesh.nodeNameIsSet(currentlyViewedOriginator))
       {
-        Serial.print(mesh.getNodeName(currentlyViewedOriginator));
-        if(strlen(mesh.getNodeName(currentlyViewedOriginator))<15)
-        {
-          Serial.print("                                  ");
-        }
+        Serial.printf("%-50s",mesh.getNodeName(currentlyViewedOriginator));
       }
       else
       {
-        Serial.print("Not known/Unset                                  ");
+        Serial.print(F("Not known/Unset                                    "));
       }
       currentlyViewedOriginatorChanged = false;
     }
@@ -92,12 +88,12 @@ void originatorView()
     if(mesh.nhsIsValid(currentlyViewedOriginator))
     {
       printUptimeAtXy(56,4,mesh.nhsInterval(currentlyViewedOriginator));
-      Serial.print("           ");
+      Serial.print(F("           "));
     }
     else
     {
       moveToXy(56,4);
-      Serial.print("Unknown    ");
+      Serial.print(F("Unknown    "));
     }
     //Sequence number
     moveToXy(19,4);
@@ -119,7 +115,7 @@ void originatorView()
     if(mesh.nhsIsValid(currentlyViewedOriginator))
     {
       printUptimeAtXy(57,5,millis() - mesh.nhsLastSeen(currentlyViewedOriginator));
-      Serial.print(" ago       ");
+      Serial.print(F(" ago       "));
     }
     else
     {
@@ -157,11 +153,11 @@ void originatorView()
     moveToXy(55,8);
     if(mesh.currentMeshTimeServer() == currentlyViewedOriginator)
     {
-      Serial.print("Yes");
+      Serial.print(F("Yes"));
     }
     else
     {
-      Serial.print("No ");
+      Serial.print(F("No "));
     }
     //Free heap
     moveToXy(53,9);
@@ -171,18 +167,18 @@ void originatorView()
     }
     else
     {
-      Serial.print("Unknown         ");
+      Serial.print(F("Unknown         "));
     }
     //ELP interval
     if(mesh.elpIsValid(currentlyViewedOriginator))
     {
       printUptimeAtXy(16,9,mesh.elpInterval(currentlyViewedOriginator));
-      Serial.print("           ");
+      Serial.print(F("           "));
     }
     else
     {
       moveToXy(16,9);
-      Serial.print("Unknown    ");
+      Serial.print(F("Unknown    "));
     }
     // Supply voltage
     moveToXy(58,10);
@@ -192,18 +188,18 @@ void originatorView()
     }
     else
     {
-      Serial.print("Unknown    ");
+      Serial.print(F("Unknown    "));
     }
     //ELP last seen
     if(mesh.elpLastSeen(currentlyViewedOriginator) > 0)
     {
       printUptimeAtXy(17,10,millis() - mesh.elpLastSeen(currentlyViewedOriginator));
-      Serial.print(" ago      ");
+      Serial.print(F(" ago      "));
     }
     else
     {
       moveToXy(17,10);
-      Serial.print("Never              ");
+      Serial.print(F("Never              "));
     }
     //Active peers and mesh size
     moveToXy(61,11);
@@ -213,7 +209,7 @@ void originatorView()
     }
     else
     {
-      Serial.print("Unknown");
+      Serial.print(F("Unknown"));
     }
     //SoftAp state
     moveToXy(50,12);
@@ -230,7 +226,7 @@ void originatorView()
     }
     else
     {
-      Serial.print("Unknown");
+      Serial.print(F("Unknown"));
     }
     //Tx Power
     moveToXy(52,13);
@@ -240,18 +236,18 @@ void originatorView()
     }
     else
     {
-      Serial.print("Unknown");
+      Serial.print(F("Unknown"));
     }
     //OGM interval
     if(mesh.ogmIsValid(currentlyViewedOriginator))
     {
       printUptimeAtXy(16,13,mesh.ogmInterval(currentlyViewedOriginator));
-      Serial.print("           ");
+      Serial.print(F("           "));
     }
     else
     {
       moveToXy(16,13);
-      Serial.print("Unknown    ");
+      Serial.print(F("Unknown    "));
     }
     //ELP up?
     if(mesh.elpIsValid(currentlyViewedOriginator))
@@ -266,12 +262,12 @@ void originatorView()
     if(mesh.ogmLastSeen(currentlyViewedOriginator)>0)
     {
       printUptimeAtXy(17,14,millis() - mesh.ogmLastSeen(currentlyViewedOriginator));
-      Serial.print(" ago      ");
+      Serial.print(F(" ago      "));
     }
     else
     {
       moveToXy(17,14);
-      Serial.print("Never              ");
+      Serial.print(F("Never              "));
     }
     //OGM up?
     if(mesh.ogmIsValid(currentlyViewedOriginator))

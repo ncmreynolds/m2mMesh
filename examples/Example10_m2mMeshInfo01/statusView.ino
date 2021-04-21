@@ -16,55 +16,55 @@ void statusView()
       Serial.print(WiFi.macAddress());
     }
     moveToXy(19,1);
-    Serial.print("Up:");
+    Serial.print(F("Up:"));
     moveToXy(33,1);
-    Serial.print("Time:");      
+    Serial.print(F("Time:"));
     moveToXy(51,1);
-    Serial.print("Ch:");
+    Serial.print(F("Ch:"));
     moveToXy(57,1);
-    Serial.print("Tx:");
+    Serial.print(F("Tx:"));
     moveToXy(65,1);
-    Serial.print("Fl:");
+    Serial.print(F("Fl:"));
     moveToXy(73,1);
-    Serial.print("Vcc:");
+    Serial.print(F("Vcc:"));
 
     moveToXy(1,2);
-    Serial.print("Neighbours:--- Mesh:---/---");
+    Serial.print(F("Neighbours:--- Mesh:---/---"));
     moveToXy(30,2);
-    Serial.print("Seq:");
+    Serial.print(F("Seq:"));
     moveToXy(43,2);
-    Serial.print("Err:");
+    Serial.print(F("Err:"));
     moveToXy(60,2);
-    Serial.print("Heap:");
+    Serial.print(F("Heap:"));
 
     moveToXy(1,3);
-    Serial.print("ID");
+    Serial.print(F("ID"));
     moveToXy(9,3);
-    Serial.print("MAC");
+    Serial.print(F("MAC"));
     moveToXy(17,3);
-    Serial.print("Flgs  GTQ  LTQ   Seq");
+    Serial.print(F("Flgs  GTQ  LTQ   Seq"));
     moveToXy(42,3);
-    Serial.print("ID");
+    Serial.print(F("ID"));
     moveToXy(50,3);
-    Serial.print("MAC");
+    Serial.print(F("MAC"));
     moveToXy(58,3);
-    Serial.print("Flgs  GTQ  LTQ   Seq");
+    Serial.print(F("Flgs  GTQ  LTQ   Seq"));
     moveToXy(1,14);
-    Serial.print("Board:");
+    Serial.print(F("Board:"));
     #if defined (ARDUINO_ESP8266_WEMOS_D1MINI)
-    Serial.print("WeMos D1 mini");
+    Serial.print(F("WeMos D1 mini"));
     #elif defined (ARDUINO_ESP8266_WEMOS_D1MINIPRO)
-    Serial.print("WeMos D1 mini pro");
+    Serial.print(F("WeMos D1 mini pro"));
     #elif defined (ARDUINO_ESP8266_GENERIC)
-    Serial.print("ESP-01S");
+    Serial.print(F("ESP-01S"));
     #elif defined (ARDUINO_ESP8266_ESP01)
-    Serial.print("ESP8285-M1");
+    Serial.print(F("ESP8285-M1"));
     #elif defined(ARDUINO_ESP32S2_DEV)
-    Serial.print("ESP32S2 Saola-1R");
+    Serial.print(F("ESP32S2 Saola-1R"));
     #else
     Serial.print(' ');
     Serial.print(ARDUINO_BOARD);
-    //Serial.print("Unknown");
+    Serial.print(F("Unknown"));
     #endif
     if(logAllNodes)
     {
@@ -79,11 +79,11 @@ void statusView()
       printCentred(14,titleString);
     }
     moveToXy(1,24);
-    inverseOn();Serial.print('r');inverseOff();Serial.print("eboot | ");
-    inverseOn();Serial.print('+');inverseOff();inverseOn();Serial.print('/');Serial.print('-');inverseOff();Serial.print(" Tx power | ");
-    inverseOn();Serial.print('P');inverseOff();Serial.print("ause logging | ");
-    Serial.print("Change ");inverseOn();Serial.print('v');inverseOff();Serial.print("iew | ");
-    Serial.print("Switch ");inverseOn();Serial.print('C');inverseOff();Serial.print("hannel");
+    inverseOn();Serial.print('r');inverseOff();Serial.print(F("eboot | "));
+    inverseOn();Serial.print('+');inverseOff();inverseOn();Serial.print('/');Serial.print('-');inverseOff();Serial.print(F(" Tx power | "));
+    inverseOn();Serial.print('P');inverseOff();Serial.print(F("ause logging | "));
+    Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew | "));
+    Serial.print(F("Switch "));inverseOn();Serial.print('C');inverseOff();Serial.print(F("hannel"));
   }
   //Uptime
   {
@@ -145,7 +145,7 @@ void statusView()
   }
   else
   {
-    Serial.print("00%Rx");
+    Serial.print(F("00%Rx"));
   }
   Serial.print('/');
   if(mesh.txPackets() + mesh.droppedTxPackets() > 0)
@@ -154,7 +154,7 @@ void statusView()
   }
   else
   {
-    Serial.print("00%Tx");
+    Serial.print(F("00%Tx"));
   }
   //Free Heap
   {
@@ -182,11 +182,11 @@ void statusView()
           {
             flags[1] = '-';
           }
-          /*if(mesh.softApState(originatorId))
+          if(mesh.nodeNameIsSet(originatorId))
           {
-            flags[2] = 'B';
+            flags[2] = 'N';
           }
-          else*/
+          else
           {
             flags[2] = '-';
           }
@@ -203,7 +203,7 @@ void statusView()
           }
           else
           {
-            Serial.print("----");
+            Serial.print(F("----"));
           }
           //LTQ 
           moveToXy(27+(neighbour/10)*41,4+neighbour%10);
@@ -213,7 +213,7 @@ void statusView()
           }
           else
           {
-            Serial.print("----");
+            Serial.print(F("----"));
           }        
           neighbour++;
         }
@@ -223,7 +223,7 @@ void statusView()
       {
         //Move the cursor to the right spot in the table
         moveToXy((i/10)*42,4+i%10);
-        Serial.print("-- ------------ ---- ---- ---- --------");          
+        Serial.print(F("-- ------------ ---- ---- ---- --------"));
       }
     }
   }
@@ -247,11 +247,11 @@ void statusView()
           {
             flags[1] = '-';
           }
-          /*if(mesh.softApState(originatorId))
+          if(mesh.nodeNameIsSet(originatorId))
           {
-            flags[2] = 'B';
+            flags[2] = 'N';
           }
-          else*/
+          else
           {
             flags[2] = '-';
           }
@@ -268,7 +268,7 @@ void statusView()
         }
         else
         {
-          Serial.print("----");
+          Serial.print(F("----"));
         }
         //LTQ
         moveToXy(27+(neighbour/10)*41,4+neighbour%10);
@@ -278,7 +278,7 @@ void statusView()
         }
         else
         {
-          Serial.print("----");
+          Serial.print(F("----"));
         }        
         //Sequence number
         //if(originator[originatorId].sequenceNumberChanged)
@@ -291,7 +291,7 @@ void statusView()
           }
           else
           {
-            Serial.print("????????");
+            Serial.print(F("????????"));
           }
           //originator[originatorId].sequenceNumberChanged = false;
         }
