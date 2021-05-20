@@ -1638,7 +1638,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 				}
 				#endif
 				epochOffset = tempUint32.value;
-				timeval tv = { epochOffset + (_meshTimeOffset * 1000), 0 };
+				timeval tv = { epochOffset + ((millis() + _meshTimeOffset) / 1000), 0 };
 				settimeofday(&tv, nullptr);
 			}
 		}
