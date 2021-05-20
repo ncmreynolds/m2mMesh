@@ -11,7 +11,7 @@ meshIsStable	KEYWORD2
 supplyVoltage	KEYWORD2
 
 //Time synchronisation
-time	KEYWORD2
+syncedMillis	KEYWORD2
 
 //Sending messages
 destination	KEYWORD2
