@@ -1296,15 +1296,37 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(m2mMeshPacketBuffer &packet)
 		packet.data[packet.length++] = supplyV.b[2];
 		packet.data[packet.length++] = supplyV.b[3];
 	}
-	if(_serviceFlags & PROTOCOL_NHS_TIME_SERVER && _actingAsTimeServer)	//Add the mesh time
+	if(_serviceFlags & PROTOCOL_NHS_TIME_SERVER && _actingAsTimeServer)			//Add the mesh time
 	{
 		packet.data[3] = packet.data[3] | NHS_FLAGS_TIMESERVER;
-		temp.value = time();
+		temp.value = syncedMillis();
 		packet.data[packet.length++] = temp.b[0];
 		packet.data[packet.length++] = temp.b[1];
 		packet.data[packet.length++] = temp.b[2];
 		packet.data[packet.length++] = temp.b[3];
 	}
+	#if defined (m2mMeshIncludeRTCFeatures)
+	#if defined(ESP32)
+	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && getLocalTime(&timeinfo) == true)		//Add the RTC info, if valid
+	#elif defined (ESP8266)
+	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && time(nullptr) > 3600)				//Add the RTC info, if valid
+	#endif
+	{
+		packet.data[3] = packet.data[3] | NHS_FLAGS_RTCSERVER;
+		//Timezone
+		packet.data[packet.length++] = strlen(timezone);
+		memcpy(&packet.data[packet.length], timezone, strlen(timezone));		//Copy in the timezone
+		packet.length += strlen(timezone);										//Advance the index
+		//Epoch offset
+		time_t epoch;
+		time(&epoch);
+		temp.value = epoch - ((millis() + _meshTimeOffset)/1000); //Mesh time is in ms so divide by 1000
+		packet.data[packet.length++] = temp.b[0];
+		packet.data[packet.length++] = temp.b[1];
+		packet.data[packet.length++] = temp.b[2];
+		packet.data[packet.length++] = temp.b[3];
+	}
+	#endif
 	if(_nodeName != nullptr)													//Insert the node name, if set
 	{
 		packet.data[3] = packet.data[3] | NHS_FLAGS_NODE_NAME_SET;				//Mark this in the flags
@@ -1411,10 +1433,10 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 		//Extract the flags
 		_originator[originatorId].flags = packet.data[3];
 		#ifdef m2mMeshIncludeDebugFeatures
-		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && _originator[originatorId].flags & NHS_FLAGS_SOFTAP_ON && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+		/*if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && _originator[originatorId].flags & NHS_FLAGS_SOFTAP_ON && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
 			_debugStream->print(m2mMeshSoftAPison);
-		}
+		}*/
 		#endif
 		//Extract the uptime
 		union unsignedLongToBytes tempUint32;
@@ -1498,7 +1520,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
-				_debugStream->print(differs);
+				_debugStream->print(m2mMeshdiffers);
 			}
 			#endif
 		}
@@ -1508,7 +1530,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
-				_debugStream->print(differs);
+				_debugStream->print(m2mMeshdiffers);
 			}
 			#endif
 		}
@@ -1550,14 +1572,77 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 			tempUint32.b[1] = packet.data[receivedPacketIndex++];
 			tempUint32.b[2] = packet.data[receivedPacketIndex++];
 			tempUint32.b[3] = packet.data[receivedPacketIndex++];
-			_updateMeshTime(tempUint32.value,originatorId);
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
 				_debugStream->printf_P(m2mMeshNHSMeshtimedms,tempUint32.value);
 			}
 			#endif
+			_updateMeshTime(tempUint32.value,originatorId);
 		}
+		#if defined (m2mMeshIncludeRTCFeatures)
+		if(packet.data[3] & NHS_FLAGS_RTCSERVER)		//Check for included TZ and epoch time offset
+		{
+			uint8_t tzLength = packet.data[receivedPacketIndex++];	//Extract timezone string length
+			if(rtc == false)
+			{
+				if(timezone == nullptr)// || strncmp(timezone,&packet.data[receivedPacketIndex],tzLength) != 0) //Timezone needs setting
+				{
+					if(timezone != nullptr)
+					{
+						delete[] timezone;	//Free current timezone on heap, this should happen rarely
+					}
+					timezone = new char[tzLength + 1];									//Allocate space on heap
+					memcpy(timezone,&packet.data[receivedPacketIndex],tzLength);		//Copy
+					timezone[tzLength] = char(0);										//Null terminate
+					setenv("TZ",timezone,1);											//Set timezone
+					tzset();															//Apply timezone
+					#ifdef m2mMeshIncludeDebugFeatures
+					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+					{
+						_debugStream->printf_P(m2mMeshNHSRTCtimezonesset,timezone);
+					}
+					#endif
+				}
+			}
+			receivedPacketIndex += tzLength;
+			//Now get the offset
+			tempUint32.b[0] = packet.data[receivedPacketIndex++];
+			tempUint32.b[1] = packet.data[receivedPacketIndex++];
+			tempUint32.b[2] = packet.data[receivedPacketIndex++];
+			tempUint32.b[3] = packet.data[receivedPacketIndex++];
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+			{
+				char strftime_buf[64];
+				//strftime(strftime_buf, sizeof(strftime_buf), "%c", localtime(const_cast<time_t>(&tempUint32.value)));
+				const time_t timestamp = tempUint32.value + ((millis() + _meshTimeOffset)/1000);
+				strftime(strftime_buf, sizeof(strftime_buf), "%c", localtime(&timestamp));
+				_debugStream->printf_P(m2mMeshNHSRTCtimeds,tempUint32.value,strftime_buf);
+			}
+			#endif
+			if(rtc == false && tempUint32.value != epochOffset)	//Check for epoch time update
+			{
+				#ifdef m2mMeshIncludeDebugFeatures
+				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog) && epochOffset != 0)
+				{
+					_debugStream->print(m2mMeshdiffers);
+					if(tempUint32.value > epochOffset)
+					{
+						_debugStream->print(tempUint32.value -  epochOffset);
+					}
+					else
+					{
+						_debugStream->print(epochOffset - tempUint32.value);
+					}
+				}
+				#endif
+				epochOffset = tempUint32.value;
+				timeval tv = { epochOffset + (_meshTimeOffset * 1000), 0 };
+				settimeofday(&tv, nullptr);
+			}
+		}
+		#endif
 		if(packet.data[3] & NHS_FLAGS_NODE_NAME_SET)	//Look for a node name
 		{
 			#ifdef m2mMeshIncludeDebugFeatures
@@ -1808,7 +1893,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originator
 void ICACHE_FLASH_ATTR m2mMesh::_updateMeshTime(const uint32_t newMeshTime, const uint8_t originatorId)
 {
   //It's a tie, which is not uncommon when handing over between two servers
-  if(time() == newMeshTime)
+  if(syncedMillis() == newMeshTime)
   {
     //If we have better uptime we win a tie, it is unlikely nodes will tie on real uptime unless they share a common PSU
     if(millis() > expectedUptime(originatorId))
@@ -1823,7 +1908,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_updateMeshTime(const uint32_t newMeshTime, cons
     }
   }
   //A higher mesh uptime becomes the reference clock, if the reference clock wanders <1s closer also update it
-  else if(newMeshTime != time() && (newMeshTime > time() || time() - newMeshTime < 1000ul))
+  else if(newMeshTime != syncedMillis() && (newMeshTime > syncedMillis() || syncedMillis() - newMeshTime < 1000ul))
   {
     //Set the mesh time
     _setMeshTime(newMeshTime, originatorId);
@@ -1939,7 +2024,7 @@ float ICACHE_FLASH_ATTR m2mMesh::supplyVoltage()
 }
 
 //Mesh time is just an offset of the node uptime to make it broadly the same as the longest up node
-uint32_t ICACHE_FLASH_ATTR m2mMesh::time()
+uint32_t ICACHE_FLASH_ATTR m2mMesh::syncedMillis()
 {
   return(millis() + _meshTimeOffset);
 }
@@ -2059,21 +2144,25 @@ void ICACHE_FLASH_ATTR m2mMesh::_calculateLtq(const uint8_t originatorId)
 
 bool ICACHE_FLASH_ATTR m2mMesh::_dataIsValid(const uint8_t originatorId, const uint8_t dataType)
 {
-  if(_originator[originatorId].lastSeen[dataType] == 0)
-  {
-    //We've had no packets at all
-    return(false);
-  }
-  else if((millis() - _originator[originatorId].lastSeen[dataType]) < 2 * _originator[originatorId].interval[dataType])
-  {
-	//There has been some traffic of this type recently enough to consider it valid
-    return(true);
-  }
-  else
-  {
-    //We've dropped two or more packets recently
-    return(false);
-  }
+	if(originatorId >= _numberOfOriginators)
+	{
+		return(false);
+	}
+	else if(_originator[originatorId].lastSeen[dataType] == 0)
+	{
+		//We've had no packets at all
+		return(false);
+	}
+	else if((millis() - _originator[originatorId].lastSeen[dataType]) < 2 * _originator[originatorId].interval[dataType])
+	{
+		//There has been some traffic of this type recently enough to consider it valid
+		return(true);
+	}
+	else
+	{
+		//We've dropped two or more packets recently
+		return(false);
+	}
 }
 
 //Return the local node name
@@ -2393,6 +2482,31 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const uint32_t dataToAdd)
 		return(false);
 	}
 }
+bool ICACHE_FLASH_ATTR m2mMesh::add(const uint64_t dataToAdd)
+{
+	_buildUserPacketHeader();
+	if(_userPacketIndex + sizeof(uint64_t) < USR_MAX_PACKET_SIZE)
+	{
+		_userPacket[_userPacketIndex++] = USR_DATA_UINT64_T;
+		unsignedLongLongToBytes temp;
+		temp.value = dataToAdd;
+		_userPacket[_userPacketIndex++] = temp.b[0];
+		_userPacket[_userPacketIndex++] = temp.b[1];
+		_userPacket[_userPacketIndex++] = temp.b[2];
+		_userPacket[_userPacketIndex++] = temp.b[3];
+		_userPacket[_userPacketIndex++] = temp.b[4];
+		_userPacket[_userPacketIndex++] = temp.b[5];
+		_userPacket[_userPacketIndex++] = temp.b[6];
+		_userPacket[_userPacketIndex++] = temp.b[7];
+		//Increment the field counter
+		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+}
 bool ICACHE_FLASH_ATTR m2mMesh::add(const int8_t dataToAdd)
 {
 	_buildUserPacketHeader();
@@ -2440,6 +2554,31 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const int32_t dataToAdd)
 		_userPacket[_userPacketIndex++] = temp.b[1];
 		_userPacket[_userPacketIndex++] = temp.b[2];
 		_userPacket[_userPacketIndex++] = temp.b[3];
+		//Increment the field counter
+		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+}
+bool ICACHE_FLASH_ATTR m2mMesh::add(const int64_t dataToAdd)
+{
+	_buildUserPacketHeader();
+	if(_userPacketIndex + sizeof(int64_t) < USR_MAX_PACKET_SIZE)
+	{
+		_userPacket[_userPacketIndex++] = USR_DATA_INT64_T;
+		longLongToBytes temp;
+		temp.value = dataToAdd;
+		_userPacket[_userPacketIndex++] = temp.b[0];
+		_userPacket[_userPacketIndex++] = temp.b[1];
+		_userPacket[_userPacketIndex++] = temp.b[2];
+		_userPacket[_userPacketIndex++] = temp.b[3];
+		_userPacket[_userPacketIndex++] = temp.b[4];
+		_userPacket[_userPacketIndex++] = temp.b[5];
+		_userPacket[_userPacketIndex++] = temp.b[6];
+		_userPacket[_userPacketIndex++] = temp.b[7];
 		//Increment the field counter
 		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
 		return(true);
@@ -3095,7 +3234,14 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfReachableOriginators()
 }
 uint32_t ICACHE_FLASH_ATTR m2mMesh::expectedUptime(uint8_t originatorId) //Returns the current uptime of a node, on the assumption it has continued to run uninterrupted since we last heard from it
 {
-  return(_originator[originatorId].uptime + (millis() - _originator[originatorId].lastSeen[NHS_PACKET_TYPE]));
+	if(_dataIsValid(originatorId,NHS_PACKET_TYPE))
+	{
+		return(_originator[originatorId].uptime + (millis() - _originator[originatorId].lastSeen[NHS_PACKET_TYPE]));
+	}
+	else
+	{
+		return(0);
+	}
 }
 bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet()
 {
@@ -3120,6 +3266,42 @@ bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet(const uint8_t id)
 	}
 }
 
+#if defined (m2mMeshIncludeRTCFeatures)
+void ICACHE_FLASH_ATTR m2mMesh::setNtpServer(const char *server)
+{
+	configTime(0, 0, server);
+	rtc = true;
+}
+void ICACHE_FLASH_ATTR m2mMesh::setTimeZone(const char *tz)
+{
+	//setenv("TZ","GMTGMT-1,M3.4.0/01,M10.4.0/02",1);
+	//tzset();
+	timezone = new char[strlen(tz) + 1];
+	strlcpy(timezone, tz, strlen(tz) + 1);
+	setenv("TZ",timezone,1);
+	tzset();
+}
+bool ICACHE_FLASH_ATTR m2mMesh::rtcConfigured()
+{
+	return(rtc);
+}
+bool ICACHE_FLASH_ATTR m2mMesh::rtcSynced()
+{
+	if(rtc)
+	{
+		#if defined(ESP32)
+		return(getLocalTime(&timeinfo));
+		#elif defined (ESP8266)
+		return(true);
+		#endif
+	}
+	else if(epochOffset > 0)
+	{
+		return(true);
+	}
+	return(false);
+}
+#endif
 
 /* Debug functions
  *

@@ -3,6 +3,7 @@
 //Comment out the following line to remove some unnecessary functions for interrogating the mesh in user applications
 #define m2mMeshIncludeDebugFeatures
 #define m2mMeshIncludeMeshInfoFeatures
+#define m2mMeshIncludeRTCFeatures
 #include <Arduino.h>
 
 //Different base libraries are needed for ESP8266/ESP8285 and ESP32
@@ -18,6 +19,9 @@
 	#define ESP_ERR_ESPNOW_IF 253
 	#define ESP_FAIL 255
 	#include <ESP8266WiFi.h>
+	#if defined (m2mMeshIncludeRTCFeatures)
+		#include <time.h>
+	#endif
 	extern "C" {
 	#include <espnow.h>
 	#include "user_interface.h"
@@ -25,6 +29,9 @@
 #elif defined(ESP32)
 	//Include the ESP32 WiFi and ESP-Now libraries
 	#include <WiFi.h>
+	#if defined (m2mMeshIncludeRTCFeatures)
+		#include <time.h>
+	#endif
 	extern "C" {
 	#include <esp_now.h>
 	}
@@ -79,10 +86,12 @@ const char m2mMeshNHSUptimedms[] PROGMEM = "\r\nm2mMesh NHS Uptime %dms";
 const char m2mMeshNHSCurrentFreeHeapdd[] PROGMEM = "\r\nm2mMesh NHS Current Free Heap %d/%d";
 const char m2mMeshNHSdroppedpacketsddRXddTX[] PROGMEM = "\r\nm2mMesh NHS dropped packets %d/%dRX %d/%dTX";
 const char m2mMeshNHSActiveneighboursddMAC02x02x02x02x02x02x[] PROGMEM = "\r\nm2mMesh NHS Active neighbours %d/%d MAC:%02x:%02x:%02x:%02x:%02x:%02x";
-const char differs[] PROGMEM = " - differs";
+const char m2mMeshdiffers[] PROGMEM = " - differs ";
 const char m2mMeshNHSCurrentTXpowerf[] PROGMEM = "\r\nm2mMesh NHS Current TX power %f";
 const char m2mMeshNHSSupplyvoltagefV[] PROGMEM = "\r\nm2mMesh NHS Supply voltage %fV";
 const char m2mMeshNHSMeshtimedms[] PROGMEM = "\r\nm2mMesh NHS Mesh time %dms";
+const char m2mMeshNHSRTCtimeds[] PROGMEM = "\r\nm2mMesh NHS RTC time %d \"%s\"";
+const char m2mMeshNHSRTCtimezonesset[] PROGMEM = "\r\nm2mMesh NHS RTC timezone \"%s\" set";
 const char m2mMeshNHSnodenamelendschangedfroms[] PROGMEM = "\r\nm2mMesh NHS node name len=%d '%s' changed from '%s'!";
 const char m2mMeshNHSnodenamelendsadded[] PROGMEM = "\r\nm2mMesh NHS node name len=%d '%s' added";
 const char m2mMeshNHSnodenamelendsunchanged[] PROGMEM = "\r\nm2mMesh NHS node name len=%d '%s' unchanged";
@@ -167,6 +176,12 @@ union unsignedLongToBytes
   uint32_t value;
 };
 
+union unsignedLongLongToBytes
+{
+  uint8_t b[8];
+  uint64_t value;
+};
+
 union intToBytes
 {
   uint8_t b[2];
@@ -177,6 +192,12 @@ union longToBytes
 {
   uint8_t b[4];
   int32_t value;
+};
+
+union longLongToBytes
+{
+  uint8_t b[8];
+  int64_t value;
 };
 
 union floatToBytes
@@ -256,11 +277,19 @@ class m2mMesh
 		char * getNodeName(uint8_t);						//Get a pointer to the node name for another node
 		uint8_t * getMeshAddress();							//Get a pointer to the mesh MAC address
 		
+		//RTC functions
+		#if defined (m2mMeshIncludeRTCFeatures)
+		void setNtpServer(const char *);					//Set an NTP server
+		void setTimeZone(const char *);						//Set a timezone for the NTP server (only needed on one node)
+		bool rtcConfigured();
+		bool rtcSynced();
+		#endif
+		
 		//Status functions
 		bool joined();										//Has this node joined the mesh
 		bool meshIsStable();								//Has the mesh membership changed recently
 		float supplyVoltage();								//Returns the supply voltage once the resistor ladder value is set
-		uint32_t time();									//Returns 'mesh time' which should be broadly synced across all the nodes, useful for syncing events
+		uint32_t syncedMillis();									//Returns 'mesh time' which should be broadly synced across all the nodes, useful for syncing events
 		uint8_t numberOfOriginators();						//Returns the total number of originators in the mesh
 		uint8_t numberOfReachableOriginators();				//Returns the number of originators reachable from this node
 		uint32_t expectedUptime(uint8_t);					//Uptime of a node, assuming it has continued running
@@ -274,10 +303,12 @@ class m2mMesh
 		uint8_t payloadLeft();				//Returns the number of bytes left in the packet, helps with checking before adding
 		bool add(uint8_t);					//Add some uint8_t data to a message
 		bool add(uint16_t);					//Add some uint16_t data to a message
-		bool add(uint32_t);					//Add some uint16_t data to a message
+		bool add(uint32_t);					//Add some uint32_t data to a message
+		bool add(uint64_t);					//Add some uint64_t data to a message
 		bool add(int8_t);					//Add some int8_t data to a message
 		bool add(int16_t);					//Add some int16_t data to a message
 		bool add(int32_t);					//Add some int32_t data to a message
+		bool add(int64_t);					//Add some int64_t data to a message
 		bool add(char);						//Add some char data to a message
 		bool add(float);					//Add some float data to a message
 		bool add(String);					//Add some String data to a message
@@ -434,13 +465,15 @@ class m2mMesh
 		const uint16_t PROTOCOL_ELP_FORWARD = 4;			//Node will forward forward ELP packets - it will forward ELP packets from neighbours, typically this is disabled
 		const uint16_t PROTOCOL_ELP_RECEIVE = 2;			//Node will process ELP packets - it listens for nearby neighbours
 		const uint16_t PROTOCOL_ELP_SEND = 1;				//Node will send ELP packets - it will announce itself to nearby neighbours
-
+		//These should be converted to be compatible with msgpack really
 		const uint8_t USR_DATA_UINT8_T = 0x01;				//Used to denote an uint8_t in user data
 		const uint8_t USR_DATA_UINT16_T = 0x2;				//Used to denote an uint16_t in user data
 		const uint8_t USR_DATA_UINT32_T = 0x03;				//Used to denote an uint32_t in user data
+		const uint8_t USR_DATA_UINT64_T = 0x0c;				//Used to denote an uint64_t in user data
 		const uint8_t USR_DATA_INT8_T = 0x04;				//Used to denote an int8_t in user data
 		const uint8_t USR_DATA_INT16_T = 0x5;				//Used to denote an int16_t in user data
 		const uint8_t USR_DATA_INT32_T = 0x06;				//Used to denote an int32_t in user data
+		const uint8_t USR_DATA_INT64_T = 0x0d;				//Used to denote an int64_t in user data
 		const uint8_t USR_DATA_FLOAT = 0x07;				//Used to denote a float in user data
 		const uint8_t USR_DATA_CHAR = 0x08;					//Used to denote a char in user data
 		const uint8_t USR_DATA_STRING = 0x09;				//Used to denote a String in user data
@@ -502,8 +535,6 @@ class m2mMesh
 		static const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
 		static const uint8_t NO_FLAGS = 0x00;						//No flags on packet
 		static const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
-		static const uint8_t PROCESSOR_ESP8266 = 0x20;				//
-		static const uint8_t PROCESSOR_ESP32 =   0x40;				//
 		static const uint32_t ANTI_COLLISION_JITTER = 250ul;		//Jitter in milliseconds to try and avoid in-air collisions
 		static const uint8_t MESH_ORIGINATOR_NOT_FOUND = 255;		//Signifies that a node is unset or unknown
 		static const uint8_t MESH_NO_MORE_ORIGINATORS_LEFT = 254;	//Signifies the mesh is 'full' and no more members can join
@@ -534,23 +565,36 @@ class m2mMesh
 		//NHS - Node Health/Status packet flags & values
 		static const uint8_t NHS_PACKET_TYPE = 0x02;          		//The first octet of every ESP-Now packet identifies what it is
 		static const uint8_t NHS_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwarded.
+		//static const uint8_t NHS_FLAGS_SOFTAP_ON = 0x4;       	 	//Flag set when acting as an AP
+		static const uint8_t NHS_FLAGS_NODE_NAME_SET = 0x4;			//Flag set when the NHS packet includes a friendly name
+		static const uint8_t NHS_FLAGS_INCLUDES_ORIGINATORS = 0x08;	//Flag set when the NHS packet includes peer information
+		static const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;			//Flag set when the NHS packet includes supply voltage
+		static const uint8_t PROCESSOR_ESP8266 = 0x20;				//
+		static const uint8_t PROCESSOR_ESP32 =   0x40;				//
+		static const uint32_t NHS_DEFAULT_INTERVAL = 300000ul; 		//How often to send NHS (default every 5m)
+
 		#if defined(ESP8266)
 		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES | PROCESSOR_ESP8266;	//Default NHS flags
 		#elif defined(ESP32)
 		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES | PROCESSOR_ESP32;	//Default NHS flags
 		#endif
 		static const uint8_t NHS_FLAGS_TIMESERVER = 0x1;        	//Flag set when acting as a time server
-		static const uint8_t NHS_FLAGS_SOFTAP_ON = 0x2;        	//Flag set when acting as an AP
-		static const uint8_t NHS_FLAGS_NODE_NAME_SET = 0x4;		//Flag set when the NHS packet includes a friendly name
-		static const uint8_t NHS_FLAGS_INCLUDES_ORIGINATORS = 0x08;//Flag set when the NHS packet includes peer information
-		static const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;		//Flag set when the NHS packet includes supply voltage
-		static const uint32_t NHS_DEFAULT_INTERVAL = 300000ul; 	//How often to send NHS (default every 5m)
+		#if defined (m2mMeshIncludeRTCFeatures)
+		static const uint8_t NHS_FLAGS_RTCSERVER = 0x2;	        	//Flag set when have a source of real time clock
+		#endif
+
 
 		bool _actingAsTimeServer = true;					//Everything starts out as a potential time server, but defers to longer running nodes
 		uint8_t _currentMeshTimeServer 						//The current time server
 			= MESH_ORIGINATOR_NOT_FOUND;
 		int32_t _meshTimeOffset = 0;						//NHS keeps a semi-synced clock to the device with the longest uptime. This is not uber-accurate and may fluctuate slightly!
 		int32_t _meshTimeDrift = 0;							//Track clock drift over time, just for info
+		#if defined (m2mMeshIncludeRTCFeatures)
+		bool rtc = false;									//Set if an RTC is configured
+		struct tm timeinfo;									//Time data structure for RTC
+		uint32_t epochOffset;								//Used to infer epoch time from mesh time
+		char* timezone = nullptr;							//Timezone string
+		#endif
 		uint32_t _initialFreeHeap = ESP.getFreeHeap();		//Used to get a percentage value for free heap
 		uint32_t _currentFreeHeap = _initialFreeHeap;		//Monitor free heap
 		uint32_t _rxPackets = 0;							//Monitor received packets
