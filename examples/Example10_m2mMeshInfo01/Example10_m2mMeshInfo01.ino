@@ -239,35 +239,6 @@ void changeChannel()
   WiFi.disconnect();
 }
 
-void ICACHE_FLASH_ATTR addStringLog(String logEntry)
-{
-  if(not loggingPaused)
-  {
-    //Change the 'scroll region' to lines 14-23 of the screen
-    //Serial.printf ("\033[14,23r");
-    if(currentUiView == UI_STATUS)
-    {
-      char uptime[] = "00h00m00s";
-      friendlyUptime(millis(),uptime);
-    moveToXy(80,23);
-    Serial.println();
-      Serial.print(uptime);
-      Serial.print(':');
-      Serial.print(logEntry);
-    }
-    else if(currentUiView == UI_LOGS)
-    {
-      char uptime[] = "00h00m00s";
-      friendlyUptime(millis(),uptime);
-    moveToXy(80,23);
-    Serial.println();
-      Serial.print(uptime);
-      Serial.print(':');
-      Serial.print(logEntry);
-    }
-  }
-}
-
 #if defined (ESP32)
 uint32_t getChipId()
 {

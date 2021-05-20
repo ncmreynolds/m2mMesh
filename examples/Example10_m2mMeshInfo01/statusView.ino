@@ -90,7 +90,7 @@ void statusView()
     printUptimeAtXy(22,1,millis());
   }
   //Mesh time
-  printUptimeAtXy(38,1,mesh.time());
+  printUptimeAtXy(38,1,mesh.syncedMillis());
   if(mesh.actingAsTimeServer())
   {
     Serial.print('*');

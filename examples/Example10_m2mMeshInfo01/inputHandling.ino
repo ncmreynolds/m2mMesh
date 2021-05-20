@@ -277,6 +277,7 @@ void inputHandling()
     }
     channelLastChanged = millis();
     currentChannelChanged = true;
+    addStringLog("Channel: " + String(currentChannel));
     drawUi();
   }
   break;

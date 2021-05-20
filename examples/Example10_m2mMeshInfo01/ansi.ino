@@ -133,3 +133,22 @@ void ICACHE_FLASH_ATTR packetType(char *desc, uint8_t type)
     break;
   }
 }
+
+void ICACHE_FLASH_ATTR addStringLog(String logEntry)
+{
+  if(not loggingPaused)
+  {
+    if(currentUiView == UI_STATUS)
+    {
+      moveToXy(80,23);
+      Serial.println();
+      Serial.print(logEntry);
+    }
+    else if(currentUiView == UI_LOGS)
+    {
+      moveToXy(80,23);
+      Serial.println();
+      Serial.print(logEntry);
+    }
+  }
+}
