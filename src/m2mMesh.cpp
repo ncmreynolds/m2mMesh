@@ -1307,9 +1307,9 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(m2mMeshPacketBuffer &packet)
 	}
 	#if defined (m2mMeshIncludeRTCFeatures)
 	#if defined(ESP32)
-	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && getLocalTime(&timeinfo) == true)		//Add the RTC info, if valid
+	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && _meshTimeNegotiated==true && getLocalTime(&timeinfo) == true)		//Add the RTC info, if valid
 	#elif defined (ESP8266)
-	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && time(nullptr) > 3600)				//Add the RTC info, if valid
+	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && _meshTimeNegotiated==true && time(nullptr) > 3600)				//Add the RTC info, if valid
 	#endif
 	{
 		packet.data[3] = packet.data[3] | NHS_FLAGS_RTCSERVER;
@@ -1918,6 +1918,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_updateMeshTime(const uint32_t newMeshTime, cons
     //Become the time server
     _becomeTimeServer();
   }
+  _meshTimeNegotiated = true;
 }
 
 void ICACHE_FLASH_ATTR m2mMesh::_setMeshTime(const uint32_t newMeshTime, const uint8_t originatorId)

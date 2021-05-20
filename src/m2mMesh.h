@@ -589,6 +589,7 @@ class m2mMesh
 			= MESH_ORIGINATOR_NOT_FOUND;
 		int32_t _meshTimeOffset = 0;						//NHS keeps a semi-synced clock to the device with the longest uptime. This is not uber-accurate and may fluctuate slightly!
 		int32_t _meshTimeDrift = 0;							//Track clock drift over time, just for info
+		bool _meshTimeNegotiated = false;					//This is false until this node has participated in a time server election
 		#if defined (m2mMeshIncludeRTCFeatures)
 		bool rtc = false;									//Set if an RTC is configured
 		struct tm timeinfo;									//Time data structure for RTC
