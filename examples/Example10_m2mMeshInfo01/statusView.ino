@@ -174,6 +174,14 @@ void statusView()
         if(mesh.elpIsValid(originatorId) || mesh.ogmIsValid(originatorId))
         {
           char flags[4] = {'-','-','-','-'};
+          if(mesh.actingAsRTCServer(originatorId))
+          {
+            flags[0] = 'R';
+          }
+          else
+          {
+            flags[0] = '-';
+          }
           if(mesh.actingAsTimeServer(originatorId))
           {
             flags[1] = 'T';
@@ -239,6 +247,14 @@ void statusView()
         //if(originator[originatorId].flagsChanged)
         {
           char flags[4] = {'-','-','-','-'};
+          if(mesh.actingAsRTCServer(originatorId))
+          {
+            flags[0] = 'R';
+          }
+          else
+          {
+            flags[0] = '-';
+          }
           if(mesh.actingAsTimeServer(originatorId))
           {
             flags[1] = 'T';

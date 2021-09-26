@@ -4,7 +4,7 @@
  * It was primarily written to help troubleshoot problems during development of the m2mMesh library
  * but can be useful for looking behind the scenes when developing your own applications with it
  * 
- * By default the device runnign this also participates in the mesh routing but that can be switched off
+ * By default the device running this also participates in the mesh routing but that can be switched off
  * 
  */
 
@@ -106,10 +106,10 @@ void ICACHE_FLASH_ATTR setup(){
   drawUi();
   Serial.write(17); //Send an XON to unlock an XOFFed terminal
   //mesh.enableDebugging(Serial);
-  mesh.enableDebugging(Serial,mesh.MESH_UI_LOG_INFORMATION | mesh.MESH_UI_LOG_WARNINGS | mesh.MESH_UI_LOG_ERRORS | mesh.MESH_UI_LOG_PEER_MANAGEMENT | 
-    mesh.MESH_UI_LOG_ELP_RECEIVED | mesh.MESH_UI_LOG_OGM_RECEIVED | mesh.MESH_UI_LOG_NHS_RECEIVED |  mesh.MESH_UI_LOG_USR_RECEIVED);
+  //mesh.enableDebugging(Serial,mesh.MESH_UI_LOG_INFORMATION | mesh.MESH_UI_LOG_WARNINGS | mesh.MESH_UI_LOG_ERRORS | mesh.MESH_UI_LOG_PEER_MANAGEMENT | 
+  //  mesh.MESH_UI_LOG_ELP_RECEIVED | mesh.MESH_UI_LOG_OGM_RECEIVED | mesh.MESH_UI_LOG_NHS_RECEIVED |  mesh.MESH_UI_LOG_USR_RECEIVED);
   //mesh.enableDebugging(Serial,mesh.MESH_UI_LOG_INFORMATION | mesh.MESH_UI_LOG_WARNINGS | mesh.MESH_UI_LOG_ERRORS | mesh.MESH_UI_LOG_PEER_MANAGEMENT | mesh.MESH_UI_LOG_OGM_RECEIVED | mesh.MESH_UI_LOG_NHS_RECEIVED |  mesh.MESH_UI_LOG_USR_RECEIVED | mesh.MESH_UI_LOG_OGM_SEND | mesh.MESH_UI_LOG_NHS_SEND | mesh.MESH_UI_LOG_OGM_FORWARDING );
-  //mesh.enableDebugging(Serial,mesh.MESH_UI_LOG_INFORMATION | mesh.MESH_UI_LOG_WARNINGS | mesh.MESH_UI_LOG_ERRORS | mesh.MESH_UI_LOG_PEER_MANAGEMENT | mesh.MESH_UI_LOG_ELP_RECEIVED | mesh.MESH_UI_LOG_OGM_RECEIVED | mesh.MESH_UI_LOG_NHS_RECEIVED | mesh.MESH_UI_LOG_ELP_SEND | mesh.MESH_UI_LOG_OGM_SEND | mesh.MESH_UI_LOG_NHS_SEND | mesh.MESH_UI_LOG_OGM_FORWARDING | mesh.MESH_UI_LOG_NHS_FORWARDING);
+  mesh.enableDebugging(Serial,mesh.MESH_UI_LOG_INFORMATION | mesh.MESH_UI_LOG_WARNINGS | mesh.MESH_UI_LOG_ERRORS | mesh.MESH_UI_LOG_PEER_MANAGEMENT | mesh.MESH_UI_LOG_NHS_RECEIVED );
   loggingLevel = mesh.loggingLevel();  
   //mesh.begin(16,11);  //Begin the ESP-Now mesh with default arguments  
   mesh.begin();  //Begin the ESP-Now mesh with default arguments  
