@@ -45,6 +45,13 @@
 #define M2MMESHAPPLICATIONBUFFERSIZE 6
 #endif
 
+#if defined(ESP8266) || defined(ESP32)
+#include <functional>
+#define M2MMESH_CALLBACK std::function<void(meshEvent)> eventCallback
+#endif
+
+enum class meshEvent : uint8_t {joined, left, stable, changing, synced, message};
+
 //Error messages if debug enabled
 #ifdef m2mMeshIncludeDebugFeatures
 const char errorReadBeyondEndOfPacket[] PROGMEM = "\r\nm2mMesh tried to read beyond end of packet";
@@ -102,9 +109,11 @@ const char m2mMeshUSRpacketcontainsdfields[] PROGMEM =		"\r\nm2mMesh USR packet 
 const char m2mMeshUSRdatafieldduint8_td[] PROGMEM =			"\r\nm2mMesh USR data field %d uint8_t %u";
 const char m2mMeshUSRdatafieldduint16_td[] PROGMEM =		"\r\nm2mMesh USR data field %d uint16_t %u";
 const char m2mMeshUSRdatafieldduint32_td[] PROGMEM =		"\r\nm2mMesh USR data field %d uint32_t %u";
+const char m2mMeshUSRdatafieldduint64_td[] PROGMEM =		"\r\nm2mMesh USR data field %d uint64_t %u";
 const char m2mMeshUSRdatafielddint8_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int8_t %d";
 const char m2mMeshUSRdatafielddint16_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int16_t %d";
 const char m2mMeshUSRdatafielddint32_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int32_t %d";
+const char m2mMeshUSRdatafielddint64_td[] PROGMEM =			"\r\nm2mMesh USR data field %d int64_t %d";
 const char m2mMeshUSRdatafielddfloatf[] PROGMEM =			"\r\nm2mMesh USR data field %d float %f";
 const char m2mMeshUSRdatafielddcharc[] PROGMEM =			"\r\nm2mMesh USR data field %d char '%c'";
 const char m2mMeshUSRdatafielddStringlends[] PROGMEM =		" \r\nm2mMesh USR data field %d String len=%d '%s'";
@@ -148,15 +157,18 @@ const char m2mMeshaddingbroadcastMACaddressasapeertoenablemeshdiscovery[] PROGME
 const char m2mMeshReceivedfrom[] PROGMEM = "m2mMesh Received from ";
 const char m2mMeshRTR[] PROGMEM = "\r\nm2mMesh RTR ";
 const char m2mMeshSoftAPison[] PROGMEM = " SoftAP is on";
+const char m2mMeshlesspreferred[] PROGMEM = " less preferred";
 const char m2mMeshNHSUnabletostorenodenamenotenoughmemory[] PROGMEM = "\r\nm2mMesh NHS Unable to store node name, not enough memory";
 const char m2mMeshnew[] PROGMEM = " - new";
 const char m2mMeshthisnode[] PROGMEM = " - this node";
 const char m2mMeshPreviousUSRmessagenotreadpacketdropped[] PROGMEM = "\r\nm2mMesh Previous USR message not read, packet dropped";
 const char m2mMeshTimeserverhasgoneofflinetakingovertimeserverrole[] PROGMEM = "Time server has gone offline, taking over time server role";
-const char m2mMeshfillRCVbufferslotd[] PROGMEM = 	"\r\nm2mMesh fill RCV buffer slot %d";
-const char m2mMeshreadRCVbufferslotd[] PROGMEM =	"\r\nm2mMesh read RCV buffer slot %d";
-const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nm2mMesh fill APP buffer slot %d";
-const char m2mMeshreadAPPbufferslotd[] PROGMEM =	"\r\nm2mMesh read APP buffer slot %d";
+const char m2mMeshfillRCVbufferslotd[] PROGMEM = 	"\r\nm2mMesh fill RCV buffer slot %d %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshreadRCVbufferslotd[] PROGMEM =	"\r\nm2mMesh read RCV buffer slot %d %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshreadRCVbufferfull[] PROGMEM =	"\r\nm2mMesh read RCV buffer full";
+const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nm2mMesh fill APP buffer slot %d %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshreadAPPbufferslotd[] PROGMEM =	"\r\nm2mMesh read APP buffer slot %d %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshreadAPPbufferfull[] PROGMEM =	"\r\nm2mMesh read APP buffer full";
 //const char m2mMeshPacketsentto02x02x02x02x02x02x[] PROGMEM = "Packet sent to %02x:%02x:%02x:%02x:%02x:%02x";
 //const char m2mMeshNHSincluded02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nm2mMesh NHS included %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
 //const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nm2mMesh NHS included %d originators";
@@ -270,12 +282,14 @@ class m2mMesh
 
 		//Configuration functions
 		bool nodeNameIsSet();								//Returns true if the node name is set, false otherwise
+		bool nodeNameIsSet(uint8_t);						//Returns true if the node name is set for a specific node, false otherwise
 		bool setNodeName(const char *);						//Set the node name
 		bool setNodeName(char *);							//Set the node name
 		bool setNodeName(String);							//Set the node name
 		char * getNodeName();								//Get a pointer to the node name
 		char * getNodeName(uint8_t);						//Get a pointer to the node name for another node
 		uint8_t * getMeshAddress();							//Get a pointer to the mesh MAC address
+		uint8_t * getMeshAddress(uint8_t);					//Get a pointer to the mesh MAC address	 for a specific node
 		
 		//RTC functions
 		#if defined (m2mMeshIncludeRTCFeatures)
@@ -283,17 +297,22 @@ class m2mMesh
 		void setTimeZone(const char *);						//Set a timezone for the NTP server (only needed on one node)
 		bool rtcConfigured();
 		bool rtcSynced();
+		bool actingAsRTCServer();							//Is THIS node acting as an RTC server
+		bool actingAsRTCServer(const uint8_t);				//Is a particular node acting as an RTC server
+		uint8_t rtcServer();								//ID of RTC server
 		#endif
 		
 		//Status functions
 		bool joined();										//Has this node joined the mesh
 		bool meshIsStable();								//Has the mesh membership changed recently
 		float supplyVoltage();								//Returns the supply voltage once the resistor ladder value is set
-		uint32_t syncedMillis();									//Returns 'mesh time' which should be broadly synced across all the nodes, useful for syncing events
+		bool synced();										//Returns true if 'mesh time' is synced
+		bool amSyncServer();								//Returns true if this node is the 'mesh time' server
+		uint8_t syncServer();								//Returns ID of the 'mesh time' server
+		uint32_t syncedMillis();							//Returns 'mesh time' which should be broadly synced across all the nodes, useful for syncing events
 		uint8_t numberOfOriginators();						//Returns the total number of originators in the mesh
 		uint8_t numberOfReachableOriginators();				//Returns the number of originators reachable from this node
 		uint32_t expectedUptime(uint8_t);					//Uptime of a node, assuming it has continued running
-		bool nodeNameIsSet(uint8_t);						//Is a node's name set
 
 		//Sending data
 		//bool destination(uint8_t);			//Add a destination ID to a message. Without a destination it is flooded to the whole mesh.
@@ -314,10 +333,11 @@ class m2mMesh
 		bool add(String);					//Add some String data to a message
 		bool add(char *);					//Add some char array data to a message
 		bool add(uint8_t *, uint8_t);		//Add an array of uint8_t, mostly used to send chunks of binary data
-		bool send();						//Send the message now
-		void clear();						//Clear the message without sending
+		bool send(bool wait = true);		//Send the message now, optional 'wait' parameter defaults to true
+		bool clear();						//Clear the message without sending
 
 		//Receiving data
+		m2mMesh& setCallback(M2MMESH_CALLBACK);	//Set a callback for mesh events
 		bool messageWaiting();				//Is there a message waiting
 		uint8_t messageSize();				//Size of the message, perhaps not useful
 		void markMessageRead();				//Marks the message as read, discarding any data left
@@ -326,21 +346,25 @@ class m2mMesh
 		bool dataAvailable();				//Is there data to read
 		uint8_t nextDataType();				//Which type the next piece of data is
 		
-		bool retrieve(uint8_t&);
-		bool retrieve(uint32_t&);
+		bool retrieve(uint8_t&);				//Retrieve uint8_t data from a message
+		bool retrieve(uint32_t&);				//Retrieve uint32_t data from a message
+		bool retrieve(uint64_t&);				//Retrieve uint64_t data from a message
 
-		uint8_t retrieveUint8_t();
-		uint16_t retrieveUint16_t();
-		uint32_t retrieveUint32_t();
-		int8_t retrieveInt8_t();
-		int16_t retrieveInt16_t();
-		int32_t retrieveInt32_t();
-		float retrieveFloat();
-		char retrieveChar();
-		String retrieveString();
-		uint8_t retrieveDataLength();
-		void retrieveCharArray(char *);
-		void retrieveUint8_tArray(uint8_t *);
+		uint8_t retrieveUint8_t();				//Retrieve uint8_t data from a message
+		uint16_t retrieveUint16_t();			//Retrieve uint16_t data from a message
+		uint32_t retrieveUint32_t();			//Retrieve uint32_t data from a message
+		uint64_t retrieveUint64_t();			//Retrieve uint64_t data from a message
+		int8_t retrieveInt8_t();				//Retrieve int8_t data from a message
+		int16_t retrieveInt16_t();				//Retrieve int16_t data from a message
+		int32_t retrieveInt32_t();				//Retrieve int32_t data from a message
+		int64_t retrieveInt64_t();				//Retrieve int64_t data from a message
+		float retrieveFloat();					//Retrieve float data from a message
+		char retrieveChar();					//Retrieve char data from a message
+		String retrieveString();				//Retrieve String data from a message
+		uint8_t retrieveDataLength();			//Retrieve length of an array from a message
+		void retrieveCharArray(char *);			//Retrieve char array from a message
+		void retrieveUint8_tArray(uint8_t *);	//Retrieve int8_t array from a message
+		void skipRetrieve();					//Skip retrieving this field
 
 
 		//Built in peripheral support
@@ -425,61 +449,61 @@ class m2mMesh
 		void setLoggingLevel(uint32_t );					//Sets current log level
 		void nodeToLog(uint8_t);							//Sets the node to log
 		void logAllNodes();									//Sets the node to log
-		const uint32_t MESH_UI_LOG_ALL_SENT_PACKETS = 1048576ul;
-		const uint32_t MESH_UI_LOG_ALL_RECEIVED_PACKETS = 524288ul;
-		const uint32_t MESH_UI_LOG_WIFI_POWER_MANAGEMENT = 262144ul;
-		const uint32_t MESH_UI_LOG_BUFFER_MANAGEMENT = 131072ul;
-		const uint32_t MESH_UI_LOG_SCANNING = 65536ul;
-		const uint32_t MESH_UI_LOG_PEER_MANAGEMENT = 32768ul;
-		const uint32_t MESH_UI_LOG_USR_SEND = 16384ul;
-		const uint32_t MESH_UI_LOG_USR_RECEIVED = 8192ul;
-		const uint32_t MESH_UI_LOG_USR_FORWARDING = 4096ul;
-		const uint32_t MESH_UI_LOG_NHS_SEND = 2048ul;
-		const uint32_t MESH_UI_LOG_NHS_RECEIVED = 1024ul;
-		const uint32_t MESH_UI_LOG_NHS_FORWARDING = 512ul;
-		const uint32_t MESH_UI_LOG_OGM_SEND = 256ul;
-		const uint32_t MESH_UI_LOG_OGM_RECEIVED = 128ul;
-		const uint32_t MESH_UI_LOG_OGM_FORWARDING = 64ul;
-		const uint32_t MESH_UI_LOG_ELP_SEND = 32ul;
-		const uint32_t MESH_UI_LOG_ELP_RECEIVED = 16ul;
-		const uint32_t MESH_UI_LOG_ELP_FORWARDING = 8ul;
-		const uint32_t MESH_UI_LOG_INFORMATION = 4ul;
-		const uint32_t MESH_UI_LOG_WARNINGS = 2ul;
-		const uint32_t MESH_UI_LOG_ERRORS = 1ul;
+		static const uint32_t MESH_UI_LOG_ALL_SENT_PACKETS = 1048576ul;
+		static const uint32_t MESH_UI_LOG_ALL_RECEIVED_PACKETS = 524288ul;
+		static const uint32_t MESH_UI_LOG_WIFI_POWER_MANAGEMENT = 262144ul;
+		static const uint32_t MESH_UI_LOG_BUFFER_MANAGEMENT = 131072ul;
+		static const uint32_t MESH_UI_LOG_SCANNING = 65536ul;
+		static const uint32_t MESH_UI_LOG_PEER_MANAGEMENT = 32768ul;
+		static const uint32_t MESH_UI_LOG_USR_SEND = 16384ul;
+		static const uint32_t MESH_UI_LOG_USR_RECEIVED = 8192ul;
+		static const uint32_t MESH_UI_LOG_USR_FORWARDING = 4096ul;
+		static const uint32_t MESH_UI_LOG_NHS_SEND = 2048ul;
+		static const uint32_t MESH_UI_LOG_NHS_RECEIVED = 1024ul;
+		static const uint32_t MESH_UI_LOG_NHS_FORWARDING = 512ul;
+		static const uint32_t MESH_UI_LOG_OGM_SEND = 256ul;
+		static const uint32_t MESH_UI_LOG_OGM_RECEIVED = 128ul;
+		static const uint32_t MESH_UI_LOG_OGM_FORWARDING = 64ul;
+		static const uint32_t MESH_UI_LOG_ELP_SEND = 32ul;
+		static const uint32_t MESH_UI_LOG_ELP_RECEIVED = 16ul;
+		static const uint32_t MESH_UI_LOG_ELP_FORWARDING = 8ul;
+		static const uint32_t MESH_UI_LOG_INFORMATION = 4ul;
+		static const uint32_t MESH_UI_LOG_WARNINGS = 2ul;
+		static const uint32_t MESH_UI_LOG_ERRORS = 1ul;
 		#endif
 
-		const uint16_t PROTOCOL_USR_FORWARD = 32768;		//Node will forward user data - node will forward user application, essential for a relay but perhaps undesirable on end nodes
-		const uint16_t PROTOCOL_USR_RECEIVE = 16384;		//Node will process user data - node will process user application data, not necessary on some devices
-		const uint16_t PROTOCOL_USR_SEND = 8192;			//Node will send user data - node sends user application data, not necessary on some devices
-		const uint16_t PROTOCOL_NHS_SUPPLY_VOLTAGE = 4096;	//Node will share its power information - useful to check the battery on devices, not essential
-		const uint16_t PROTOCOL_NHS_TIME_SERVER = 2048;		//Node will share its time information	- this maintains a central timestamp across the nodes to help synchronise events
-		const uint16_t PROTOCOL_NHS_INCLUDE_ORIGINATORS		//Node will share originator information - it will forward a list of ALL nodes, speeding global mesh discovery
+		static const uint16_t PROTOCOL_USR_FORWARD = 32768;		//Node will forward user data - node will forward user application, essential for a relay but perhaps undesirable on end nodes
+		static const uint16_t PROTOCOL_USR_RECEIVE = 16384;		//Node will process user data - node will process user application data, not necessary on some devices
+		static const uint16_t PROTOCOL_USR_SEND = 8192;			//Node will send user data - node sends user application data, not necessary on some devices
+		static const uint16_t PROTOCOL_NHS_SUPPLY_VOLTAGE = 4096;	//Node will share its power information - useful to check the battery on devices, not essential
+		static const uint16_t PROTOCOL_NHS_TIME_SERVER = 2048;		//Node will share its time information	- this maintains a central timestamp across the nodes to help synchronise events
+		static const uint16_t PROTOCOL_NHS_INCLUDE_ORIGINATORS		//Node will share originator information - it will forward a list of ALL nodes, speeding global mesh discovery
 			= 1024;
-		const uint16_t PROTOCOL_NHS_FORWARD = 512;			//Node will forward NHS data - it will forward information about other nodes, useful for remote troubleshooting
-		const uint16_t PROTOCOL_NHS_RECEIVE = 256;			//Node will process NHS data - it will process information about the health of other nodes, not typically essential
-		const uint16_t PROTOCOL_NHS_SEND = 128;				//Node will send NHS data - it will shares 'health' information about itself
-		const uint16_t PROTOCOL_OGM_FORWARD = 64;			//Node will forward OGM data - it will forward information about how to reach non-local nodes, essential for a functioning mesh
-		const uint16_t PROTOCOL_OGM_RECEIVE = 32;			//Node will process OGM data - it will read information about how to reach non-local nodes
-		const uint16_t PROTOCOL_OGM_SEND = 16;				//Node will send OGM data - it will share routing information about itself with non-local nodes
-		const uint16_t PROTOCOL_ELP_INCLUDE_PEERS = 8;		//Node will share neighbour information - it will share information about its nearby neighbours, speeding local mesh discovery
-		const uint16_t PROTOCOL_ELP_FORWARD = 4;			//Node will forward forward ELP packets - it will forward ELP packets from neighbours, typically this is disabled
-		const uint16_t PROTOCOL_ELP_RECEIVE = 2;			//Node will process ELP packets - it listens for nearby neighbours
-		const uint16_t PROTOCOL_ELP_SEND = 1;				//Node will send ELP packets - it will announce itself to nearby neighbours
+		static const uint16_t PROTOCOL_NHS_FORWARD = 512;			//Node will forward NHS data - it will forward information about other nodes, useful for remote troubleshooting
+		static const uint16_t PROTOCOL_NHS_RECEIVE = 256;			//Node will process NHS data - it will process information about the health of other nodes, not typically essential
+		static const uint16_t PROTOCOL_NHS_SEND = 128;				//Node will send NHS data - it will shares 'health' information about itself
+		static const uint16_t PROTOCOL_OGM_FORWARD = 64;			//Node will forward OGM data - it will forward information about how to reach non-local nodes, essential for a functioning mesh
+		static const uint16_t PROTOCOL_OGM_RECEIVE = 32;			//Node will process OGM data - it will read information about how to reach non-local nodes
+		static const uint16_t PROTOCOL_OGM_SEND = 16;				//Node will send OGM data - it will share routing information about itself with non-local nodes
+		static const uint16_t PROTOCOL_ELP_INCLUDE_PEERS = 8;		//Node will share neighbour information - it will share information about its nearby neighbours, speeding local mesh discovery
+		static const uint16_t PROTOCOL_ELP_FORWARD = 4;			//Node will forward forward ELP packets - it will forward ELP packets from neighbours, typically this is disabled
+		static const uint16_t PROTOCOL_ELP_RECEIVE = 2;			//Node will process ELP packets - it listens for nearby neighbours
+		static const uint16_t PROTOCOL_ELP_SEND = 1;				//Node will send ELP packets - it will announce itself to nearby neighbours
 		//These should be converted to be compatible with msgpack really
-		const uint8_t USR_DATA_UINT8_T = 0x01;				//Used to denote an uint8_t in user data
-		const uint8_t USR_DATA_UINT16_T = 0x2;				//Used to denote an uint16_t in user data
-		const uint8_t USR_DATA_UINT32_T = 0x03;				//Used to denote an uint32_t in user data
-		const uint8_t USR_DATA_UINT64_T = 0x0c;				//Used to denote an uint64_t in user data
-		const uint8_t USR_DATA_INT8_T = 0x04;				//Used to denote an int8_t in user data
-		const uint8_t USR_DATA_INT16_T = 0x5;				//Used to denote an int16_t in user data
-		const uint8_t USR_DATA_INT32_T = 0x06;				//Used to denote an int32_t in user data
-		const uint8_t USR_DATA_INT64_T = 0x0d;				//Used to denote an int64_t in user data
-		const uint8_t USR_DATA_FLOAT = 0x07;				//Used to denote a float in user data
-		const uint8_t USR_DATA_CHAR = 0x08;					//Used to denote a char in user data
-		const uint8_t USR_DATA_STRING = 0x09;				//Used to denote a String in user data
-		const uint8_t USR_DATA_CHAR_ARRAY = 0x0a;			//Used to denote a character array in user data
-		const uint8_t USR_DATA_UINT8_T_ARRAY = 0x0b;		//Used to denote a character array in user data
-		const uint8_t USR_DATA_UNAVAILABLE = 0xff;			//Used to denote an uint8_t in user data
+		static const uint8_t USR_DATA_UINT8_T = 0x01;				//Used to denote an uint8_t in user data
+		static const uint8_t USR_DATA_UINT16_T = 0x2;				//Used to denote an uint16_t in user data
+		static const uint8_t USR_DATA_UINT32_T = 0x03;				//Used to denote an uint32_t in user data
+		static const uint8_t USR_DATA_UINT64_T = 0x0c;				//Used to denote an uint64_t in user data
+		static const uint8_t USR_DATA_INT8_T = 0x04;				//Used to denote an int8_t in user data
+		static const uint8_t USR_DATA_INT16_T = 0x5;				//Used to denote an int16_t in user data
+		static const uint8_t USR_DATA_INT32_T = 0x06;				//Used to denote an int32_t in user data
+		static const uint8_t USR_DATA_INT64_T = 0x0d;				//Used to denote an int64_t in user data
+		static const uint8_t USR_DATA_FLOAT = 0x07;				//Used to denote a float in user data
+		static const uint8_t USR_DATA_CHAR = 0x08;					//Used to denote a char in user data
+		static const uint8_t USR_DATA_STRING = 0x09;				//Used to denote a String in user data
+		static const uint8_t USR_DATA_CHAR_ARRAY = 0x0a;			//Used to denote a character array in user data
+		static const uint8_t USR_DATA_UINT8_T_ARRAY = 0x0b;		//Used to denote a character array in user data
+		static const uint8_t USR_DATA_UNAVAILABLE = 0xff;			//Used to denote an uint8_t in user data
 
 	private:
 		//High level variables
@@ -497,8 +521,14 @@ class m2mMesh
 		uint32_t _lastSent[5];								//Internal timers, per packet type
 		uint32_t _currentTtl[5];							//TTLs, per packet type
 		uint32_t _meshLastChanged = 0;
+		bool _meshIsStable = false;							//Is the mesh stable?
 		uint32_t _lastHousekeeping = 0;
 		const uint32_t _housekeepingInterval = 1000ul;
+		bool _waitingForSend = false;						//Are we waiting for a synchronous send?
+		bool _sendSuccess = false;							//Store the result of the sending callback
+		uint8_t _sendtimer = 0;								//Used in timing out synchronous sends
+		uint8_t _sendTimeout = 100;							//Send timeout in ~ms, actually number of loops it waits
+		M2MMESH_CALLBACK;									//Function pointer for the callback function
 
 		//Packet buffers
 		m2mMeshPacketBuffer _receiveBuffer[M2MMESHRECEIVEBUFFERSIZE];	//Receive buffer for mesh traffic
@@ -531,7 +561,7 @@ class m2mMesh
 
 		//Global packet flags & values
 		static const uint8_t ESP_NOW_MIN_PACKET_SIZE = 64;			//Minimum packet size
-		static const uint8_t ESP_NOW_MAX_PACKET_SIZE = 250;	//Maximum packet size
+		static const uint8_t ESP_NOW_MAX_PACKET_SIZE = 250;			//Maximum packet size
 		static const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
 		static const uint8_t NO_FLAGS = 0x00;						//No flags on packet
 		static const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
@@ -565,7 +595,6 @@ class m2mMesh
 		//NHS - Node Health/Status packet flags & values
 		static const uint8_t NHS_PACKET_TYPE = 0x02;          		//The first octet of every ESP-Now packet identifies what it is
 		static const uint8_t NHS_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwarded.
-		//static const uint8_t NHS_FLAGS_SOFTAP_ON = 0x4;       	 	//Flag set when acting as an AP
 		static const uint8_t NHS_FLAGS_NODE_NAME_SET = 0x4;			//Flag set when the NHS packet includes a friendly name
 		static const uint8_t NHS_FLAGS_INCLUDES_ORIGINATORS = 0x08;	//Flag set when the NHS packet includes peer information
 		static const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;			//Flag set when the NHS packet includes supply voltage
@@ -590,12 +619,17 @@ class m2mMesh
 		int32_t _meshTimeOffset = 0;						//NHS keeps a semi-synced clock to the device with the longest uptime. This is not uber-accurate and may fluctuate slightly!
 		int32_t _meshTimeDrift = 0;							//Track clock drift over time, just for info
 		bool _meshTimeNegotiated = false;					//This is false until this node has participated in a time server election
+
 		#if defined (m2mMeshIncludeRTCFeatures)
 		bool rtc = false;									//Set if an RTC is configured
+		bool _actingAsRTCServer = false;					//Even if configured with an RTC, there may be a higher priority time server
+		uint8_t _currentRTCServer	 						//The current RTC server
+			= MESH_ORIGINATOR_NOT_FOUND;
 		struct tm timeinfo;									//Time data structure for RTC
 		uint32_t epochOffset;								//Used to infer epoch time from mesh time
 		char* timezone = nullptr;							//Timezone string
 		#endif
+
 		uint32_t _initialFreeHeap = ESP.getFreeHeap();		//Used to get a percentage value for free heap
 		uint32_t _currentFreeHeap = _initialFreeHeap;		//Monitor free heap
 		uint32_t _rxPackets = 0;							//Monitor received packets
@@ -640,13 +674,15 @@ class m2mMesh
 		void _becomeTimeServer();
 		
 		//ESP-NOW related functions in many of these there are lots of preprocessor directives to handle API differences between ESP8266/8285 and ESP32 at compile time
-		void _initESPNow();									//Initialises ESP-NOW
+		void _initESPNow();											//Initialises ESP-NOW
+		bool _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
+		/*
 		#if defined(ESP8266)
-		uint8_t _sendPacket(m2mMeshPacketBuffer &);					//Sends ESP-NOW from a packet buffer
+		uint8_t _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
 		#elif defined(ESP32)
-		esp_err_t _sendPacket(m2mMeshPacketBuffer &);
+		esp_err_t _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
 		#endif
-
+		*/
 		//Originator management functions
 		uint8_t _originatorIdFromMac(uint8_t *);			//Finds the ID of an originator from the MAC address or MESH_ORIGINATOR_NOT_FOUND if it isn't found
 		uint8_t _originatorIdFromMac(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);

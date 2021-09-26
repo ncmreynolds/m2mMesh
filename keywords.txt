@@ -4,6 +4,7 @@ m2mMesh	KEYWORD1
 begin	KEYWORD2
 end	KEYWORD2
 housekeeping	KEYWORD2
+setCallback	KEYWORD2
 nodeNameIsSet	KEYWORD2
 setNodeName	KEYWORD2
 getNodeName	KEYWORD2
@@ -11,7 +12,14 @@ meshIsStable	KEYWORD2
 supplyVoltage	KEYWORD2
 
 //Time synchronisation
+synced	KEYWORD2
 syncedMillis	KEYWORD2
+syncServer	KEYWORD2
+
+//RTC synchronisation
+actingAsRTCServer	KEYWORD2
+rtcSynced	KEYWORD2
+rtcServer	KEYWORD2
 
 //Sending messages
 destination	KEYWORD2
@@ -23,15 +31,18 @@ nextDataType	KEYWORD2
 retrieveUint8_t	KEYWORD2
 retrieveUint16_t	KEYWORD2
 retrieveUint32_t	KEYWORD2
+retrieveUint64_t	KEYWORD2
 retrieveInt8_t	KEYWORD2
 retrieveInt16_t	KEYWORD2
 retrieveInt32_t	KEYWORD2
+retrieveUnt64_t	KEYWORD2
 retrieveFloat	KEYWORD2
 retrieveChar	KEYWORD2
 retrieveString	KEYWORD2
 retrieveDataLength	KEYWORD2
 retrieveCharArray	KEYWORD2
 retrieveUint8_tArray	KEYWORD2
+skipRetrieve	KEYWORD2
 
 maxNumberOfOriginators	KEYWORD2
 numberOfOriginators	KEYWORD2
@@ -52,7 +63,6 @@ nhsInterval	KEYWORD2
 elpLastSeen	KEYWORD2
 ogmLastSeen	KEYWORD2
 nhsLastSeen	KEYWORD2
-actingAsTimeServer	KEYWORD2
 actingAsTimeServer	KEYWORD2
 initialFreeHeap	KEYWORD2
 currentFreeHeap	KEYWORD2
@@ -84,9 +94,11 @@ droppedTxPackets	KEYWORD2
 USR_DATA_UINT8_T	KEYWORD3
 USR_DATA_UINT16_T	KEYWORD3
 USR_DATA_UINT32_T	KEYWORD3
+USR_DATA_UINT64_T	KEYWORD3
 USR_DATA_INT8_T	KEYWORD3
 USR_DATA_INT16_T	KEYWORD3
 USR_DATA_INT32_T	KEYWORD3
+USR_DATA_INT64_T	KEYWORD3
 USR_DATA_FLOAT	KEYWORD3
 USR_DATA_CHAR	KEYWORD3
 USR_DATA_STRING	KEYWORD3
