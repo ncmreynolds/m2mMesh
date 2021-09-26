@@ -14,8 +14,6 @@
 ADC_MODE(ADC_VCC);
 #endif
 
-m2mMesh mesh;
-
 const uint8_t UI_STATUS = 0;
 const uint8_t UI_ORIGINATORS = 1;
 const uint8_t UI_PROTOCOLS = 2;
