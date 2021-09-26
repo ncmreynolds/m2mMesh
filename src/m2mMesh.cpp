@@ -76,6 +76,17 @@ void ICACHE_FLASH_ATTR m2mMesh::begin(const uint8_t i)
 		_debugStream->print(F("m2mMesh running on ESP32"));
 	}
 	#endif
+	//Show the IDF version, if possible
+	#ifdef ESP_IDF_VERSION_MAJOR
+	_debugStream->print(F("\n\nIDF version:"));			
+	#ifdef ESP_IDF_VERSION_MINOR
+		_debugStream->print(ESP_IDF_VERSION_MAJOR);
+		_debugStream->print('.');
+		_debugStream->println(ESP_IDF_VERSION_MINOR);
+	#else
+		_debugStream->println(ESP_IDF_VERSION_MAJOR);
+	#endif
+	#endif
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
 		if(_maxNumberOfOriginators > 0)
@@ -4264,4 +4275,5 @@ uint32_t ICACHE_FLASH_ATTR m2mMesh::droppedTxPackets(const uint8_t id)
 	return(_originator[id].droppedTxPackets);
 }
 #endif
+m2mMesh mesh;															//Create an instance of the class, as only one is practically usable at a time
 #endif

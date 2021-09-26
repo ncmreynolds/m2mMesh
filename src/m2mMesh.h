@@ -764,6 +764,5 @@ class m2mMesh
 		
 };
 
-//m2mMesh mesh;						//Create the sole possible instance of the m2mMesh class straight away for the user to access
-
+extern m2mMesh mesh;										//Create an instance of the class, as only one is practically usable at a time
 #endif
