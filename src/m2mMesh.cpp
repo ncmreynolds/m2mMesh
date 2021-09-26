@@ -66,19 +66,17 @@ void ICACHE_FLASH_ATTR m2mMesh::begin(const uint8_t i)
 	#if defined(ESP8266)
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
-		_debugStream->println();
-		_debugStream->print(F("running on ESP8266/ESP8285"));
+		_debugStream->print(F("\r\nMesh running on ESP8266/ESP8285"));
 	}
 	#elif defined(ESP32)
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
-		_debugStream->println();
-		_debugStream->print(F("m2mMesh running on ESP32"));
+		_debugStream->print(F("\r\nMesh running on ESP32"));
 	}
 	#endif
 	//Show the IDF version, if possible
 	#ifdef ESP_IDF_VERSION_MAJOR
-	_debugStream->print(F("\n\nIDF version:"));			
+	_debugStream->print(F("\r\nIDF version:"));			
 	#ifdef ESP_IDF_VERSION_MINOR
 		_debugStream->print(ESP_IDF_VERSION_MAJOR);
 		_debugStream->print('.');
@@ -91,7 +89,7 @@ void ICACHE_FLASH_ATTR m2mMesh::begin(const uint8_t i)
 	{
 		if(_maxNumberOfOriginators > 0)
 		{
-			_debugStream->printf_P(nm2mMeshstartedwithcapacityfordnodes,_maxNumberOfOriginators);
+			_debugStream->printf_P(m2mMeshstartedwithcapacityfordnodes,_maxNumberOfOriginators);
 		}
 		else
 		{
@@ -587,7 +585,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(m2mMeshPacketBuffer &packet)
 					#ifdef m2mMeshIncludeDebugFeatures
 					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog))
 					{
-						_debugStream->printf_P(nm2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.data[20],packet.length);
+						_debugStream->printf_P(m2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.data[20],packet.length);
 					}
 					#endif
 				}
@@ -3159,7 +3157,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_t()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3187,7 +3185,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint8_t &recipient)
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		return(false);
@@ -3214,7 +3212,7 @@ uint16_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint16_t()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3243,7 +3241,7 @@ uint32_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint32_t()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3274,7 +3272,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint32_t &recipient)
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3306,7 +3304,7 @@ uint64_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint64_t()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3341,7 +3339,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint64_t &recipient)
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3377,7 +3375,7 @@ int8_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt8_t()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3404,7 +3402,7 @@ int16_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt16_t()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3433,7 +3431,7 @@ int32_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt32_t()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3464,7 +3462,7 @@ int64_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt64_t()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3499,7 +3497,7 @@ float ICACHE_FLASH_ATTR m2mMesh::retrieveFloat()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3530,7 +3528,7 @@ char ICACHE_FLASH_ATTR m2mMesh::retrieveChar()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3558,7 +3556,7 @@ String ICACHE_FLASH_ATTR m2mMesh::retrieveString()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3590,7 +3588,7 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveCharArray(char *data)
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3626,7 +3624,7 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_tArray(uint8_t *data)
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
@@ -3654,7 +3652,7 @@ void ICACHE_FLASH_ATTR m2mMesh::skipRetrieve()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print(errorReadBeyondEndOfPacket);
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 		}
 		#endif
 		//Return a dummy value if nothing available
