@@ -218,7 +218,7 @@ union floatToBytes
   float value;
 };
 
-struct originatorInfo									//A structure for storing information about originators (nodes)
+struct m2mMeshOriginatorInfo									//A structure for storing information about originators (nodes)
 {
 	char *nodeName = nullptr;							//Node name, which may or may not be set. Memory is allocated dynamically at runtime
 	uint8_t macAddress[6] = {0, 0, 0, 0, 0, 0};			//Defaults to nothing
@@ -552,7 +552,7 @@ class m2mMeshClass
 		#endif
 
 		//Originator related variables
-		originatorInfo *_originator;						//Pointer to the originator table, which is allocated in the constructor function
+		m2mMeshOriginatorInfo *_originator;						//Pointer to the originator table, which is allocated in the constructor function
 		uint8_t _maxNumberOfOriginators = 16;				//The default number of maximum originators. This can be changed at begin(). Set to 0 for automatic allocation of resource, which may cause heap fragmentation and affect stability.
 		uint8_t _numberOfOriginators = 0;					//The current number of originators
 		uint8_t _numberOfReachableOriginators = 0;			//The current number of reachable originators

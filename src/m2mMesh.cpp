@@ -55,11 +55,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 	//Allocate a block of memory for the originator table, a minimum of one
 	if(_maxNumberOfOriginators > 0)
 	{
-		_originator = new originatorInfo[_maxNumberOfOriginators];
+		_originator = new m2mMeshOriginatorInfo[_maxNumberOfOriginators];
 	}
 	else
 	{
-		_originator = new originatorInfo[1];
+		_originator = new m2mMeshOriginatorInfo[1];
 	}
 	#ifdef m2mMeshIncludeDebugFeatures
 	//ESP8266/ESP8285 and ESP32 need different handling and have subtly different APIs
