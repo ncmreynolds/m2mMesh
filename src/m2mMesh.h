@@ -152,7 +152,7 @@ const char m2mMeshInterval[] PROGMEM = " Interval:";
 const char m2mMeshdebuggingenabled[] PROGMEM = "Mesh debugging enabled";
 const char m2mMeshdebuggingdisabled[] PROGMEM = "Mesh debugging disabled";
 const char m2mMeshinitialisingESPNOW[] PROGMEM = "Mesh initialising ESP-NOW ";
-const char m2mMeshfailedrestartingin3s[] PROGMEM = "- failed, restarting in 3s";
+const char m2mMeshfailedrestartingin3s[] PROGMEM = "- failed";
 const char m2mMeshaddingbroadcastMACaddressasapeertoenablemeshdiscovery[] PROGMEM = "Adding broadcast MAC address as a 'peer' to enable mesh discovery ";
 const char m2mMeshReceivedfrom[] PROGMEM = "Received from ";
 const char m2mMeshRTR[] PROGMEM = "\r\nRTR ";
@@ -272,9 +272,9 @@ class m2mMeshClass
 		~m2mMeshClass();
 
 		//Setup functions
-		void begin();										//Start the mesh, with the default maximum number of nodes (16)
-		void begin(uint8_t);								//Start the mesh with a specific maximum number of nodes. Set to 0 for unlimited dynamic allocation of memory, which may cause instability.
-		void begin(uint8_t, uint8_t);						//Start the mesh with a specific maximum number of nodes and channel.
+		bool begin();										//Start the mesh, with the default maximum number of nodes (16)
+		bool begin(uint8_t);								//Start the mesh with a specific maximum number of nodes. Set to 0 for unlimited dynamic allocation of memory, which may cause instability.
+		bool begin(uint8_t, uint8_t);						//Start the mesh with a specific maximum number of nodes and channel.
 		void end();											//Stop the mesh and free most memory. Configured items such as the node name or maximum number of nodes ARE retained but no originator/routing information.
 		
 		//Maintenance functions
@@ -674,7 +674,7 @@ class m2mMeshClass
 		void _becomeTimeServer();
 		
 		//ESP-NOW related functions in many of these there are lots of preprocessor directives to handle API differences between ESP8266/8285 and ESP32 at compile time
-		void _initESPNow();											//Initialises ESP-NOW
+		bool _initESPNow();											//Initialises ESP-NOW
 		bool _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
 		/*
 		#if defined(ESP8266)

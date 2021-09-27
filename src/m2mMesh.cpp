@@ -44,12 +44,12 @@ ICACHE_FLASH_ATTR m2mMeshClass::~m2mMeshClass()
 }
 
 //Overloaded function for starting the mesh
-void ICACHE_FLASH_ATTR m2mMeshClass::begin()
+bool ICACHE_FLASH_ATTR m2mMeshClass::begin()
 {
-	begin(_maxNumberOfOriginators);
+	return(begin(_maxNumberOfOriginators));
 }
 
-void ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
+bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 {
 	_maxNumberOfOriginators = i;
 	//Allocate a block of memory for the originator table, a minimum of one
@@ -113,7 +113,6 @@ void ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 		_localMacAddress[5] = _localMacAddress[5] - 1;			//Decrement the last octet of the MAC address, it is incremented in AP mode
 	}
 	#endif
-	_initESPNow();												//Initialise ESP-NOW, the function handles the differences between ESP8266/ESP8285 and ESP32
 	_currentInterval[ELP_PACKET_TYPE] = ELP_DEFAULT_INTERVAL;	//Packet sending intervals, per packet type which may be adjust later to reduce congestion
 	_currentInterval[OGM_PACKET_TYPE] = OGM_DEFAULT_INTERVAL;
 	_currentInterval[NHS_PACKET_TYPE] = NHS_DEFAULT_INTERVAL;
@@ -129,13 +128,14 @@ void ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 	_currentTtl[NHS_PACKET_TYPE] = NHS_DEFAULT_TTL;
 	_currentTtl[USR_PACKET_TYPE] = USR_DEFAULT_TTL;
 	_currentTtl[FSP_PACKET_TYPE] = FSP_DEFAULT_TTL;
+	return(_initESPNow());										//Initialise ESP-NOW, the function handles the differences between ESP8266/ESP8285 and ESP32
 }
 
-void ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i, const uint8_t c)
+bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i, const uint8_t c)
 {
 	WiFi.channel(c);		//Set the receive channel
 	_currentChannel = c;	//Set the send channel
-	begin(i);				//Begin for i nodes
+	return(begin(i));		//Begin for i nodes
 }
 
 void ICACHE_FLASH_ATTR m2mMeshClass::end()
@@ -144,13 +144,13 @@ void ICACHE_FLASH_ATTR m2mMeshClass::end()
 	//Free memory
 }
 
-void m2mMeshClass::_initESPNow()
+bool m2mMeshClass::_initESPNow()
 {
 	//Check if the ESP-NOW initialization was successful, ESP8286/ESP8285 have different return results
 	#if defined(ESP8266)
-	uint8_t result = esp_now_init();
+	uint8_t initResult = esp_now_init();
 	#elif defined(ESP32)
-	esp_err_t result = esp_now_init();
+	esp_err_t initResult = esp_now_init();
 	#endif
 	#ifdef m2mMeshIncludeDebugFeatures
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
@@ -159,7 +159,7 @@ void m2mMeshClass::_initESPNow()
 		_debugStream->print(m2mMeshinitialisingESPNOW);
 	}
 	#endif
-	if (result != ESP_OK)
+	if (initResult != ESP_OK)	//Init failed
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
@@ -167,67 +167,72 @@ void m2mMeshClass::_initESPNow()
 			_debugStream->print(m2mMeshfailedrestartingin3s);
 		}
 		#endif
-		delay(3000ul);
-		ESP.restart();
-	}
-	#ifdef m2mMeshIncludeDebugFeatures
-	else if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
-	{
-		_debugStream->print(m2mMeshsuccess);
-	}
-	#endif
-	//The ESP8266/ESP8285 require a 'role' to be set, which is vaguely analogous to the ifidx on ESP32. Without this you cannot send packets.
-	#if defined(ESP8266)
-	esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
-	#endif
-	//Packets are processed with callback functions, which are called via wrappers from the C++ class
-	//Register the callback routines needed to process ESP-Now traffic, using the wrapper functions
-	esp_now_register_send_cb(espNowSendCallbackWrapper);
-	esp_now_register_recv_cb(espNowReceiveCallbackWrapper);
-	// Add the broadcast MAC address as an ESP-NOW peer. This is used for any message that needs to 'flood' the network. Without this node discovery will not work.
-	#ifdef m2mMeshIncludeDebugFeatures
-	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
-	{
-		_debugStream->println();
-		_debugStream->print(m2mMeshaddingbroadcastMACaddressasapeertoenablemeshdiscovery);
-	}
-	#endif
-	#if defined(ESP8266)
-	result = esp_now_add_peer(_broadcastMacAddress, ESP_NOW_ROLE_COMBO, _currentChannel, NULL, 0);
-	#elif defined(ESP32)
-	//Create a temporary peer info object
-	esp_now_peer_info_t peerInfo;
-	memcpy(peerInfo.peer_addr, _broadcastMacAddress, 6);
-	//Peer info HAS to include an ifidx depending on mode (AP/STA) of the ESP32. If this changes later, it needs to change in the peer info too.
-	if(WiFi.getMode() == WIFI_STA)
-	{
-		peerInfo.ifidx = WIFI_IF_STA;
+		return(false);
 	}
 	else
 	{
-		peerInfo.ifidx = WIFI_IF_AP;
-	}
-	peerInfo.channel = _currentChannel;  
-	peerInfo.encrypt = false;
-	result = esp_now_add_peer(&peerInfo);
-	#endif
-	if (result != ESP_OK)
-	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 		{
-			_debugStream->print(m2mMeshfailedrestartingin3s);
+			_debugStream->print(m2mMeshsuccess);
 		}
 		#endif
-		delay(3000ul);
-		ESP.restart();
+		//The ESP8266/ESP8285 require a 'role' to be set, which is vaguely analogous to the ifidx on ESP32. Without this you cannot send packets.
+		#if defined(ESP8266)
+		esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
+		#endif
+		//Packets are processed with callback functions, which are called via wrappers from the C++ class
+		//Register the callback routines needed to process ESP-Now traffic, using the wrapper functions
+		esp_now_register_send_cb(espNowSendCallbackWrapper);
+		esp_now_register_recv_cb(espNowReceiveCallbackWrapper);
+		// Add the broadcast MAC address as an ESP-NOW peer. This is used for any message that needs to 'flood' the network. Without this node discovery will not work.
+		#ifdef m2mMeshIncludeDebugFeatures
+		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+		{
+			_debugStream->println();
+			_debugStream->print(m2mMeshaddingbroadcastMACaddressasapeertoenablemeshdiscovery);
+		}
+		#endif
+		#if defined(ESP8266)
+		uint8_t peerResult = esp_now_add_peer(_broadcastMacAddress, ESP_NOW_ROLE_COMBO, _currentChannel, NULL, 0);
+		#elif defined(ESP32)
+		//Create a temporary peer info object
+		esp_now_peer_info_t peerInfo;
+		memcpy(peerInfo.peer_addr, _broadcastMacAddress, 6);
+		//Peer info HAS to include an ifidx depending on mode (AP/STA) of the ESP32. If this changes later, it needs to change in the peer info too.
+		if(WiFi.getMode() == WIFI_STA)
+		{
+			peerInfo.ifidx = WIFI_IF_STA;
+		}
+		else
+		{
+			peerInfo.ifidx = WIFI_IF_AP;
+		}
+		peerInfo.channel = _currentChannel;  
+		peerInfo.encrypt = false;
+		esp_err_t peerResult = esp_now_add_peer(&peerInfo);
+		#endif
+		if (peerResult != ESP_OK)
+		{
+			#ifdef m2mMeshIncludeDebugFeatures
+			if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+			{
+				_debugStream->print(m2mMeshfailedrestartingin3s);
+			}
+			#endif
+			return(false);
+		}
+		else
+		{
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+			{
+				_debugStream->print(m2mMeshsuccess);
+			}
+			#endif
+			return(true);
+		}
 	}
-	#ifdef m2mMeshIncludeDebugFeatures
-	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
-	{
-		_debugStream->print(m2mMeshsuccess);
-	}
-	#endif
 }
 
 #ifdef ESP8266
