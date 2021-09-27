@@ -4,7 +4,7 @@
 
 //Wrapper hack to allow the use of callbacks to the ESP-Now C library from the C++ class
 
-m2mMesh* m2mMeshPointer = nullptr;	//A pointer to 'this' eventually
+m2mMeshClass* m2mMeshPointer = nullptr;	//A pointer to 'this' eventually
 
 #ifdef ESP8266
 void ICACHE_RAM_ATTR espNowSendCallbackWrapper(uint8_t* a, uint8_t b)
@@ -32,24 +32,24 @@ void ICACHE_RAM_ATTR espNowReceiveCallbackWrapper(const uint8_t *a, const uint8_
 
 
 //Constructor function
-ICACHE_FLASH_ATTR m2mMesh::m2mMesh()
+ICACHE_FLASH_ATTR m2mMeshClass::m2mMeshClass()
 {
 	//Set the pointer for the C callback wrapper hack
 	m2mMeshPointer = this;
 }
 //Destructor function
-ICACHE_FLASH_ATTR m2mMesh::~m2mMesh()
+ICACHE_FLASH_ATTR m2mMeshClass::~m2mMeshClass()
 {
 	//Do nothing
 }
 
 //Overloaded function for starting the mesh
-void ICACHE_FLASH_ATTR m2mMesh::begin()
+void ICACHE_FLASH_ATTR m2mMeshClass::begin()
 {
 	begin(_maxNumberOfOriginators);
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::begin(const uint8_t i)
+void ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 {
 	_maxNumberOfOriginators = i;
 	//Allocate a block of memory for the originator table, a minimum of one
@@ -131,20 +131,20 @@ void ICACHE_FLASH_ATTR m2mMesh::begin(const uint8_t i)
 	_currentTtl[FSP_PACKET_TYPE] = FSP_DEFAULT_TTL;
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::begin(const uint8_t i, const uint8_t c)
+void ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i, const uint8_t c)
 {
 	WiFi.channel(c);		//Set the receive channel
 	_currentChannel = c;	//Set the send channel
 	begin(i);				//Begin for i nodes
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::end()
+void ICACHE_FLASH_ATTR m2mMeshClass::end()
 {
 	//Remove callback functions
 	//Free memory
 }
 
-void m2mMesh::_initESPNow()
+void m2mMeshClass::_initESPNow()
 {
 	//Check if the ESP-NOW initialization was successful, ESP8286/ESP8285 have different return results
 	#if defined(ESP8266)
@@ -231,9 +231,9 @@ void m2mMesh::_initESPNow()
 }
 
 #ifdef ESP8266
-void ICACHE_RAM_ATTR m2mMesh::espNowSendCallback(uint8_t* macAddress, uint8_t status)
+void ICACHE_RAM_ATTR m2mMeshClass::espNowSendCallback(uint8_t* macAddress, uint8_t status)
 #elif defined(ESP32)
-void ICACHE_RAM_ATTR m2mMesh::espNowSendCallback(const uint8_t* macAddress, esp_now_send_status_t status)
+void ICACHE_RAM_ATTR m2mMeshClass::espNowSendCallback(const uint8_t* macAddress, esp_now_send_status_t status)
 #endif
 {
 	//Don't HAVE to do anything in the send callback
@@ -259,9 +259,9 @@ void ICACHE_RAM_ATTR m2mMesh::espNowSendCallback(const uint8_t* macAddress, esp_
 }
 
 #ifdef ESP8266
-void ICACHE_RAM_ATTR m2mMesh::espNowReceiveCallback(uint8_t *macAddress, uint8_t *data, uint8_t length)
+void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(uint8_t *macAddress, uint8_t *data, uint8_t length)
 #elif defined(ESP32)
-void ICACHE_RAM_ATTR m2mMesh::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
+void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
 #endif
 {
 	if(_receiveBuffer[_receiveBufferIndex].length == 0)	//The buffer slot is empty
@@ -304,13 +304,13 @@ void ICACHE_RAM_ATTR m2mMesh::espNowReceiveCallback(const uint8_t *macAddress, c
 	}
 }
 
-m2mMesh& ICACHE_FLASH_ATTR m2mMesh::setCallback(M2MMESH_CALLBACK)
+m2mMeshClass& ICACHE_FLASH_ATTR m2mMeshClass::setCallback(M2MMESH_CALLBACK)
 {
     this->eventCallback = eventCallback;
     return *this;
 }
 
-bool ICACHE_RAM_ATTR m2mMesh::_sendPacket(m2mMeshPacketBuffer &packet, bool wait)
+bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet, bool wait)
 {
 	if(wait == true)	//This is a synchronous send, the default which is safest
 	{
@@ -358,7 +358,7 @@ bool ICACHE_RAM_ATTR m2mMesh::_sendPacket(m2mMeshPacketBuffer &packet, bool wait
 	}
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::housekeeping()
+void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 {
 	bool _activityOcurred = false;
 	//Process received packets first, if available
@@ -485,7 +485,7 @@ void ICACHE_FLASH_ATTR m2mMesh::housekeeping()
 	}
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_processPacket(m2mMeshPacketBuffer &packet)
+void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ALL_RECEIVED_PACKETS)
@@ -809,7 +809,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processPacket(m2mMeshPacketBuffer &packet)
 //Overloaded functions for variant calls
 
 
-bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(m2mMeshPacketBuffer &packet)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(m2mMeshPacketBuffer &packet)
 {
 	if(_serviceFlags & PROTOCOL_ELP_INCLUDE_PEERS)
 	{
@@ -822,12 +822,12 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(m2mMeshPacketBuffer &packet)
 }
 
 
-bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(bool includeNeighbours,m2mMeshPacketBuffer &packet)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,m2mMeshPacketBuffer &packet)
 {
 	return(_sendElp(includeNeighbours,_currentTtl[ELP_PACKET_TYPE], packet));
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(uint8_t elpTtl,m2mMeshPacketBuffer &packet)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(uint8_t elpTtl,m2mMeshPacketBuffer &packet)
 {
 	if(_serviceFlags & PROTOCOL_ELP_INCLUDE_PEERS)
 	{
@@ -840,7 +840,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(uint8_t elpTtl,m2mMeshPacketBuffer &pac
 }
 
 
-bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(bool includeNeighbours,uint8_t elpTtl,m2mMeshPacketBuffer &packet)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elpTtl,m2mMeshPacketBuffer &packet)
 {
 	packet.data[0] = ELP_PACKET_TYPE;					//Add the ELP packet type
 	packet.data[1] = MESH_PROTOCOL_VERSION;				//Add the mesh protocol version
@@ -919,7 +919,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendElp(bool includeNeighbours,uint8_t elpTtl,m
 	return(sendResult);
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
+void ICACHE_FLASH_ATTR m2mMeshClass::_processElp(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -1003,7 +1003,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processElp(uint8_t routerId, uint8_t originator
  * 
  */
 
-bool ICACHE_FLASH_ATTR m2mMesh::_sendOgm(m2mMeshPacketBuffer &packet)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 {
 	//Use unions to pack the non-8-bit values
 	union unsignedLongToBytes sequenceNumber;
@@ -1063,7 +1063,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendOgm(m2mMeshPacketBuffer &packet)
 	return(sendResult);
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
+void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -1202,7 +1202,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processOgm(uint8_t routerId, uint8_t originator
 	}
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_originatorHasBecomeRoutable(const uint8_t originatorId)
+void ICACHE_FLASH_ATTR m2mMeshClass::_originatorHasBecomeRoutable(const uint8_t originatorId)
 {
 	//Originator has become reachable
 	_numberOfReachableOriginators++;
@@ -1223,7 +1223,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_originatorHasBecomeRoutable(const uint8_t origi
 	#endif
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_originatorHasBecomeUnroutable(uint8_t originatorId)
+void ICACHE_FLASH_ATTR m2mMeshClass::_originatorHasBecomeUnroutable(uint8_t originatorId)
 {
 	//Peer has become unreachable
 	if(_numberOfReachableOriginators>0)
@@ -1278,7 +1278,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_originatorHasBecomeUnroutable(uint8_t originato
  * 
  */
 
-bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(m2mMeshPacketBuffer &packet)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 {
 	/*if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
 	{
@@ -1490,7 +1490,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_sendNhs(m2mMeshPacketBuffer &packet)
 	return(sendResult);
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
+void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -1859,7 +1859,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processNhs(uint8_t routerId, uint8_t originator
 	}
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
+void ICACHE_FLASH_ATTR m2mMeshClass::_processUsr(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -2037,7 +2037,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_processUsr(uint8_t routerId, uint8_t originator
 
 
 //Update the mesh time from the time server. This does NOT allowance for latency across the mesh, so nodes will only be roughly in sync
-void ICACHE_FLASH_ATTR m2mMesh::_updateMeshTime(const uint32_t newMeshTime, const uint8_t originatorId)
+void ICACHE_FLASH_ATTR m2mMeshClass::_updateMeshTime(const uint32_t newMeshTime, const uint8_t originatorId)
 {
   //It's a tie, which is not uncommon when handing over between two servers
   if(syncedMillis() == newMeshTime)
@@ -2076,20 +2076,20 @@ void ICACHE_FLASH_ATTR m2mMesh::_updateMeshTime(const uint32_t newMeshTime, cons
   }
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::synced()
+bool ICACHE_FLASH_ATTR m2mMeshClass::synced()
 {
 	return(_meshTimeNegotiated);
 }
-bool ICACHE_FLASH_ATTR m2mMesh::amSyncServer()
+bool ICACHE_FLASH_ATTR m2mMeshClass::amSyncServer()
 {
 	return(_actingAsTimeServer);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::syncServer()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::syncServer()
 {
 	return(_currentMeshTimeServer);
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_setMeshTime(const uint32_t newMeshTime, const uint8_t originatorId)
+void ICACHE_FLASH_ATTR m2mMeshClass::_setMeshTime(const uint32_t newMeshTime, const uint8_t originatorId)
 {
 	//Stop being a time server if we currently are
 	if(_actingAsTimeServer == true)
@@ -2146,7 +2146,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_setMeshTime(const uint32_t newMeshTime, const u
 
 
 //Choose a new time server
-void ICACHE_FLASH_ATTR m2mMesh::_chooseNewTimeServer()
+void ICACHE_FLASH_ATTR m2mMeshClass::_chooseNewTimeServer()
 {
   //The current time server has gone away, so set it as unknown and don't reselect it
   uint8_t previousMeshTimeServer = _currentMeshTimeServer;
@@ -2175,7 +2175,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_chooseNewTimeServer()
 }
 
 //Become the time server
-void ICACHE_FLASH_ATTR m2mMesh::_becomeTimeServer()
+void ICACHE_FLASH_ATTR m2mMeshClass::_becomeTimeServer()
 {
 	_actingAsTimeServer = true;
 	_currentMeshTimeServer = MESH_ORIGINATOR_NOT_FOUND; 
@@ -2190,7 +2190,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_becomeTimeServer()
 }
 
 
-float ICACHE_FLASH_ATTR m2mMesh::supplyVoltage()
+float ICACHE_FLASH_ATTR m2mMeshClass::supplyVoltage()
 {
 	#if defined(ESP8266)
 		uint16_t v = ESP.getVcc();
@@ -2209,12 +2209,12 @@ float ICACHE_FLASH_ATTR m2mMesh::supplyVoltage()
 }
 
 //Mesh time is just an offset of the node uptime to make it broadly the same as the longest up node
-uint32_t ICACHE_FLASH_ATTR m2mMesh::syncedMillis()
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::syncedMillis()
 {
   return(millis() + _meshTimeOffset);
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::enableStatusLed(uint8_t pin, bool onState)
+void ICACHE_FLASH_ATTR m2mMeshClass::enableStatusLed(uint8_t pin, bool onState)
 {
 	_statusLedPin = pin;
 	pinMode(_statusLedPin,OUTPUT);
@@ -2224,7 +2224,7 @@ void ICACHE_FLASH_ATTR m2mMesh::enableStatusLed(uint8_t pin, bool onState)
 	_statusLedEnabled = true;
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::enableActivityLed(const uint8_t pin, const bool onState)
+void ICACHE_FLASH_ATTR m2mMeshClass::enableActivityLed(const uint8_t pin, const bool onState)
 {
 	_activityLedPin = pin;
 	pinMode(_activityLedPin,OUTPUT);
@@ -2235,7 +2235,7 @@ void ICACHE_FLASH_ATTR m2mMesh::enableActivityLed(const uint8_t pin, const bool 
 }
 
 //Blink the activity LED
-void ICACHE_FLASH_ATTR m2mMesh::_blinkActivityLed()
+void ICACHE_FLASH_ATTR m2mMeshClass::_blinkActivityLed()
 {
   if(_activityLedState == false)
   {
@@ -2246,7 +2246,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_blinkActivityLed()
 }
 
 //Check if a given MAC address is the local one
-bool ICACHE_FLASH_ATTR m2mMesh::_isLocalMacAddress(uint8_t *mac)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_isLocalMacAddress(uint8_t *mac)
 {
   if(_localMacAddress[0] == mac[0] && _localMacAddress[1] == mac[1] && _localMacAddress[2] == mac[2] && _localMacAddress[3] == mac[3] && _localMacAddress[4] == mac[4] && _localMacAddress[5] == mac[5])
   {
@@ -2256,7 +2256,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::_isLocalMacAddress(uint8_t *mac)
 }
 
 //Given a pointer to a MAC address this returns which originator ID it is, MESH_ORIGINATOR_NOT_FOUND is a failure
-uint8_t ICACHE_FLASH_ATTR m2mMesh::_originatorIdFromMac(uint8_t *mac)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_originatorIdFromMac(uint8_t *mac)
 {
   uint8_t originatorId = MESH_ORIGINATOR_NOT_FOUND;
   for(uint8_t i = 0; i<_numberOfOriginators;i++)
@@ -2270,14 +2270,14 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::_originatorIdFromMac(uint8_t *mac)
   return(originatorId);
 }
 
-uint8_t ICACHE_FLASH_ATTR m2mMesh::_originatorIdFromMac(const uint8_t mac0, const uint8_t mac1, const uint8_t mac2, const uint8_t mac3, const uint8_t mac4, const uint8_t mac5)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_originatorIdFromMac(const uint8_t mac0, const uint8_t mac1, const uint8_t mac2, const uint8_t mac3, const uint8_t mac4, const uint8_t mac5)
 {
 	uint8_t macAddress[6] = {mac0, mac1, mac2, mac3, mac4, mac5};
 	return(_originatorIdFromMac(macAddress));
 }
 
 //Adds an originator record
-uint8_t ICACHE_FLASH_ATTR m2mMesh::_addOriginator(uint8_t* mac, const uint8_t originatorChannel)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_addOriginator(uint8_t* mac, const uint8_t originatorChannel)
 {
 	if(_numberOfOriginators<MESH_NO_MORE_ORIGINATORS_LEFT && _numberOfOriginators<_maxNumberOfOriginators)
 	{
@@ -2327,7 +2327,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::_addOriginator(uint8_t* mac, const uint8_t or
 	return(MESH_NO_MORE_ORIGINATORS_LEFT);
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_calculateLtq(const uint8_t originatorId)
+void ICACHE_FLASH_ATTR m2mMeshClass::_calculateLtq(const uint8_t originatorId)
 {
 	if(_originator[originatorId].ogmEchoes == 0 || _originator[originatorId].ogmReceived == 0)
 	{
@@ -2343,7 +2343,7 @@ void ICACHE_FLASH_ATTR m2mMesh::_calculateLtq(const uint8_t originatorId)
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::_dataIsValid(const uint8_t originatorId, const uint8_t dataType)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_dataIsValid(const uint8_t originatorId, const uint8_t dataType)
 {
 	if(originatorId >= _numberOfOriginators)
 	{
@@ -2367,17 +2367,17 @@ bool ICACHE_FLASH_ATTR m2mMesh::_dataIsValid(const uint8_t originatorId, const u
 }
 
 //Return the local node name
-uint8_t * ICACHE_FLASH_ATTR m2mMesh::getMeshAddress()
+uint8_t * ICACHE_FLASH_ATTR m2mMeshClass::getMeshAddress()
 {
 	return(_localMacAddress);
 }
 
-uint8_t * ICACHE_FLASH_ATTR m2mMesh::getMeshAddress(const uint8_t id)
+uint8_t * ICACHE_FLASH_ATTR m2mMeshClass::getMeshAddress(const uint8_t id)
 {
 	return(_originator[id].macAddress);
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet()
+bool ICACHE_FLASH_ATTR m2mMeshClass::nodeNameIsSet()
 {
 	if(_nodeName != nullptr)
 	{
@@ -2388,7 +2388,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet()
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet(const uint8_t id)
+bool ICACHE_FLASH_ATTR m2mMeshClass::nodeNameIsSet(const uint8_t id)
 {
 	if(_originator[id].nodeName != nullptr)
 	{
@@ -2401,17 +2401,17 @@ bool ICACHE_FLASH_ATTR m2mMesh::nodeNameIsSet(const uint8_t id)
 }
 
 //Return the local node name
-char * ICACHE_FLASH_ATTR m2mMesh::getNodeName()
+char * ICACHE_FLASH_ATTR m2mMeshClass::getNodeName()
 {
 	return(_nodeName);
 }
 //Return the node name for another node
-char * ICACHE_FLASH_ATTR m2mMesh::getNodeName(const uint8_t originatorId)
+char * ICACHE_FLASH_ATTR m2mMeshClass::getNodeName(const uint8_t originatorId)
 {
 	return(_originator[originatorId].nodeName);
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::joined()
+bool ICACHE_FLASH_ATTR m2mMeshClass::joined()
 {
 	if(_numberOfActiveNeighbours > 0)
 	{
@@ -2424,7 +2424,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::joined()
 }
 
 
-bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(const char *newName)
+bool ICACHE_FLASH_ATTR m2mMeshClass::setNodeName(const char *newName)
 {
 	if(newName != nullptr)	//Check for garbage in
 	{
@@ -2464,7 +2464,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(const char *newName)
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(char *newName)
+bool ICACHE_FLASH_ATTR m2mMeshClass::setNodeName(char *newName)
 {
 	if(newName != nullptr)	//Check for garbage in
 	{
@@ -2505,7 +2505,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(char *newName)
 }
 
 
-bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(String newName)
+bool ICACHE_FLASH_ATTR m2mMeshClass::setNodeName(String newName)
 {
 	uint8_t stringLength = newName.length() + 1;
 	char tempArray[stringLength+1];
@@ -2542,12 +2542,12 @@ bool ICACHE_FLASH_ATTR m2mMesh::setNodeName(String newName)
  * 
  */
  
- void ICACHE_FLASH_ATTR m2mMesh::_buildUserPacketHeader()
+ void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader()
  {
 	_buildUserPacketHeader(MESH_ORIGINATOR_NOT_FOUND);
  }
 
-void ICACHE_FLASH_ATTR m2mMesh::_buildUserPacketHeader(uint8_t destId)
+void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader(uint8_t destId)
 {
 	if(not _buildingUserPacket)
 	{
@@ -2589,12 +2589,12 @@ void ICACHE_FLASH_ATTR m2mMesh::_buildUserPacketHeader(uint8_t destId)
 	}
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_buildUserPacketHeader(const uint8_t mac0, const uint8_t mac1, const uint8_t mac2, const uint8_t mac3, const uint8_t mac4, const uint8_t mac5)
+void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader(const uint8_t mac0, const uint8_t mac1, const uint8_t mac2, const uint8_t mac3, const uint8_t mac4, const uint8_t mac5)
 {
 	_buildUserPacketHeader(_originatorIdFromMac(mac0, mac1, mac2, mac3, mac4, mac5));
 }
 
-uint8_t ICACHE_FLASH_ATTR m2mMesh::payloadLeft()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::payloadLeft()
 {
 	_buildUserPacketHeader();
 	return(USR_MAX_PACKET_SIZE - _userPacketIndex);
@@ -2603,13 +2603,13 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::payloadLeft()
 //Functions for setting destination on a packet before sending. These are overloaded to make it easier to set a destination.
 //They must be called before adding data to a packet
 
-void ICACHE_FLASH_ATTR m2mMesh::destination(const uint8_t mac0, const uint8_t mac1, const uint8_t mac2, const uint8_t mac3, const uint8_t mac4, const uint8_t mac5)	//Add a destination MAC address
+void ICACHE_FLASH_ATTR m2mMeshClass::destination(const uint8_t mac0, const uint8_t mac1, const uint8_t mac2, const uint8_t mac3, const uint8_t mac4, const uint8_t mac5)	//Add a destination MAC address
 {
 	_buildUserPacketHeader(mac0, mac1, mac2, mac3, mac4, mac5);	//Add the MAC address to the packet
 }
 
 
-/*bool ICACHE_FLASH_ATTR m2mMesh::destination(uint8_t destId)
+/*bool ICACHE_FLASH_ATTR m2mMeshClass::destination(uint8_t destId)
 {
 	if(not buildingUserPacket)
 	{
@@ -2621,7 +2621,7 @@ void ICACHE_FLASH_ATTR m2mMesh::destination(const uint8_t mac0, const uint8_t ma
 	}
 	return(false);
 }
-bool ICACHE_FLASH_ATTR m2mMesh::destination(char* dest)
+bool ICACHE_FLASH_ATTR m2mMeshClass::destination(char* dest)
 {
 	if(not buildingUserPacket)
 	{
@@ -2633,7 +2633,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::destination(char* dest)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::destination(String dest)
+bool ICACHE_FLASH_ATTR m2mMeshClass::destination(String dest)
 {	
 	if(not buildingUserPacket)
 	{
@@ -2654,7 +2654,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::destination(String dest)
 	}
 }*/
 
-bool ICACHE_FLASH_ATTR m2mMesh::add(const uint8_t dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint8_t dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(uint8_t) < USR_MAX_PACKET_SIZE)
@@ -2670,7 +2670,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const uint8_t dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(const uint16_t dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint16_t dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(uint16_t) < USR_MAX_PACKET_SIZE)
@@ -2689,7 +2689,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const uint16_t dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(const uint32_t dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint32_t dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(uint32_t) < USR_MAX_PACKET_SIZE)
@@ -2710,7 +2710,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const uint32_t dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(const uint64_t dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint64_t dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(uint64_t) < USR_MAX_PACKET_SIZE)
@@ -2735,7 +2735,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const uint64_t dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(const int8_t dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int8_t dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(int8_t) < USR_MAX_PACKET_SIZE)
@@ -2751,7 +2751,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const int8_t dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(const int16_t dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int16_t dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(int16_t) < USR_MAX_PACKET_SIZE)
@@ -2770,7 +2770,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const int16_t dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(const int32_t dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int32_t dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(int32_t) < USR_MAX_PACKET_SIZE)
@@ -2791,7 +2791,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const int32_t dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(const int64_t dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int64_t dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(int64_t) < USR_MAX_PACKET_SIZE)
@@ -2816,7 +2816,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const int64_t dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(const char dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(char) < USR_MAX_PACKET_SIZE)
@@ -2832,7 +2832,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const char dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(const float dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const float dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + sizeof(float) < USR_MAX_PACKET_SIZE)
@@ -2853,7 +2853,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(const float dataToAdd)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::add(String dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(dataToAdd.length() == 0)
@@ -2882,7 +2882,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(String dataToAdd)
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::add(char *dataToAdd)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
 {
 	_buildUserPacketHeader();
 	if(dataToAdd == nullptr && _userPacketIndex + 2 < USR_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
@@ -2911,7 +2911,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(char *dataToAdd)
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::add(uint8_t *dataToAdd, uint8_t amountOfData)
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(uint8_t *dataToAdd, uint8_t amountOfData)
 {
 	_buildUserPacketHeader();
 	if(_userPacketIndex + amountOfData + 1 < USR_MAX_PACKET_SIZE)
@@ -2937,7 +2937,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(uint8_t *dataToAdd, uint8_t amountOfData)
  *
  *	Sending ESP-Now has an optional callback function that acknowledges sending.
  *
- *	By default m2mMesh::send(bool wait) waits for this callback to happen, which makes it MUCH more likely the packet is sent succesfully.
+ *	By default m2mMeshClass::send(bool wait) waits for this callback to happen, which makes it MUCH more likely the packet is sent succesfully.
  *
  *	It also means the result of the callback can be fed back to the calling method. It is possible for sending to fail.
  *
@@ -2946,7 +2946,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::add(uint8_t *dataToAdd, uint8_t amountOfData)
  *	the packet may not actually get sent.
  */
 
-bool ICACHE_FLASH_ATTR m2mMesh::send(bool wait)
+bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 {
 	if(wait == true)	//This is a synchronous send, the default which is safest
 	{
@@ -3023,7 +3023,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::send(bool wait)
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::clear()	//Clear the message without sending, return true if there was something to clear
+bool ICACHE_FLASH_ATTR m2mMeshClass::clear()	//Clear the message without sending, return true if there was something to clear
 {
 	_buildingUserPacket = false;
 	if(_userPacketIndex > 0)
@@ -3039,7 +3039,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::clear()	//Clear the message without sending, ret
 
 //Functions for retrieving data from a message in a user sketch
 
-bool ICACHE_FLASH_ATTR m2mMesh::messageWaiting()
+bool ICACHE_FLASH_ATTR m2mMeshClass::messageWaiting()
 {
 	for(uint8_t i = 0 ; i < M2MMESHAPPLICATIONBUFFERSIZE ; i++)
 	{
@@ -3055,12 +3055,12 @@ bool ICACHE_FLASH_ATTR m2mMesh::messageWaiting()
 	return(false);
 }
 
-uint8_t ICACHE_FLASH_ATTR m2mMesh::messageSize()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::messageSize()
 {
 	return(_applicationBuffer[_applicationBufferReadIndex].length);
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::markMessageRead()
+void ICACHE_FLASH_ATTR m2mMeshClass::markMessageRead()
 {
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
@@ -3080,12 +3080,12 @@ void ICACHE_FLASH_ATTR m2mMesh::markMessageRead()
 	_receivedUserPacketFieldCounter = 0;
 }
 
-uint8_t ICACHE_FLASH_ATTR m2mMesh::sourceId()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::sourceId()
 {
 	return(_originatorIdFromMac(&_applicationBuffer[_applicationBufferReadIndex].data[8]));
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::sourceMacAddress(uint8_t *macAddressArray)
+bool ICACHE_FLASH_ATTR m2mMeshClass::sourceMacAddress(uint8_t *macAddressArray)
 {
 	//if(_userPacketReceived)
 	if(true)
@@ -3104,7 +3104,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::sourceMacAddress(uint8_t *macAddressArray)
 	}
 }
 
-uint8_t ICACHE_FLASH_ATTR m2mMesh::nextDataType()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::nextDataType()
 {
 	if(dataAvailable())
 	{
@@ -3117,7 +3117,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::nextDataType()
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::dataAvailable()
+bool ICACHE_FLASH_ATTR m2mMeshClass::dataAvailable()
 {
 	if(_receivedUserPacketFieldCounter > 0 && _receivedUserPacketIndex < ESP_NOW_MAX_PACKET_SIZE)
 	{
@@ -3126,7 +3126,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::dataAvailable()
 	return(false);
 }
 
-uint8_t ICACHE_FLASH_ATTR m2mMesh::retrieveDataLength()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveDataLength()
 {
 	if(dataAvailable())
 	{
@@ -3150,7 +3150,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::retrieveDataLength()
 }
 
 
-uint8_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_t()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint8_t()
 {
 	if(not dataAvailable())
 	{
@@ -3178,7 +3178,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_t()
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint8_t &recipient)
+bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint8_t &recipient)
 {
 	if(not dataAvailable())
 	{
@@ -3205,7 +3205,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint8_t &recipient)
 	}
 }
 
-uint16_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint16_t()
+uint16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint16_t()
 {
 	if(not dataAvailable())
 	{
@@ -3234,7 +3234,7 @@ uint16_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint16_t()
 		return(temp.value);
 	}
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint32_t()
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint32_t()
 {
 	if(not dataAvailable())
 	{
@@ -3265,7 +3265,7 @@ uint32_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint32_t()
 		return(temp.value);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint32_t &recipient)
+bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint32_t &recipient)
 {
 	if(not dataAvailable())
 	{
@@ -3297,7 +3297,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint32_t &recipient)
 		return(true);
 	}
 }
-uint64_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint64_t()
+uint64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint64_t()
 {
 	if(not dataAvailable())
 	{
@@ -3332,7 +3332,7 @@ uint64_t ICACHE_FLASH_ATTR m2mMesh::retrieveUint64_t()
 		return(temp.value);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint64_t &recipient)
+bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint64_t &recipient)
 {
 	if(not dataAvailable())
 	{
@@ -3368,7 +3368,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::retrieve(uint64_t &recipient)
 		return(true);
 	}
 }
-int8_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt8_t()
+int8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt8_t()
 {
 	if(not dataAvailable())
 	{
@@ -3395,7 +3395,7 @@ int8_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt8_t()
 		return(temp);
 	}
 }
-int16_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt16_t()
+int16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt16_t()
 {
 	if(not dataAvailable())
 	{
@@ -3424,7 +3424,7 @@ int16_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt16_t()
 		return(temp.value);
 	}
 }
-int32_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt32_t()
+int32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt32_t()
 {
 	if(not dataAvailable())
 	{
@@ -3455,7 +3455,7 @@ int32_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt32_t()
 		return(temp.value);
 	}
 }
-int64_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt64_t()
+int64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt64_t()
 {
 	if(not dataAvailable())
 	{
@@ -3490,7 +3490,7 @@ int64_t ICACHE_FLASH_ATTR m2mMesh::retrieveInt64_t()
 		return(temp.value);
 	}
 }
-float ICACHE_FLASH_ATTR m2mMesh::retrieveFloat()
+float ICACHE_FLASH_ATTR m2mMeshClass::retrieveFloat()
 {
 	if(not dataAvailable())
 	{
@@ -3521,7 +3521,7 @@ float ICACHE_FLASH_ATTR m2mMesh::retrieveFloat()
 		return(temp.value);
 	}
 }
-char ICACHE_FLASH_ATTR m2mMesh::retrieveChar()
+char ICACHE_FLASH_ATTR m2mMeshClass::retrieveChar()
 {
 	if(not dataAvailable())
 	{
@@ -3549,7 +3549,7 @@ char ICACHE_FLASH_ATTR m2mMesh::retrieveChar()
 		return(temp);
 	}
 }
-String ICACHE_FLASH_ATTR m2mMesh::retrieveString()
+String ICACHE_FLASH_ATTR m2mMeshClass::retrieveString()
 {
 	if(not dataAvailable())
 	{
@@ -3581,7 +3581,7 @@ String ICACHE_FLASH_ATTR m2mMesh::retrieveString()
 		return(tempString);
 	}
 }
-void ICACHE_FLASH_ATTR m2mMesh::retrieveCharArray(char *data)
+void ICACHE_FLASH_ATTR m2mMeshClass::retrieveCharArray(char *data)
 {
 	if(not dataAvailable())
 	{
@@ -3617,7 +3617,7 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveCharArray(char *data)
 	}
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_tArray(uint8_t *data)
+void ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint8_tArray(uint8_t *data)
 {
 	if(not dataAvailable())
 	{
@@ -3645,7 +3645,7 @@ void ICACHE_FLASH_ATTR m2mMesh::retrieveUint8_tArray(uint8_t *data)
 	}
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::skipRetrieve()
+void ICACHE_FLASH_ATTR m2mMeshClass::skipRetrieve()
 {
 	if(not dataAvailable())
 	{
@@ -3715,15 +3715,15 @@ void ICACHE_FLASH_ATTR m2mMesh::skipRetrieve()
 	}
 }
 
-uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfOriginators()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::numberOfOriginators()
 {
 	return(_numberOfOriginators);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfReachableOriginators()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::numberOfReachableOriginators()
 {
 	return(_numberOfReachableOriginators);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::expectedUptime(uint8_t originatorId) //Returns the current uptime of a node, on the assumption it has continued to run uninterrupted since we last heard from it
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::expectedUptime(uint8_t originatorId) //Returns the current uptime of a node, on the assumption it has continued to run uninterrupted since we last heard from it
 {
 	if(_dataIsValid(originatorId,NHS_PACKET_TYPE))
 	{
@@ -3736,13 +3736,13 @@ uint32_t ICACHE_FLASH_ATTR m2mMesh::expectedUptime(uint8_t originatorId) //Retur
 }
 
 #if defined (m2mMeshIncludeRTCFeatures)
-void ICACHE_FLASH_ATTR m2mMesh::setNtpServer(const char *server)
+void ICACHE_FLASH_ATTR m2mMeshClass::setNtpServer(const char *server)
 {
 	configTime(0, 0, server);
 	rtc = true;
 	_actingAsRTCServer = true;
 }
-void ICACHE_FLASH_ATTR m2mMesh::setTimeZone(const char *tz)
+void ICACHE_FLASH_ATTR m2mMeshClass::setTimeZone(const char *tz)
 {
 	//setenv("TZ","GMTGMT-1,M3.4.0/01,M10.4.0/02",1);
 	//tzset();
@@ -3751,11 +3751,11 @@ void ICACHE_FLASH_ATTR m2mMesh::setTimeZone(const char *tz)
 	setenv("TZ",timezone,1);
 	tzset();
 }
-bool ICACHE_FLASH_ATTR m2mMesh::rtcConfigured()
+bool ICACHE_FLASH_ATTR m2mMeshClass::rtcConfigured()
 {
 	return(rtc);
 }
-bool ICACHE_FLASH_ATTR m2mMesh::rtcSynced()
+bool ICACHE_FLASH_ATTR m2mMeshClass::rtcSynced()
 {
 	if(rtc)
 	{
@@ -3792,7 +3792,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::rtcSynced()
 	}
 	return(false);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::rtcServer()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::rtcServer()
 {
 	return(_currentRTCServer);
 }
@@ -3805,12 +3805,12 @@ uint8_t ICACHE_FLASH_ATTR m2mMesh::rtcServer()
  */
 #ifdef m2mMeshIncludeDebugFeatures
 //Enable debugging on a stream, usually Serial but let's not assume that. This version accepts the default log level
-void m2mMesh::enableDebugging(Stream &debugStream)
+void m2mMeshClass::enableDebugging(Stream &debugStream)
 {
 	enableDebugging(debugStream,_loggingLevel);
 }
 //Enable debugging on a stream, usually Serial but let's not assume that
-void m2mMesh::enableDebugging(Stream &debugStream, uint32_t level)
+void m2mMeshClass::enableDebugging(Stream &debugStream, uint32_t level)
 {
 	_debugStream = &debugStream;	//Set the stream used for debugging
 	_debugEnabled = true;			//Flag that debugging is enabled
@@ -3822,7 +3822,7 @@ void m2mMesh::enableDebugging(Stream &debugStream, uint32_t level)
 	}
 }
 //Enable debugging on a stream, after being paused
-void m2mMesh::enableDebugging(const uint32_t level)
+void m2mMeshClass::enableDebugging(const uint32_t level)
 {
 	if(_debugStream != nullptr)
 	{
@@ -3836,7 +3836,7 @@ void m2mMesh::enableDebugging(const uint32_t level)
 	}
 }
 //Enable debugging on a stream, after being paused
-void m2mMesh::enableDebugging()
+void m2mMeshClass::enableDebugging()
 {
 	if(_debugStream != nullptr)
 	{
@@ -3849,7 +3849,7 @@ void m2mMesh::enableDebugging()
 	}
 }
 //Disable debugging
-void m2mMesh::disableDebugging()
+void m2mMeshClass::disableDebugging()
 {
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
@@ -3859,16 +3859,16 @@ void m2mMesh::disableDebugging()
 	_debugEnabled = false;			//Flag that debugging is enabled
 }
 
-void m2mMesh::nodeToLog(const uint8_t id)	//Sets the node to log
+void m2mMeshClass::nodeToLog(const uint8_t id)	//Sets the node to log
 {
 	_nodeToLog = id;
 }
-void m2mMesh::logAllNodes()	//Sets logging to all nodes
+void m2mMeshClass::logAllNodes()	//Sets logging to all nodes
 {
 	_nodeToLog = MESH_ORIGINATOR_NOT_FOUND;
 }
 
-void ICACHE_FLASH_ATTR m2mMesh::_packetTypeDescription(char *desc, uint8_t type)
+void ICACHE_FLASH_ATTR m2mMeshClass::_packetTypeDescription(char *desc, uint8_t type)
 {
 	switch (type)
 	{
@@ -3901,9 +3901,9 @@ void ICACHE_FLASH_ATTR m2mMesh::_packetTypeDescription(char *desc, uint8_t type)
 }
 
 #if defined(ESP8266)
-void m2mMesh::_errorDescription(const uint8_t result)
+void m2mMeshClass::_errorDescription(const uint8_t result)
 #elif defined(ESP32)
-void m2mMesh::_errorDescription(const esp_err_t result)
+void m2mMeshClass::_errorDescription(const esp_err_t result)
 #endif
 {
 	if (result == ESP_OK)
@@ -3940,7 +3940,7 @@ void m2mMesh::_errorDescription(const esp_err_t result)
 	}
 }
 
-void m2mMesh::_friendlyUptime(const uint32_t uptime, char * formattedUptime)
+void m2mMeshClass::_friendlyUptime(const uint32_t uptime, char * formattedUptime)
 {
   uint8_t seconds = (uptime/   1000ul)%60;
   uint8_t minutes = (uptime/  60000ul)%60;
@@ -3949,9 +3949,9 @@ void m2mMesh::_friendlyUptime(const uint32_t uptime, char * formattedUptime)
 }
 
 #ifdef ESP8266
-void m2mMesh::_debugPacket(m2mMeshPacketBuffer &packet)
+void m2mMeshClass::_debugPacket(m2mMeshPacketBuffer &packet)
 #elif defined(ESP32)
-void m2mMesh::_debugPacket(m2mMeshPacketBuffer &packet)
+void m2mMeshClass::_debugPacket(m2mMeshPacketBuffer &packet)
 #endif
 {
 	_debugStream->printf_P(m2mMesh02x02x02x02x02x02xdbytesm2mMeshType,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.length);
@@ -4042,11 +4042,11 @@ void m2mMesh::_debugPacket(m2mMeshPacketBuffer &packet)
  *
  */
 #ifdef m2mMeshIncludeMeshInfoFeatures
-uint8_t ICACHE_FLASH_ATTR m2mMesh::nodeId(uint8_t *mac)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::nodeId(uint8_t *mac)
 {
 	return(_originatorIdFromMac(mac));
 }
-bool ICACHE_FLASH_ATTR m2mMesh::nodeIsReachable(uint8_t originatorId)
+bool ICACHE_FLASH_ATTR m2mMeshClass::nodeIsReachable(uint8_t originatorId)
 {
 	if(_dataIsValid(originatorId,ELP_PACKET_TYPE))
 	{
@@ -4058,7 +4058,7 @@ bool ICACHE_FLASH_ATTR m2mMesh::nodeIsReachable(uint8_t originatorId)
 	}
 	return(false);
 }
-void ICACHE_FLASH_ATTR m2mMesh::macAddress(const uint8_t id,uint8_t *array)
+void ICACHE_FLASH_ATTR m2mMeshClass::macAddress(const uint8_t id,uint8_t *array)
 {
 	array[0] = _originator[id].macAddress[0];
 	array[1] = _originator[id].macAddress[1];
@@ -4067,161 +4067,161 @@ void ICACHE_FLASH_ATTR m2mMesh::macAddress(const uint8_t id,uint8_t *array)
 	array[4] = _originator[id].macAddress[4];
 	array[5] = _originator[id].macAddress[5];
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::maxNumberOfOriginators()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::maxNumberOfOriginators()
 {
 	return(_maxNumberOfOriginators);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfOriginators(const uint8_t id)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::numberOfOriginators(const uint8_t id)
 {
 	return(_originator[id].numberOfOriginators);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfActiveNeighbours()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::numberOfActiveNeighbours()
 {
 	return(_numberOfActiveNeighbours);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::numberOfActiveNeighbours(const uint8_t id)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::numberOfActiveNeighbours(const uint8_t id)
 {
 	return(_originator[id].numberOfActiveNeighbours);
 }
-bool ICACHE_FLASH_ATTR m2mMesh::elpIsValid(const uint8_t id)
+bool ICACHE_FLASH_ATTR m2mMeshClass::elpIsValid(const uint8_t id)
 {
 	return(_dataIsValid(id,ELP_PACKET_TYPE));
 }
-bool ICACHE_FLASH_ATTR m2mMesh::ogmIsValid(const uint8_t id)
+bool ICACHE_FLASH_ATTR m2mMeshClass::ogmIsValid(const uint8_t id)
 {
 	return(_dataIsValid(id,OGM_PACKET_TYPE));
 }
-bool ICACHE_FLASH_ATTR m2mMesh::nhsIsValid(const uint8_t id)
+bool ICACHE_FLASH_ATTR m2mMeshClass::nhsIsValid(const uint8_t id)
 {
 	return(_dataIsValid(id,NHS_PACKET_TYPE));
 }
-bool ICACHE_FLASH_ATTR m2mMesh::validRoute(const uint8_t id)
+bool ICACHE_FLASH_ATTR m2mMeshClass::validRoute(const uint8_t id)
 {
 	return(_originator[id].selectedRouter != MESH_ORIGINATOR_NOT_FOUND);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::selectedRouter(const uint8_t id)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::selectedRouter(const uint8_t id)
 {
 	return(_originator[id].selectedRouter);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::ogmReceived(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::ogmReceived(const uint8_t id)
 {
 	return(_originator[id].ogmReceived);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::ogmEchoes(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::ogmEchoes(const uint8_t id)
 {
 	return(_originator[id].ogmEchoes);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::elpInterval(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::elpInterval(const uint8_t id)
 {
 	return(_originator[id].interval[ELP_PACKET_TYPE]);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::ogmInterval(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::ogmInterval(const uint8_t id)
 {
 	return(_originator[id].interval[OGM_PACKET_TYPE]);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::nhsInterval(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::nhsInterval(const uint8_t id)
 {
 	return(_originator[id].interval[NHS_PACKET_TYPE]);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::elpLastSeen(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::elpLastSeen(const uint8_t id)
 {
 	return(_originator[id].lastSeen[ELP_PACKET_TYPE]);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::ogmLastSeen(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::ogmLastSeen(const uint8_t id)
 {
 	return(_originator[id].lastSeen[OGM_PACKET_TYPE]);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::nhsLastSeen(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::nhsLastSeen(const uint8_t id)
 {
 	return(_originator[id].lastSeen[NHS_PACKET_TYPE]);
 }
-bool ICACHE_FLASH_ATTR m2mMesh::actingAsTimeServer()
+bool ICACHE_FLASH_ATTR m2mMeshClass::actingAsTimeServer()
 {
 	return(_actingAsTimeServer);
 }
-bool ICACHE_FLASH_ATTR m2mMesh::actingAsTimeServer(const uint8_t id)
+bool ICACHE_FLASH_ATTR m2mMeshClass::actingAsTimeServer(const uint8_t id)
 {
 	return(_originator[id].flags & NHS_FLAGS_TIMESERVER);
 }
 #if defined (m2mMeshIncludeRTCFeatures)
-bool ICACHE_FLASH_ATTR m2mMesh::actingAsRTCServer()
+bool ICACHE_FLASH_ATTR m2mMeshClass::actingAsRTCServer()
 {
 	return(_actingAsRTCServer);
 }
-bool ICACHE_FLASH_ATTR m2mMesh::actingAsRTCServer(const uint8_t id)
+bool ICACHE_FLASH_ATTR m2mMeshClass::actingAsRTCServer(const uint8_t id)
 {
 	return(_originator[id].flags & NHS_FLAGS_RTCSERVER);
 }
 #endif
-uint32_t ICACHE_FLASH_ATTR m2mMesh::initialFreeHeap(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::initialFreeHeap(const uint8_t id)
 {
 	return(_originator[id].initialFreeHeap);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::currentFreeHeap(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::currentFreeHeap(const uint8_t id)
 {
 	return(_originator[id].currentFreeHeap);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::largestFreeBlock(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::largestFreeBlock(const uint8_t id)
 {
 	return(_originator[id].largestFreeBlock);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::heapFragmentation(const uint8_t id)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::heapFragmentation(const uint8_t id)
 {
 	return(_originator[id].heapFragmentation);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::sequenceNumber()
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::sequenceNumber()
 {
 	return(_sequenceNumber);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::lastSequenceNumber(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::lastSequenceNumber(const uint8_t id)
 {
 	return(_originator[id].lastSequenceNumber);
 }
-float ICACHE_FLASH_ATTR m2mMesh::supplyVoltage(const uint8_t id)
+float ICACHE_FLASH_ATTR m2mMeshClass::supplyVoltage(const uint8_t id)
 {
 	return(_originator[id].supplyVoltage);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::flags(const uint8_t id)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::flags(const uint8_t id)
 {
 	return(_originator[id].flags);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::localTransmissionQuality(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::localTransmissionQuality(const uint8_t id)
 {
 	return(_originator[id].ltq);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::globalTransmissionQuality(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::globalTransmissionQuality(const uint8_t id)
 {
 	return(_originator[id].gtq);
 }
-uint16_t ICACHE_FLASH_ATTR m2mMesh::serviceFlags()
+uint16_t ICACHE_FLASH_ATTR m2mMeshClass::serviceFlags()
 {
 	return(_serviceFlags);
 }
-void ICACHE_FLASH_ATTR m2mMesh::setServiceFlags(uint16_t flags)
+void ICACHE_FLASH_ATTR m2mMeshClass::setServiceFlags(uint16_t flags)
 {
 	_serviceFlags = flags;
 }
-float  ICACHE_FLASH_ATTR m2mMesh::currentTxPower()
+float  ICACHE_FLASH_ATTR m2mMeshClass::currentTxPower()
 {
 	return(_currentTxPower);
 }
-float  ICACHE_FLASH_ATTR m2mMesh::currentTxPower(const uint8_t id)
+float  ICACHE_FLASH_ATTR m2mMeshClass::currentTxPower(const uint8_t id)
 {
 	return(_originator[id].currentTxPower);
 }
-float ICACHE_FLASH_ATTR m2mMesh::txPowerFloor()
+float ICACHE_FLASH_ATTR m2mMeshClass::txPowerFloor()
 {
 	return(_txPowerFloor);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMesh::currentMeshTimeServer()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::currentMeshTimeServer()
 {
 	return(_currentMeshTimeServer);
 }
-int32_t ICACHE_FLASH_ATTR m2mMesh::meshTimeDrift()
+int32_t ICACHE_FLASH_ATTR m2mMeshClass::meshTimeDrift()
 {
 	return(_meshTimeDrift);
 }
-bool ICACHE_FLASH_ATTR m2mMesh::meshIsStable()
+bool ICACHE_FLASH_ATTR m2mMeshClass::meshIsStable()
 {
 	if(millis() - _meshLastChanged > _currentInterval[NHS_PACKET_TYPE])
 	{
@@ -4232,46 +4232,46 @@ bool ICACHE_FLASH_ATTR m2mMesh::meshIsStable()
 		return (false);
 	}
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::loggingLevel()
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::loggingLevel()
 {
 	return(_loggingLevel);
 }
-void ICACHE_FLASH_ATTR m2mMesh::setLoggingLevel(const uint32_t level)
+void ICACHE_FLASH_ATTR m2mMeshClass::setLoggingLevel(const uint32_t level)
 {
 	_loggingLevel = level;
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::rxPackets()
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::rxPackets()
 {
 	return(_rxPackets);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::rxPackets(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::rxPackets(const uint8_t id)
 {
 	return(_originator[id].rxPackets);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::txPackets()
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::txPackets()
 {
 	return(_txPackets);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::txPackets(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::txPackets(const uint8_t id)
 {
 	return(_originator[id].txPackets);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::droppedRxPackets()
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::droppedRxPackets()
 {
 	return(_droppedRxPackets);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::droppedRxPackets(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::droppedRxPackets(const uint8_t id)
 {
 	return(_originator[id].droppedRxPackets);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::droppedTxPackets()
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::droppedTxPackets()
 {
 	return(_droppedTxPackets);
 }
-uint32_t ICACHE_FLASH_ATTR m2mMesh::droppedTxPackets(const uint8_t id)
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::droppedTxPackets(const uint8_t id)
 {
 	return(_originator[id].droppedTxPackets);
 }
 #endif
-m2mMesh mesh;															//Create an instance of the class, as only one is practically usable at a time
+m2mMeshClass m2mMesh;	//Create an instance of the class, as only one is practically usable at a time
 #endif

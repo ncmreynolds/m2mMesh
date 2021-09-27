@@ -261,15 +261,15 @@ struct m2mMeshPacketBuffer										//A structure for storing ESP-Now packets
 	uint32_t timestamp = 0;								//Time when the packet went into the buffer
 };
 
-class m2mMesh
+class m2mMeshClass
 {
 
 	public:
 
 		//Constructor functions
-		m2mMesh();
+		m2mMeshClass();
 		//Destructor function
-		~m2mMesh();
+		~m2mMeshClass();
 
 		//Setup functions
 		void begin();										//Start the mesh, with the default maximum number of nodes (16)
@@ -337,7 +337,7 @@ class m2mMesh
 		bool clear();						//Clear the message without sending
 
 		//Receiving data
-		m2mMesh& setCallback(M2MMESH_CALLBACK);	//Set a callback for mesh events
+		m2mMeshClass& setCallback(M2MMESH_CALLBACK);	//Set a callback for mesh events
 		bool messageWaiting();				//Is there a message waiting
 		uint8_t messageSize();				//Size of the message, perhaps not useful
 		void markMessageRead();				//Marks the message as read, discarding any data left
@@ -764,5 +764,5 @@ class m2mMesh
 		
 };
 
-extern m2mMesh mesh;										//Create an instance of the class, as only one is practically usable at a time
+extern m2mMeshClass m2mMesh;	//Create an instance of the class, as only one is practically usable at a time
 #endif
