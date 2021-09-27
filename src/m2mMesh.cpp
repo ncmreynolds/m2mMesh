@@ -113,22 +113,22 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 		_localMacAddress[5] = _localMacAddress[5] - 1;			//Decrement the last octet of the MAC address, it is incremented in AP mode
 	}
 	#endif
-	_currentInterval[ELP_PACKET_TYPE] = ELP_DEFAULT_INTERVAL;	//Packet sending intervals, per packet type which may be adjust later to reduce congestion
+	_currentInterval[ELP_PACKET_TYPE] = ELP_DEFAULT_INTERVAL;		//Packet sending intervals, per packet type which may be adjust later to reduce congestion
 	_currentInterval[OGM_PACKET_TYPE] = OGM_DEFAULT_INTERVAL;
 	_currentInterval[NHS_PACKET_TYPE] = NHS_DEFAULT_INTERVAL;
 	_currentInterval[USR_PACKET_TYPE] = USR_DEFAULT_INTERVAL;
 	_currentInterval[FSP_PACKET_TYPE] = FSP_DEFAULT_INTERVAL;
-	_lastSent[ELP_PACKET_TYPE] = 1000ul - ELP_DEFAULT_INTERVAL;	//Offset sending times slightly between the different protocols
-	_lastSent[OGM_PACKET_TYPE] = 3000ul - OGM_DEFAULT_INTERVAL;	//Send the first packets sooner than the default interval
-	_lastSent[NHS_PACKET_TYPE] = 5000ul - NHS_DEFAULT_INTERVAL;	//would cause
-	_lastSent[USR_PACKET_TYPE] = 7000ul - USR_DEFAULT_INTERVAL;
-	_lastSent[FSP_PACKET_TYPE] = 9000ul - FSP_DEFAULT_INTERVAL;
-	_currentTtl[ELP_PACKET_TYPE] = ELP_DEFAULT_TTL;				//TTLs, per packet type which are unlikely to change
+	_lastSent[ELP_PACKET_TYPE] = 5000ul - ELP_DEFAULT_INTERVAL;		//Offset sending times slightly between the different protocols
+	_lastSent[OGM_PACKET_TYPE] = 10000ul - OGM_DEFAULT_INTERVAL;	//Send the first packets sooner than the default interval
+	_lastSent[NHS_PACKET_TYPE] = 30000ul - NHS_DEFAULT_INTERVAL;	//would cause
+	_lastSent[USR_PACKET_TYPE] = 70000ul - USR_DEFAULT_INTERVAL;
+	_lastSent[FSP_PACKET_TYPE] = 90000ul - FSP_DEFAULT_INTERVAL;
+	_currentTtl[ELP_PACKET_TYPE] = ELP_DEFAULT_TTL;					//TTLs, per packet type which are unlikely to change
 	_currentTtl[OGM_PACKET_TYPE] = OGM_DEFAULT_TTL;
 	_currentTtl[NHS_PACKET_TYPE] = NHS_DEFAULT_TTL;
 	_currentTtl[USR_PACKET_TYPE] = USR_DEFAULT_TTL;
 	_currentTtl[FSP_PACKET_TYPE] = FSP_DEFAULT_TTL;
-	return(_initESPNow());										//Initialise ESP-NOW, the function handles the differences between ESP8266/ESP8285 and ESP32
+	return(_initESPNow());											//Initialise ESP-NOW, the function handles the API differences between ESP8266/ESP8285 and ESP32
 }
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i, const uint8_t c)
@@ -146,6 +146,45 @@ void ICACHE_FLASH_ATTR m2mMeshClass::end()
 
 bool m2mMeshClass::_initESPNow()
 {
+	//Start WiFi if it isn't already started
+	#if defined(ESP8266)
+	if(WiFi.status() == 7)	//This seems to be the 'not started' status, which isn't documented in the ESP8266 core header files
+	{
+		#ifdef m2mMeshIncludeDebugFeatures
+		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+		{
+			_debugStream->print(m2mMeshinitialisingWiFi);
+		}
+		#endif
+		wl_status_t status = WiFi.begin();
+		if(status == WL_IDLE_STATUS || status == WL_CONNECTED)
+		{
+			#ifdef m2mMeshIncludeDebugFeatures
+			if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+			{
+				_debugStream->print(m2mMeshsuccess);
+			}
+			#endif
+		}
+		else
+		{
+			#ifdef m2mMeshIncludeDebugFeatures
+			if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+			{
+				_debugStream->print(m2mMeshfailed);
+			}
+			#endif
+			return(false);
+		}
+	}
+	#ifdef m2mMeshIncludeDebugFeatures
+	else
+	{
+		_debugStream->print(m2mMeshWiFiStatus);
+		_debugStream->print(WiFi.status());
+	}
+	#endif
+	#endif
 	//Check if the ESP-NOW initialization was successful, ESP8286/ESP8285 have different return results
 	#if defined(ESP8266)
 	uint8_t initResult = esp_now_init();
@@ -155,7 +194,6 @@ bool m2mMeshClass::_initESPNow()
 	#ifdef m2mMeshIncludeDebugFeatures
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
-		_debugStream->println();
 		_debugStream->print(m2mMeshinitialisingESPNOW);
 	}
 	#endif
@@ -164,7 +202,7 @@ bool m2mMeshClass::_initESPNow()
 		#ifdef m2mMeshIncludeDebugFeatures
 		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 		{
-			_debugStream->print(m2mMeshfailedrestartingin3s);
+			_debugStream->print(m2mMeshfailed);
 		}
 		#endif
 		return(false);
@@ -217,7 +255,7 @@ bool m2mMeshClass::_initESPNow()
 			#ifdef m2mMeshIncludeDebugFeatures
 			if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 			{
-				_debugStream->print(m2mMeshfailedrestartingin3s);
+				_debugStream->print(m2mMeshfailed);
 			}
 			#endif
 			return(false);
@@ -365,7 +403,8 @@ bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet, bool
 
 void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 {
-	bool _activityOcurred = false;
+	bool _packetSent = false;
+	bool _packetReceived = false;
 	//Process received packets first, if available
 	if(_receiveBufferIndex != _processBufferIndex ||					//Some data in buffer
 		_receiveBuffer[_processBufferIndex].length > 0)					//Buffer is full
@@ -381,7 +420,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		_processPacket(_receiveBuffer[_processBufferIndex]);				//Process the packet
 		_processBufferIndex++;												//Advance the buffer index
 		_processBufferIndex = _processBufferIndex%M2MMESHRECEIVEBUFFERSIZE;	//Rollover the buffer index
-		_activityOcurred = true;
+		_packetReceived = true;
 	}
 	if (_serviceFlags & PROTOCOL_ELP_SEND && millis() - (_lastSent[ELP_PACKET_TYPE] - random(ANTI_COLLISION_JITTER)) > _currentInterval[ELP_PACKET_TYPE]) 	//Apply some jitter to the send times
 	{
@@ -393,7 +432,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		{
 			_lastSent[ELP_PACKET_TYPE] += random(50,100);	//Cause a retry in 50-100ms
 		}
-		_activityOcurred = true;
+		_packetSent = true;
 	}
 	else if (_serviceFlags & PROTOCOL_OGM_SEND && millis() - (_lastSent[OGM_PACKET_TYPE] - random(ANTI_COLLISION_JITTER)) > _currentInterval[OGM_PACKET_TYPE])
 	{
@@ -405,7 +444,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		{
 			_lastSent[OGM_PACKET_TYPE] += random(50,100);	//Cause a retry in 50-100ms
 		}
-		_activityOcurred = true;
+		_packetSent = true;
 	}
 	else if (_serviceFlags & PROTOCOL_NHS_SEND && millis() - (_lastSent[NHS_PACKET_TYPE] - random(ANTI_COLLISION_JITTER)) > _currentInterval[NHS_PACKET_TYPE])
 	{
@@ -423,9 +462,9 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		{
 			_lastSent[NHS_PACKET_TYPE] += random(50,100);	//Cause a retry in 50-100ms
 		}
-		_activityOcurred = true;
+		_packetSent = true;
 	}
-	if(_activityOcurred || millis() - _lastHousekeeping > _housekeepingInterval)	//Need to refresh the stats and routes
+	if(_packetReceived == true || _packetSent == true || millis() - _lastHousekeeping > _housekeepingInterval)	//Need to refresh the stats and routes
 	{
 		//Update the broad mesh statistics and fingerprint
 		bool joined = false;
@@ -479,10 +518,9 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 				eventCallback(meshEvent::left);
 			}
 		}
-		_activityOcurred = false;
 		_lastHousekeeping = millis();
 	}
-	//If the activity LED is lit, check if it's time to turn it off
+	// If the activity LED is lit, check if it's time to turn it off
 	if(_activityLedEnabled && _activityLedState == true && millis() - _activityLedTimer > ACTIVITY_LED_BLINK_TIME)
 	{
 		digitalWrite(_activityLedPin,not _activityLedOnState);
@@ -1488,7 +1526,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	}
 	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
 	{
-		_debugStream->print(failed);
+		_debugStream->print(m2mMeshfailed);
 	}
 	#endif
 	_sequenceNumber++;
