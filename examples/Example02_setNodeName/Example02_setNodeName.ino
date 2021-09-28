@@ -5,40 +5,92 @@
  * License: Apache License v2
  */
 
-//Set the ADC on the ESP8266 to read its supply voltage directly. This must be done before 'setup' in a sketch. Comment out if you want to put a connection that reads the battery voltage.
-
-#ifdef ESP8266
-ADC_MODE(ADC_VCC);
-#endif
-
-//Include the mesh library
-//The mesh library will include the ESP8266 Wifi and ESP-Now libraries so you don't need to add them separately
+//Include the mesh library, the library will include the ESP8266 Wifi and ESP-Now libraries so you don't need to add them separately and will start the WiFi interface
 
 #include <m2mMesh.h>
 
-char nodeName[]="MeshNode00000000";
-
-//Create a new mesh object, by default it supports 32 nodes but will dynamically re-allocate memory if more appear. Re-allocating memory is inefficient so if you know how many nodes you have specifiy it
-
-m2mMesh mesh;
+char nodeName[17];
+uint8_t numberOfNodes = 0;
+uint32_t timeOfLastNodeList = 0;
+uint32_t nodeListInterval = 60000;
+bool meshJoined = false;
 
 void setup()
 {
+  Serial.begin(115200);
   //Set the Node name from the ESP chip ID
   #ifdef ESP8266
   sprintf(nodeName, "MeshNode%08x",ESP.getChipId());
   #elif defined (ESP32)
   sprintf(nodeName, "MeshNode%08x",getChipId());
   #endif
-  mesh.setNodeName(nodeName);
-  //Need to start ESP-Now early in the sketch or it is unstable
-  mesh.begin();
+  if(m2mMesh.setNodeName(nodeName))
+  {
+    Serial.print("\n\nMesh node name:");
+    Serial.println(nodeName);
+  }
+  else
+  {
+    Serial.println("Failed to set node name");
+  }
+  if(m2mMesh.begin())
+  {
+    Serial.print("Mesh started on channel:");
+    Serial.println(WiFi.channel());
+  }
+  else
+  {
+    Serial.println("Mesh failed to start");
+  }
 }
 
 void loop()
 {
-  mesh.housekeeping();
+  m2mMesh.housekeeping();
+  if(m2mMesh.joined())
+  {
+    if(meshJoined == false)
+    {
+      meshJoined = true;
+      Serial.println("Joined mesh");
+    }
+    if(numberOfNodes != m2mMesh.numberOfReachableOriginators())
+    {
+      numberOfNodes = m2mMesh.numberOfReachableOriginators();
+      timeOfLastNodeList = millis();
+      listNodes();
+    }
+    else if(numberOfNodes>0 && millis()-timeOfLastNodeList>nodeListInterval)
+    {
+      timeOfLastNodeList = millis();
+      listNodes();
+    }
+  }
+  else if(meshJoined == true)
+  {
+    meshJoined = false;
+    Serial.println("Left mesh");
+  }
 }
+
+void listNodes()
+{
+  Serial.printf("Number of reachable nodes:%02u\r\n",numberOfNodes);
+  uint8_t macaddress[6];
+  for(uint8_t i=0; i<numberOfNodes; i++)
+  {
+    m2mMesh.macAddress(i,macaddress);
+    if(m2mMesh.nodeNameIsSet(i))
+    {
+      Serial.printf("\tNode:%02u\tMAC address:%02x%02x%02x%02x%02x%02x\tNode name:%s\r\n",i,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5],m2mMesh.getNodeName(i));
+    }
+    else
+    {
+      Serial.printf("\tNode:%02u\tMAC address:%02x%02x%02x%02x%02x%02x\tNode name:<Unknown>\r\n",i,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5]);
+    }
+  }
+}
+
 #if defined (ESP32)
 uint32_t getChipId()
 {
