@@ -7,9 +7,9 @@ void statusView()
     hideCursor();
 
     moveToXy(1,1);
-    if(mesh.nodeNameIsSet())
+    if(m2mMesh.nodeNameIsSet())
     {
-      Serial.print(mesh.getNodeName());
+      Serial.print(m2mMesh.getNodeName());
     }
     else
     {
@@ -73,7 +73,7 @@ void statusView()
     else
     {
       uint8_t originatorMac[6]; //temporary MAC address
-      mesh.macAddress(nodeToLog,originatorMac);
+      m2mMesh.macAddress(nodeToLog,originatorMac);
       char titleString[36];
       sprintf(titleString,"Logging (%03d/%02x:%02x:%02x:%02x:%02x:%02x only)",nodeToLog,originatorMac[0],originatorMac[1],originatorMac[2],originatorMac[3],originatorMac[4],originatorMac[5]);
       printCentred(14,titleString);
@@ -90,12 +90,12 @@ void statusView()
     printUptimeAtXy(22,1,millis());
   }
   //Mesh time
-  printUptimeAtXy(38,1,mesh.syncedMillis());
-  if(mesh.actingAsTimeServer())
+  printUptimeAtXy(38,1,m2mMesh.syncedMillis());
+  if(m2mMesh.actingAsTimeServer())
   {
     Serial.print('*');
   }
-  else if(abs(mesh.meshTimeDrift()) > 1000)
+  else if(abs(m2mMesh.meshTimeDrift()) > 1000)
   {
     Serial.print('D');
   }
@@ -107,21 +107,21 @@ void statusView()
   if(numberOfReachableOriginatorsChanged || drawWholeUi)
   {
     moveToXy(21,2);
-    Serial.printf("%03d",mesh.numberOfReachableOriginators());
+    Serial.printf("%03d",m2mMesh.numberOfReachableOriginators());
     numberOfReachableOriginatorsChanged = false;
   }
   //Originators
   if(numberOfOriginatorsChanged || drawWholeUi)
   {
     moveToXy(25,2);
-    Serial.printf("%03d",mesh.numberOfOriginators());
+    Serial.printf("%03d",m2mMesh.numberOfOriginators());
     numberOfOriginatorsChanged = false;
   }
   //Mesh stability
   if(meshIsStableChanged ||  drawWholeUi)
   {
     moveToXy(28,2);
-    if(mesh.meshIsStable())
+    if(m2mMesh.meshIsStable())
     {
       Serial.print('S');
     }
@@ -139,18 +139,18 @@ void statusView()
   }
   //RX/TX errors
   moveToXy(47,2);
-  if(mesh.rxPackets() + mesh.droppedRxPackets() > 0)
+  if(m2mMesh.rxPackets() + m2mMesh.droppedRxPackets() > 0)
   {
-    Serial.printf("%02d%%Rx",(mesh.droppedRxPackets()*100)/(mesh.rxPackets() + mesh.droppedRxPackets()));
+    Serial.printf("%02d%%Rx",(m2mMesh.droppedRxPackets()*100)/(m2mMesh.rxPackets() + m2mMesh.droppedRxPackets()));
   }
   else
   {
     Serial.print(F("00%Rx"));
   }
   Serial.print('/');
-  if(mesh.txPackets() + mesh.droppedTxPackets() > 0)
+  if(m2mMesh.txPackets() + m2mMesh.droppedTxPackets() > 0)
   {
-    Serial.printf("%02d%%Tx",(mesh.droppedTxPackets()*100)/(mesh.txPackets() + mesh.droppedTxPackets()));
+    Serial.printf("%02d%%Tx",(m2mMesh.droppedTxPackets()*100)/(m2mMesh.txPackets() + m2mMesh.droppedTxPackets()));
   }
   else
   {
@@ -169,12 +169,12 @@ void statusView()
     numberOfActiveNeighboursChanged = false;
     {
       uint8_t neighbour = 0;
-      for(uint8_t originatorId = 0; originatorId < mesh.numberOfOriginators(); originatorId++)
+      for(uint8_t originatorId = 0; originatorId < m2mMesh.numberOfOriginators(); originatorId++)
       {
-        if(mesh.elpIsValid(originatorId) || mesh.ogmIsValid(originatorId))
+        if(m2mMesh.elpIsValid(originatorId) || m2mMesh.ogmIsValid(originatorId))
         {
           char flags[4] = {'-','-','-','-'};
-          if(mesh.actingAsRTCServer(originatorId))
+          if(m2mMesh.actingAsRTCServer(originatorId))
           {
             flags[0] = 'R';
           }
@@ -182,7 +182,7 @@ void statusView()
           {
             flags[0] = '-';
           }
-          if(mesh.actingAsTimeServer(originatorId))
+          if(m2mMesh.actingAsTimeServer(originatorId))
           {
             flags[1] = 'T';
           }
@@ -190,7 +190,7 @@ void statusView()
           {
             flags[1] = '-';
           }
-          if(mesh.nodeNameIsSet(originatorId))
+          if(m2mMesh.nodeNameIsSet(originatorId))
           {
             flags[2] = 'N';
           }
@@ -201,13 +201,13 @@ void statusView()
           //Move the cursor to the right spot in the table
           moveToXy((neighbour/10)*42,4+neighbour%10);
           uint8_t tempMac[6];
-          mesh.macAddress(originatorId,tempMac);
-          Serial.printf("%02d %02x%02x%02x%02x%02x%02x %c%c%c%c ---- ---- %08x",originatorId,tempMac[0],tempMac[1],tempMac[2],tempMac[3],tempMac[4],tempMac[5],flags[0],flags[1],flags[2],flags[3],mesh.lastSequenceNumber(originatorId));
+          m2mMesh.macAddress(originatorId,tempMac);
+          Serial.printf("%02d %02x%02x%02x%02x%02x%02x %c%c%c%c ---- ---- %08x",originatorId,tempMac[0],tempMac[1],tempMac[2],tempMac[3],tempMac[4],tempMac[5],flags[0],flags[1],flags[2],flags[3],m2mMesh.lastSequenceNumber(originatorId));
           //GTQ
           moveToXy(22+(neighbour/10)*41,4+neighbour%10);
-          if(mesh.globalTransmissionQuality(originatorId) > 0)
+          if(m2mMesh.globalTransmissionQuality(originatorId) > 0)
           {
-            Serial.printf("%04x",mesh.globalTransmissionQuality(originatorId));
+            Serial.printf("%04x",m2mMesh.globalTransmissionQuality(originatorId));
           }
           else
           {
@@ -215,9 +215,9 @@ void statusView()
           }
           //LTQ 
           moveToXy(27+(neighbour/10)*41,4+neighbour%10);
-          if(mesh.localTransmissionQuality(originatorId) > 0)
+          if(m2mMesh.localTransmissionQuality(originatorId) > 0)
           {
-            Serial.printf("%04x",mesh.localTransmissionQuality(originatorId));
+            Serial.printf("%04x",m2mMesh.localTransmissionQuality(originatorId));
           }
           else
           {
@@ -239,15 +239,15 @@ void statusView()
   {
     //Draw only what's changed
     uint8_t neighbour = 0;
-    for(uint8_t originatorId = 0; originatorId < mesh.numberOfOriginators(); originatorId++)
+    for(uint8_t originatorId = 0; originatorId < m2mMesh.numberOfOriginators(); originatorId++)
     {
-      if(mesh.elpIsValid(originatorId) || mesh.ogmIsValid(originatorId))
+      if(m2mMesh.elpIsValid(originatorId) || m2mMesh.ogmIsValid(originatorId))
       {
         //Peer flags
         //if(originator[originatorId].flagsChanged)
         {
           char flags[4] = {'-','-','-','-'};
-          if(mesh.actingAsRTCServer(originatorId))
+          if(m2mMesh.actingAsRTCServer(originatorId))
           {
             flags[0] = 'R';
           }
@@ -255,7 +255,7 @@ void statusView()
           {
             flags[0] = '-';
           }
-          if(mesh.actingAsTimeServer(originatorId))
+          if(m2mMesh.actingAsTimeServer(originatorId))
           {
             flags[1] = 'T';
           }
@@ -263,7 +263,7 @@ void statusView()
           {
             flags[1] = '-';
           }
-          if(mesh.nodeNameIsSet(originatorId))
+          if(m2mMesh.nodeNameIsSet(originatorId))
           {
             flags[2] = 'N';
           }
@@ -278,9 +278,9 @@ void statusView()
         }
         //GTQ
         moveToXy(22+(neighbour/10)*41,4+neighbour%10);
-        if(mesh.globalTransmissionQuality(originatorId) > 0)
+        if(m2mMesh.globalTransmissionQuality(originatorId) > 0)
         {
-          Serial.printf("%04x",mesh.globalTransmissionQuality(originatorId));
+          Serial.printf("%04x",m2mMesh.globalTransmissionQuality(originatorId));
         }
         else
         {
@@ -288,9 +288,9 @@ void statusView()
         }
         //LTQ
         moveToXy(27+(neighbour/10)*41,4+neighbour%10);
-        if(mesh.localTransmissionQuality(originatorId) > 0)
+        if(m2mMesh.localTransmissionQuality(originatorId) > 0)
         {
-          Serial.printf("%04x",mesh.localTransmissionQuality(originatorId));
+          Serial.printf("%04x",m2mMesh.localTransmissionQuality(originatorId));
         }
         else
         {
@@ -301,9 +301,9 @@ void statusView()
         {
           moveToXy(32+(neighbour/10)*41,4+neighbour%10);
           //We may not know the sequence number
-          if(mesh.lastSequenceNumber(originatorId)>0 && (mesh.elpIsValid(originatorId) || mesh.ogmIsValid(originatorId)))
+          if(m2mMesh.lastSequenceNumber(originatorId)>0 && (m2mMesh.elpIsValid(originatorId) || m2mMesh.ogmIsValid(originatorId)))
           {
-            Serial.printf("%08x",mesh.lastSequenceNumber(originatorId));
+            Serial.printf("%08x",m2mMesh.lastSequenceNumber(originatorId));
           }
           else
           {
@@ -319,7 +319,7 @@ void statusView()
   if(supplyVoltageChanged || drawWholeUi)
   {
     moveToXy(77,0);
-    Serial.printf("%01.1fv",mesh.supplyVoltage());
+    Serial.printf("%01.1fv",m2mMesh.supplyVoltage());
   }
   if(currentChannelChanged || drawWholeUi)
   {
@@ -331,10 +331,10 @@ void statusView()
   if(currentTxPowerChanged || drawWholeUi)
   {
     moveToXy(60,1);
-    Serial.printf("%02.1f",mesh.currentTxPower()*4);
+    Serial.printf("%02.1f",m2mMesh.currentTxPower()*4);
     //Tx Power floor
     moveToXy(68,1);
-    Serial.printf("%02.1f",mesh.txPowerFloor()*4);
+    Serial.printf("%02.1f",m2mMesh.txPowerFloor()*4);
   }
   setScrollWindow(15, 23);  //Set the logging scroll window
   moveToXy(1,23);           //Put the logging point at the bottom of the scroll window

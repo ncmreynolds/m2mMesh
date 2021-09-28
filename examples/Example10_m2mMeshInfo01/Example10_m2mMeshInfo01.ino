@@ -97,66 +97,66 @@ void ICACHE_FLASH_ATTR setup(){
   #elif defined (ESP32)
   sprintf(localNodeName,"Analyser-%08x",getChipId());
   #endif
-  mesh.setNodeName(localNodeName);
+  m2mMesh.setNodeName(localNodeName);
   Serial.begin(115200);
   WiFi.disconnect();
   WiFi.persistent(false);
   drawUi();
   Serial.write(17); //Send an XON to unlock an XOFFed terminal
-  //mesh.enableDebugging(Serial);
-  //mesh.enableDebugging(Serial,mesh.MESH_UI_LOG_INFORMATION | mesh.MESH_UI_LOG_WARNINGS | mesh.MESH_UI_LOG_ERRORS | mesh.MESH_UI_LOG_PEER_MANAGEMENT | 
-  //  mesh.MESH_UI_LOG_ELP_RECEIVED | mesh.MESH_UI_LOG_OGM_RECEIVED | mesh.MESH_UI_LOG_NHS_RECEIVED |  mesh.MESH_UI_LOG_USR_RECEIVED);
-  //mesh.enableDebugging(Serial,mesh.MESH_UI_LOG_INFORMATION | mesh.MESH_UI_LOG_WARNINGS | mesh.MESH_UI_LOG_ERRORS | mesh.MESH_UI_LOG_PEER_MANAGEMENT | mesh.MESH_UI_LOG_OGM_RECEIVED | mesh.MESH_UI_LOG_NHS_RECEIVED |  mesh.MESH_UI_LOG_USR_RECEIVED | mesh.MESH_UI_LOG_OGM_SEND | mesh.MESH_UI_LOG_NHS_SEND | mesh.MESH_UI_LOG_OGM_FORWARDING );
-  mesh.enableDebugging(Serial,mesh.MESH_UI_LOG_INFORMATION | mesh.MESH_UI_LOG_WARNINGS | mesh.MESH_UI_LOG_ERRORS | mesh.MESH_UI_LOG_PEER_MANAGEMENT | mesh.MESH_UI_LOG_NHS_RECEIVED );
-  loggingLevel = mesh.loggingLevel();  
-  //mesh.begin(16,11);  //Begin the ESP-Now mesh with default arguments  
-  mesh.begin();  //Begin the ESP-Now mesh with default arguments  
+  //m2mMesh.enableDebugging(Serial);
+  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | 
+  //  m2mMesh.MESH_UI_LOG_ELP_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_NHS_RECEIVED |  m2mMesh.MESH_UI_LOG_USR_RECEIVED);
+  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_NHS_RECEIVED |  m2mMesh.MESH_UI_LOG_USR_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_SEND | m2mMesh.MESH_UI_LOG_NHS_SEND | m2mMesh.MESH_UI_LOG_OGM_FORWARDING );
+  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_NHS_RECEIVED);
+  loggingLevel = m2mMesh.loggingLevel();  
+  //m2mMesh.begin(16,11);  //Begin the ESP-Now mesh with default arguments  
+  m2mMesh.begin();  //Begin the ESP-Now mesh with default arguments  
   #if defined(ARDUINO_ESP8266_WEMOS_D1MINI) || (ARDUINO_Pocket32)
-  mesh.enableActivityLed(LED_BUILTIN,LOW);  //Enable the activity LED on the pin LED_BUILTIN. The LED is lit when the pin is LOW
+  m2mMesh.enableActivityLed(LED_BUILTIN,LOW);  //Enable the activity LED on the pin LED_BUILTIN. The LED is lit when the pin is LOW
   #endif
   currentChannel = WiFi.channel();
 }
 
 void loop() {
   if(millis() - lastRedraw > redrawInterval) {
-    if(numberOfActiveNeighbours != mesh.numberOfActiveNeighbours())
+    if(numberOfActiveNeighbours != m2mMesh.numberOfActiveNeighbours())
     {
-      numberOfActiveNeighbours = mesh.numberOfActiveNeighbours();
+      numberOfActiveNeighbours = m2mMesh.numberOfActiveNeighbours();
       numberOfActiveNeighboursChanged = true;
     }
-    if(numberOfReachableOriginators != mesh.numberOfReachableOriginators())
+    if(numberOfReachableOriginators != m2mMesh.numberOfReachableOriginators())
     {
-      numberOfReachableOriginators = mesh.numberOfReachableOriginators();
+      numberOfReachableOriginators = m2mMesh.numberOfReachableOriginators();
       numberOfReachableOriginatorsChanged = true;
     }
-    if(numberOfOriginators != mesh.numberOfOriginators())
+    if(numberOfOriginators != m2mMesh.numberOfOriginators())
     {
-      numberOfOriginators = mesh.numberOfOriginators();
+      numberOfOriginators = m2mMesh.numberOfOriginators();
       numberOfOriginatorsChanged = true;
     }
-    if(sequenceNumber != mesh.sequenceNumber())
+    if(sequenceNumber != m2mMesh.sequenceNumber())
     {
-      sequenceNumber = mesh.sequenceNumber();
+      sequenceNumber = m2mMesh.sequenceNumber();
       sequenceNumberChanged = true;
     }
-    if(meshIsStable != mesh.meshIsStable())
+    if(meshIsStable != m2mMesh.meshIsStable())
     {
-      meshIsStable = mesh.meshIsStable();
+      meshIsStable = m2mMesh.meshIsStable();
       meshIsStableChanged = true;
     }
-    if(loggingLevel != mesh.loggingLevel())
+    if(loggingLevel != m2mMesh.loggingLevel())
     {
-      loggingLevel = mesh.loggingLevel();
+      loggingLevel = m2mMesh.loggingLevel();
       loggingLevelChanged = true;
     }
     inputHandling();
     drawUi();
     lastRedraw = millis();
   }
-  mesh.housekeeping();  //This needs to run regularly otherwise the mesh will fail
-  if(mesh.messageWaiting())
+  m2mMesh.housekeeping();  //This needs to run regularly otherwise the mesh will fail
+  if(m2mMesh.messageWaiting())
   {
-    mesh.markMessageRead();  //Simply trash any inbound application messages
+    m2mMesh.markMessageRead();  //Simply trash any inbound application messages
   }
   if(channelLastChanged - millis() > 5000)
   {

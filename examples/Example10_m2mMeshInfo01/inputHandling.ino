@@ -34,11 +34,11 @@ void inputHandling()
           loggingPaused = not loggingPaused;
           if(loggingPaused)
           {
-            mesh.disableDebugging();
+            m2mMesh.disableDebugging();
           }
           else
           {
-            mesh.enableDebugging();
+            m2mMesh.enableDebugging();
           }
         }
       break;
@@ -50,31 +50,31 @@ void inputHandling()
         {
           popupBox("Status display, press 'v' to change");
           delay(1000);
-          mesh.enableDebugging();
+          m2mMesh.enableDebugging();
         }
         else if(currentUiView == UI_ORIGINATORS)
         {
           popupBox("Originator display, press 'v' to change");
           delay(1000);
-          mesh.disableDebugging();
+          m2mMesh.disableDebugging();
         }
         else if(currentUiView == UI_PROTOCOLS)
         {
           popupBox("Service configuration display, press 'v' to change");
           delay(1000);
-          mesh.disableDebugging();
+          m2mMesh.disableDebugging();
         }
         else if(currentUiView == UI_LOGS)
         {
           popupBox("Logging display, press 'v' to change");
           delay(1000);
-          mesh.enableDebugging();
+          m2mMesh.enableDebugging();
         }
         else if(currentUiView == UI_LOG_CONFIG)
         {
           popupBox("Logging configuration, press 'v' to change");
           delay(1000);
-          mesh.disableDebugging();
+          m2mMesh.disableDebugging();
         }
         drawWholeUi = true;
   break;
@@ -83,7 +83,7 @@ void inputHandling()
   case '+':
     if(currentUiView == UI_ORIGINATORS)
     {
-      if(mesh.numberOfOriginators() > 0 && currentlyViewedOriginator < mesh.numberOfOriginators() - 1)
+      if(m2mMesh.numberOfOriginators() > 0 && currentlyViewedOriginator < m2mMesh.numberOfOriginators() - 1)
       {
         currentlyViewedOriginator++;
       }
@@ -95,7 +95,7 @@ void inputHandling()
     }
     else if(currentUiView == UI_LOGS && logAllNodes == false)
     {
-      if(mesh.numberOfOriginators() > 0 && nodeToLog < mesh.numberOfOriginators() - 1)
+      if(m2mMesh.numberOfOriginators() > 0 && nodeToLog < m2mMesh.numberOfOriginators() - 1)
       {
         nodeToLog++;
       }
@@ -103,7 +103,7 @@ void inputHandling()
       {
         nodeToLog = 0;
       }
-      mesh.nodeToLog(nodeToLog);
+      m2mMesh.nodeToLog(nodeToLog);
       drawWholeUi = true;
     }
     else
@@ -120,7 +120,7 @@ void inputHandling()
       }
       else
       {
-        currentlyViewedOriginator = mesh.numberOfOriginators() - 1;
+        currentlyViewedOriginator = m2mMesh.numberOfOriginators() - 1;
       }
       currentlyViewedOriginatorChanged = true;
     }
@@ -132,9 +132,9 @@ void inputHandling()
       }
       else
       {
-        nodeToLog = mesh.numberOfOriginators() - 1;
+        nodeToLog = m2mMesh.numberOfOriginators() - 1;
       }
-      mesh.nodeToLog(nodeToLog);
+      m2mMesh.nodeToLog(nodeToLog);
       drawWholeUi = true;
     }
     else
@@ -150,12 +150,12 @@ void inputHandling()
       logAllNodes = not logAllNodes;
       if(logAllNodes)
       {
-        mesh.logAllNodes();
+        m2mMesh.logAllNodes();
       }
       else
       {
         nodeToLog = currentlyViewedOriginator;
-        mesh.nodeToLog(currentlyViewedOriginator);
+        m2mMesh.nodeToLog(currentlyViewedOriginator);
       }
       if(currentUiView == UI_LOGS)
       {
@@ -171,89 +171,89 @@ void inputHandling()
   {
     logAllNodes = false;
     nodeToLog = currentlyViewedOriginator;
-    mesh.nodeToLog(currentlyViewedOriginator);
+    m2mMesh.nodeToLog(currentlyViewedOriginator);
   }
   break;
   case 'k':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_ALL_SENT_PACKETS);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_ALL_SENT_PACKETS);
     loggingLevelChanged = true;
   }
   break;
   case 'j':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_ALL_RECEIVED_PACKETS);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_ALL_RECEIVED_PACKETS);
     loggingLevelChanged = true;
   }
   break;
   case 'i':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_WIFI_POWER_MANAGEMENT);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_WIFI_POWER_MANAGEMENT);
     loggingLevelChanged = true;
   }
   break;
   case 'h':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_BUFFER_MANAGEMENT);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_BUFFER_MANAGEMENT);
     loggingLevelChanged = true;
   }
   break;
   case 'g':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_SCANNING);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_SCANNING);
     loggingLevelChanged = true;
   }
   break;
   case 'f':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_PEER_MANAGEMENT);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_USR_FORWARD);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_USR_FORWARD);
     servicesChanged = true;
   }
   break;
   case 'e':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_USR_SEND);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_USR_SEND);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_USR_RECEIVE);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_USR_RECEIVE);
     servicesChanged = true;
   }
   break;
   case 'd':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_USR_RECEIVED);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_USR_RECEIVED);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_USR_SEND);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_USR_SEND);
     servicesChanged = true;
   }
   break;
   case 'c':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_USR_FORWARDING);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_USR_FORWARDING);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_NHS_SUPPLY_VOLTAGE);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_NHS_SUPPLY_VOLTAGE);
     servicesChanged = true;
   }
   else if(currentUiView == UI_STATUS || currentUiView == UI_LOGS)
@@ -284,144 +284,144 @@ void inputHandling()
   case 'b':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_NHS_SEND);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_NHS_SEND);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_NHS_TIME_SERVER);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_NHS_TIME_SERVER);
     servicesChanged = true;
   }
   break;
   case 'a':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_NHS_RECEIVED);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_NHS_RECEIVED);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_NHS_INCLUDE_ORIGINATORS);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_NHS_INCLUDE_ORIGINATORS);
     servicesChanged = true;
   }
   break;
   case '9':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_NHS_FORWARDING);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_NHS_FORWARDING);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_NHS_FORWARD);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_NHS_FORWARD);
     servicesChanged = true;
   }
   break;
   case '8':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_OGM_SEND);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_OGM_SEND);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_NHS_RECEIVE);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_NHS_RECEIVE);
     servicesChanged = true;
   }
   break;
   case '7':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_OGM_RECEIVED);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_OGM_RECEIVED);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_NHS_SEND);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_NHS_SEND);
     servicesChanged = true;
   }
   break;
   case '6':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_OGM_FORWARDING);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_OGM_FORWARDING);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_OGM_FORWARD);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_OGM_FORWARD);
     servicesChanged = true;
   }
   break;
   case '5':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_ELP_SEND);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_ELP_SEND);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_OGM_RECEIVE);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_OGM_RECEIVE);
     servicesChanged = true;
   }
   break;
   case '4':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_ELP_RECEIVED);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_ELP_RECEIVED);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_OGM_SEND);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_OGM_SEND);
     servicesChanged = true;
   }
   break;
   case '3':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_ELP_FORWARDING);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_ELP_FORWARDING);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_ELP_INCLUDE_PEERS);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_ELP_INCLUDE_PEERS);
     servicesChanged = true;
   }
   break;
   case '2':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_INFORMATION);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_INFORMATION);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_ELP_FORWARD);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_ELP_FORWARD);
     servicesChanged = true;
   }
   break;
   case '1':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_WARNINGS);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_WARNINGS);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_ELP_RECEIVE);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_ELP_RECEIVE);
     servicesChanged = true;
   }
   break;
   case '0':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    mesh.setLoggingLevel(mesh.loggingLevel() ^ mesh.MESH_UI_LOG_ERRORS);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_ERRORS);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    mesh.setServiceFlags(mesh.serviceFlags() ^ mesh.PROTOCOL_ELP_SEND);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_ELP_SEND);
     servicesChanged = true;
   }
   break;

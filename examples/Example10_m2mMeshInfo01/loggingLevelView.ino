@@ -43,7 +43,7 @@ void loggingLevelView()
       else
       {
         uint8_t originatorMac[6]; //temporary MAC address
-        mesh.macAddress(currentlyViewedOriginator,originatorMac); //retrieve MAC address
+        m2mMesh.macAddress(currentlyViewedOriginator,originatorMac); //retrieve MAC address
         moveToXy(43,2);
         Serial.printf("%02x/%02x:%02x:%02x:%02x:%02x:%02x",currentlyViewedOriginator,originatorMac[0],originatorMac[1],originatorMac[2],originatorMac[3],originatorMac[4],originatorMac[5]);
       }

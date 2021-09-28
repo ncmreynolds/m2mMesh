@@ -33,7 +33,7 @@ void protocolsView()
       for(int i = 0; i<16 ;i++)
       {
         moveToXy(43,18-i);
-        if(mesh.serviceFlags() & uint16_t(pow(2, i)))
+        if(m2mMesh.serviceFlags() & uint16_t(pow(2, i)))
         {
           Serial.print(F("Enabled"));
         }
