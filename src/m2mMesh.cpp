@@ -97,13 +97,6 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 		}
 	}
 	#endif
-	#if defined(ESP32)
-	if(WiFi.getMode() == WIFI_OFF)
-	{
-		WiFi.mode(WIFI_STA);									//By default the ESP32 starts with WiFi disabled and if the application hasn't enabled it there will be an exception, crash & reboot
-		WiFi.disconnect();										//Disconnect, if connected
-	}
-	#endif
 	WiFi.macAddress(_localMacAddress);							//Retrieve the local MAC address, which may need tidying up to get the base MAC address
 	#if defined(ESP8266)
 	_localMacAddress[0] = _localMacAddress[0] & B11111101;		//Strip the variable bits out of the MAC address first octet, which are set in AP mode
@@ -148,7 +141,10 @@ bool m2mMeshClass::_initESPNow()
 {
 	//Start WiFi if it isn't already started
 	#if defined(ESP8266)
-	if(WiFi.status() == 7)	//This seems to be the 'not started' status, which isn't documented in the ESP8266 core header files
+	if(WiFi.status() == 7)	//This seems to be the 'not started' status, which isn't documented in the ESP8266 core header files. If you don't start WiFi, no packets will be sent
+	#elif defined(ESP32)
+	if(WiFi.getMode() == WIFI_OFF)
+	#endif
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
@@ -156,6 +152,7 @@ bool m2mMeshClass::_initESPNow()
 			_debugStream->print(m2mMeshinitialisingWiFi);
 		}
 		#endif
+		#if defined(ESP8266)
 		wl_status_t status = WiFi.begin();
 		if(status == WL_IDLE_STATUS || status == WL_CONNECTED)
 		{
@@ -171,11 +168,20 @@ bool m2mMeshClass::_initESPNow()
 			#ifdef m2mMeshIncludeDebugFeatures
 			if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 			{
+				#if defined(ESP8266)
 				_debugStream->print(m2mMeshfailed);
+				#elif defined(ESP32)
+				_debugStream->print(m2mMeshfailed_code_);
+				_debugStream->print(esp_err_to_name(status));
+				#endif
 			}
 			#endif
 			return(false);
 		}
+		#elif defined(ESP32)
+		WiFi.begin();							//Start the WiFi
+		esp_err_t status = WiFi.mode(WIFI_STA);	//Annoyingly this errors, but then everything works, so can't check for success
+		#endif
 	}
 	#ifdef m2mMeshIncludeDebugFeatures
 	else
@@ -183,7 +189,6 @@ bool m2mMeshClass::_initESPNow()
 		_debugStream->print(m2mMeshWiFiStatus);
 		_debugStream->print(WiFi.status());
 	}
-	#endif
 	#endif
 	//Check if the ESP-NOW initialization was successful, ESP8286/ESP8285 have different return results
 	#if defined(ESP8266)

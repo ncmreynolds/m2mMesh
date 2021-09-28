@@ -54,6 +54,9 @@ enum class meshEvent : uint8_t {joined, left, stable, changing, synced, message}
 
 //Error messages if debug enabled
 #ifdef m2mMeshIncludeDebugFeatures
+#ifdef ESP32
+#include <esp_err.h>
+#endif
 const char m2mMesherrorReadBeyondEndOfPacket[] PROGMEM = "\r\nApplication tried to read beyond end of packet";
 const char m2mMeshstartedwithcapacityfordnodes[] PROGMEM = "\r\nMesh started with capacity for %d nodes";
 const char m2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN[] PROGMEM = "\r\nOGM ECHO R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d HOP:%d LEN:%d";
@@ -88,6 +91,7 @@ const char TTL02dFLG02xSEQ08xLENd[] PROGMEM = " TTL:%02d FLG:%02x SEQ:%08x LEN:%
 const char ORGd[] PROGMEM = " ORG:%d";
 const char m2mMeshsuccess[] PROGMEM = "- success";
 const char m2mMeshfailed[] PROGMEM = "- failed";
+const char m2mMeshfailed_code_[] PROGMEM = "- failed code ";
 const char m2mMeshNHSR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nNHS R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d Length:%d";
 const char m2mMeshNHSUptimedms[] PROGMEM = "\r\nNHS Uptime %dms";
 const char m2mMeshNHSCurrentFreeHeapdd[] PROGMEM = "\r\nNHS Current Free Heap %d/%d";
