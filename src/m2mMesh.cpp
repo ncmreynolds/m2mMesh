@@ -2706,6 +2706,29 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::destination(String dest)
 	}
 }*/
 
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(const bool dataToAdd)
+{
+	_buildUserPacketHeader();
+	if(_userPacketIndex + 1 < USR_MAX_PACKET_SIZE)
+	{
+		if(dataToAdd == false)
+		{
+			_userPacket[_userPacketIndex++] = USR_DATA_BOOL;
+		}
+		else
+		{
+			_userPacket[_userPacketIndex++] = USR_DATA_BOOL_TRUE;
+		}
+		//Increment the field counter
+		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+}
+
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint8_t dataToAdd)
 {
 	_buildUserPacketHeader();
@@ -2722,6 +2745,36 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint8_t dataToAdd)
 		return(false);
 	}
 }
+
+/*bool ICACHE_FLASH_ATTR m2mMeshClass::add(uint8_t* dataToAdd)
+{
+	_buildUserPacketHeader();
+	if(dataToAdd == nullptr && _userPacketIndex + 2 < USR_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
+	{
+		_userPacket[_userPacketIndex++] = USR_DATA_CHAR_ARRAY;
+		_userPacket[_userPacketIndex++] = 0;
+		//Increment the field counter
+		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		return(true);
+	}
+	else if(_userPacketIndex + strlen(dataToAdd) + 1 < USR_MAX_PACKET_SIZE)
+	{
+		_userPacket[_userPacketIndex++] = USR_DATA_CHAR_ARRAY;
+		_userPacket[_userPacketIndex++] = strlen(dataToAdd);
+		for(int i = 0 ; i < strlen(dataToAdd) ; i++)
+		{
+			_userPacket[_userPacketIndex++] = dataToAdd[i];
+		}
+		//Increment the field counter
+		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+}*/
+
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint16_t dataToAdd)
 {
 	_buildUserPacketHeader();
@@ -3160,7 +3213,15 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::nextDataType()
 {
 	if(dataAvailable() > 0)
 	{
-		return(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex]);
+		uint8_t nextType = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex] & 0x0f;	//Remove the small array count, if it exists
+		if(nextType == USR_DATA_BOOL_TRUE)
+		{
+			return(USR_DATA_BOOL); //Both USR_DATA_BOOL_TRUE and USR_DATA_BOOL need to return USR_DATA_BOOL
+		}
+		else
+		{
+			return(nextType);	
+		}
 	}
 	else
 	{
@@ -3198,6 +3259,41 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveDataLength()
 	{
 		//This is disincentive to read past the end of the message, but won't actually stop you retrieveing dummy values
 		return(0);
+	}
+}
+
+bool ICACHE_FLASH_ATTR m2mMeshClass::retrieveBool()
+{
+	if(dataAvailable() == 0)
+	{
+		#ifdef m2mMeshIncludeDebugFeatures
+		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
+		{
+			_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
+		}
+		#endif
+		//Return a dummy value if nothing available
+		return(false);
+	}
+	else
+	{
+		//This does not step past the 'type' as the data is stored in the 'type'
+		//Decrement the count of data fields
+		_receivedUserPacketFieldCounter--;
+		bool temp;
+		if(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++] == USR_DATA_BOOL_TRUE)
+		{
+			temp = true;
+		}
+		else
+		{
+			temp = false;
+		}
+		if(dataAvailable() == 0)
+		{
+			markMessageRead();
+		}
+		return(temp);
 	}
 }
 

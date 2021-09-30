@@ -31,6 +31,7 @@ send	KEYWORD2
 //Receiving messages
 dataAvailable	KEYWORD2
 nextDataType	KEYWORD2
+retrieveBool	KEYWORD2
 retrieveUint8_t	KEYWORD2
 retrieveUint16_t	KEYWORD2
 retrieveUint32_t	KEYWORD2
@@ -93,7 +94,7 @@ droppedRxPackets	KEYWORD2
 droppedTxPackets	KEYWORD2
 droppedTxPackets	KEYWORD2
 
-
+USR_DATA_BOOL	KEYWORD3
 USR_DATA_UINT8_T	KEYWORD3
 USR_DATA_UINT16_T	KEYWORD3
 USR_DATA_UINT32_T	KEYWORD3

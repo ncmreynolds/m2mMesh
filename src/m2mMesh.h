@@ -325,6 +325,7 @@ class m2mMeshClass
 		//bool destination(String);			//Add a destination to a message. This can be a node name or MAC address.
 		bool destination(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);	//Add a destination MAC address
 		uint8_t payloadLeft();				//Returns the number of bytes left in the packet, helps with checking before adding
+		bool add(bool);						//Add some bool data to a message
 		bool add(uint8_t);					//Add some uint8_t data to a message
 		bool add(uint16_t);					//Add some uint16_t data to a message
 		bool add(uint32_t);					//Add some uint32_t data to a message
@@ -355,6 +356,7 @@ class m2mMeshClass
 		bool retrieve(uint32_t&);				//Retrieve uint32_t data from a message
 		bool retrieve(uint64_t&);				//Retrieve uint64_t data from a message
 
+		bool retrieveBool();					//Retrieve bool data from a message
 		uint8_t retrieveUint8_t();				//Retrieve uint8_t data from a message
 		uint16_t retrieveUint16_t();			//Retrieve uint16_t data from a message
 		uint32_t retrieveUint32_t();			//Retrieve uint32_t data from a message
@@ -494,24 +496,36 @@ class m2mMeshClass
 		static const uint16_t PROTOCOL_ELP_FORWARD = 4;				//Node will forward forward ELP packets - it will forward ELP packets from neighbours, typically this is disabled
 		static const uint16_t PROTOCOL_ELP_RECEIVE = 2;				//Node will process ELP packets - it listens for nearby neighbours
 		static const uint16_t PROTOCOL_ELP_SEND = 1;				//Node will send ELP packets - it will announce itself to nearby neighbours
-		//These should be converted to be compatible with msgpack really
-		static const uint8_t USR_DATA_BOOL =        0x00;			//Used to denote boolean, it also implies the boolean is false
-		//                                          0x01;			//Used to denote boolean, it also implies the boolean is true
-		static const uint8_t USR_DATA_UINT8_T =     0x02;			//Used to denote an uint8_t in user data
-		static const uint8_t USR_DATA_UINT16_T =    0x03;			//Used to denote an uint16_t in user data
-		static const uint8_t USR_DATA_UINT32_T =    0x04;			//Used to denote an uint32_t in user data
-		static const uint8_t USR_DATA_UINT64_T =    0x05;			//Used to denote an uint64_t in user data
-		static const uint8_t USR_DATA_INT8_T =      0x06;			//Used to denote an int8_t in user data
-		static const uint8_t USR_DATA_INT16_T =     0x07;			//Used to denote an int16_t in user data
-		static const uint8_t USR_DATA_INT32_T =     0x08;			//Used to denote an int32_t in user data
-		static const uint8_t USR_DATA_INT64_T =     0x09;			//Used to denote an int64_t in user data
-		static const uint8_t USR_DATA_FLOAT =       0x0a;			//Used to denote a float (32-bit) in user data
-		static const uint8_t USR_DATA_DOUBLE =      0x0b;			//Used to denote a double float (64-bit) in user data
-		static const uint8_t USR_DATA_CHAR =        0x0c;			//Used to denote a char in user data
-		static const uint8_t USR_DATA_STRING =      0x0d;			//Used to denote a String in user data
-		static const uint8_t USR_DATA_CHAR_ARRAY =  0x0e;			//Used to denote a character array in user data
-		static const uint8_t USR_DATA_UINT8_T_ARRAY = 0x0f;			//Used to denote an uint_8t array in user data
-		static const uint8_t USR_DATA_UNAVAILABLE = 0xff;			//Used to denote no more data left, this is never packed in a packet, but can be returned to the application
+		//These should be converted to be compatible with msgpack really but msgpack uses a much more complicated scheme
+		static const uint8_t USR_DATA_UNAVAILABLE =    0xff;			//Used to denote no more data left, this is never packed in a packet, but can be returned to the application
+		static const uint8_t USR_DATA_BOOL =           0x00;			//Used to denote boolean, it also implies the boolean is false
+		static const uint8_t USR_DATA_BOOL_TRUE =      0x01;			//Used to denote boolean, it also implies the boolean is true
+		static const uint8_t USR_DATA_UINT8_T =        0x02;			//Used to denote an uint8_t in user data
+		static const uint8_t USR_DATA_UINT16_T =       0x03;			//Used to denote an uint16_t in user data
+		static const uint8_t USR_DATA_UINT32_T =       0x04;			//Used to denote an uint32_t in user data
+		static const uint8_t USR_DATA_UINT64_T =       0x05;			//Used to denote an uint64_t in user data
+		static const uint8_t USR_DATA_INT8_T =         0x06;			//Used to denote an int8_t in user data
+		static const uint8_t USR_DATA_INT16_T =        0x07;			//Used to denote an int16_t in user data
+		static const uint8_t USR_DATA_INT32_T =        0x08;			//Used to denote an int32_t in user data
+		static const uint8_t USR_DATA_INT64_T =        0x09;			//Used to denote an int64_t in user data
+		static const uint8_t USR_DATA_FLOAT =          0x0a;			//Used to denote a float (32-bit) in user data
+		static const uint8_t USR_DATA_DOUBLE =         0x0b;			//Used to denote a double float (64-bit) in user data
+		static const uint8_t USR_DATA_CHAR =           0x0c;			//Used to denote a char in user data
+		static const uint8_t USR_DATA_STRING =         0x0d;			//Used to denote a String in user data
+		static const uint8_t USR_DATA_CHAR_ARRAY =     0x0e;			//Used to denote a character array in user data
+		static const uint8_t USR_DATA_UINT8_T_ARRAY =  0x0f;			//Used to denote an uint_8t array in user data
+		//Return values for arrays, which are packed differently based off their length, this is never packed in a packet
+		static const uint8_t USR_DATA_BOOL_ARRAY =     0xf0;			//Used to denote boolean array in user data
+		//static const uint8_t USR_DATA_UINT8_T_ARRAY =  0xf2;			//Used to denote an uint8_t array in user data
+		static const uint8_t USR_DATA_UINT16_T_ARRAY = 0xf3;			//Used to denote an uint16_t array in user data
+		static const uint8_t USR_DATA_UINT32_T_ARRAY = 0xf4;			//Used to denote an uint32_t array in user data
+		static const uint8_t USR_DATA_UINT64_T_ARRAY = 0xf5;			//Used to denote an uint64_t array in user data
+		static const uint8_t USR_DATA_INT8_T_ARRAY =   0xf6;			//Used to denote an int8_t array in user data
+		static const uint8_t USR_DATA_INT16_T_ARRAY =  0xf7;			//Used to denote an int16_t array in user data
+		static const uint8_t USR_DATA_INT32_T_ARRAY =  0xf8;			//Used to denote an int32_t array in user data
+		static const uint8_t USR_DATA_INT64_T_ARRAY =  0xf9;			//Used to denote an int64_t in user data
+		static const uint8_t USR_DATA_FLOAT_ARRAY =    0xfa;			//Used to denote a float array (32-bit) in user data
+		static const uint8_t USR_DATA_DOUBLE_ARRAY =   0xfb;			//Used to denote a double float array (64-bit) in user data
 
 	private:
 		//High level variables
