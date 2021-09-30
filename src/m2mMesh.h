@@ -320,10 +320,10 @@ class m2mMeshClass
 		uint32_t expectedUptime(uint8_t);					//Uptime of a node, assuming it has continued running
 
 		//Sending data
-		//bool destination(uint8_t);			//Add a destination ID to a message. Without a destination it is flooded to the whole mesh.
+		bool destination(uint8_t);			//Add a destination ID to a message. Without a destination it is flooded to the whole mesh.
 		//bool destination(char *);			//Add a destination to a message. This can be a node name or MAC address, the function will attempt to distinguish between them.
 		//bool destination(String);			//Add a destination to a message. This can be a node name or MAC address.
-		void destination(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);	//Add a destination MAC address
+		bool destination(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);	//Add a destination MAC address
 		uint8_t payloadLeft();				//Returns the number of bytes left in the packet, helps with checking before adding
 		bool add(uint8_t);					//Add some uint8_t data to a message
 		bool add(uint16_t);					//Add some uint16_t data to a message
@@ -348,7 +348,7 @@ class m2mMeshClass
 		void markMessageRead();				//Marks the message as read, discarding any data left
 		uint8_t sourceId();					//Which ID is the message from
 		bool sourceMacAddress(uint8_t *);	//Which MAC address is the message from
-		bool dataAvailable();				//Is there data to read
+		uint8_t dataAvailable();			//Is there data to read
 		uint8_t nextDataType();				//Which type the next piece of data is
 		
 		bool retrieve(uint8_t&);				//Retrieve uint8_t data from a message

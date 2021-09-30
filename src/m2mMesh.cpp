@@ -2651,24 +2651,28 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::payloadLeft()
 //Functions for setting destination on a packet before sending. These are overloaded to make it easier to set a destination.
 //They must be called before adding data to a packet
 
-void ICACHE_FLASH_ATTR m2mMeshClass::destination(const uint8_t mac0, const uint8_t mac1, const uint8_t mac2, const uint8_t mac3, const uint8_t mac4, const uint8_t mac5)	//Add a destination MAC address
+bool ICACHE_FLASH_ATTR m2mMeshClass::destination(const uint8_t mac0, const uint8_t mac1, const uint8_t mac2, const uint8_t mac3, const uint8_t mac4, const uint8_t mac5)	//Add a destination MAC address
 {
-	_buildUserPacketHeader(mac0, mac1, mac2, mac3, mac4, mac5);	//Add the MAC address to the packet
-}
-
-
-/*bool ICACHE_FLASH_ATTR m2mMeshClass::destination(uint8_t destId)
-{
-	if(not buildingUserPacket)
+	uint8_t destId = _originatorIdFromMac(mac0, mac1, mac2, mac3, mac4, mac5);
+	if(destId < _numberOfOriginators)
 	{
-		if(destId<numberOfOriginators)
-		{
-			buildUserPacketHeader(destId);
-			return(true);
-		}
+		_buildUserPacketHeader(destId);
+		return(true);
 	}
 	return(false);
 }
+
+
+bool ICACHE_FLASH_ATTR m2mMeshClass::destination(uint8_t destId)
+{
+	if(destId < _numberOfOriginators)
+	{
+		_buildUserPacketHeader(destId);
+		return(true);
+	}
+	return(false);
+}
+/*
 bool ICACHE_FLASH_ATTR m2mMeshClass::destination(char* dest)
 {
 	if(not buildingUserPacket)
@@ -3154,7 +3158,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::sourceMacAddress(uint8_t *macAddressArray)
 
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::nextDataType()
 {
-	if(dataAvailable())
+	if(dataAvailable() > 0)
 	{
 		return(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex]);
 	}
@@ -3165,18 +3169,18 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::nextDataType()
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMeshClass::dataAvailable()
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::dataAvailable()
 {
 	if(_receivedUserPacketFieldCounter > 0 && _receivedUserPacketIndex < ESP_NOW_MAX_PACKET_SIZE)
 	{
-		return(true);
+		return(_receivedUserPacketFieldCounter);
 	}
-	return(false);
+	return(0);
 }
 
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveDataLength()
 {
-	if(dataAvailable())
+	if(dataAvailable() > 0)
 	{
 		return(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex+1]);
 		/*if(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex] == USR_DATA_UINT8_T_ARRAY)
@@ -3200,7 +3204,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveDataLength()
 
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint8_t()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3218,7 +3222,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint8_t()
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
 		uint8_t temp = uint8_t(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3228,7 +3232,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint8_t()
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint8_t &recipient)
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3245,7 +3249,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint8_t &recipient)
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
 		recipient = uint8_t(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3255,7 +3259,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint8_t &recipient)
 
 uint16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint16_t()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3275,7 +3279,7 @@ uint16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint16_t()
 		unsignedIntToBytes temp;
 		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3284,7 +3288,7 @@ uint16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint16_t()
 }
 uint32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint32_t()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3306,7 +3310,7 @@ uint32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint32_t()
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3315,7 +3319,7 @@ uint32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint32_t()
 }
 bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint32_t &recipient)
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3337,7 +3341,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint32_t &recipient)
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3347,7 +3351,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint32_t &recipient)
 }
 uint64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint64_t()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3373,7 +3377,7 @@ uint64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint64_t()
 		temp.b[5] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[6] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[7] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3382,7 +3386,7 @@ uint64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint64_t()
 }
 bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint64_t &recipient)
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3408,7 +3412,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint64_t &recipient)
 		temp.b[5] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[6] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[7] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3418,7 +3422,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint64_t &recipient)
 }
 int8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt8_t()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3436,7 +3440,7 @@ int8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt8_t()
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
 		int8_t temp = int8_t(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3445,7 +3449,7 @@ int8_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt8_t()
 }
 int16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt16_t()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3465,7 +3469,7 @@ int16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt16_t()
 		intToBytes temp;
 		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3474,7 +3478,7 @@ int16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt16_t()
 }
 int32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt32_t()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3496,7 +3500,7 @@ int32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt32_t()
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3505,7 +3509,7 @@ int32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt32_t()
 }
 int64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt64_t()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3531,7 +3535,7 @@ int64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt64_t()
 		temp.b[5] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[6] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[7] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3540,7 +3544,7 @@ int64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt64_t()
 }
 float ICACHE_FLASH_ATTR m2mMeshClass::retrieveFloat()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3562,7 +3566,7 @@ float ICACHE_FLASH_ATTR m2mMeshClass::retrieveFloat()
 		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3571,7 +3575,7 @@ float ICACHE_FLASH_ATTR m2mMeshClass::retrieveFloat()
 }
 char ICACHE_FLASH_ATTR m2mMeshClass::retrieveChar()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3590,7 +3594,7 @@ char ICACHE_FLASH_ATTR m2mMeshClass::retrieveChar()
 		_receivedUserPacketFieldCounter--;
 		char temp;
 		temp = char(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3599,7 +3603,7 @@ char ICACHE_FLASH_ATTR m2mMeshClass::retrieveChar()
 }
 String ICACHE_FLASH_ATTR m2mMeshClass::retrieveString()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3622,7 +3626,7 @@ String ICACHE_FLASH_ATTR m2mMeshClass::retrieveString()
 		{
 			tempString += char(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++]);
 		}
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3631,7 +3635,7 @@ String ICACHE_FLASH_ATTR m2mMeshClass::retrieveString()
 }
 void ICACHE_FLASH_ATTR m2mMeshClass::retrieveCharArray(char *data)
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3658,7 +3662,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::retrieveCharArray(char *data)
 		{
 			data = nullptr;
 		}
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3667,7 +3671,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::retrieveCharArray(char *data)
 
 void ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint8_tArray(uint8_t *data)
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3686,7 +3690,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint8_tArray(uint8_t *data)
 		uint8_t dataLength = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
 		memcpy(data,&_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex],dataLength);
 		_receivedUserPacketIndex+=dataLength;
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
@@ -3695,7 +3699,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint8_tArray(uint8_t *data)
 
 void ICACHE_FLASH_ATTR m2mMeshClass::skipRetrieve()
 {
-	if(not dataAvailable())
+	if(dataAvailable() == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
@@ -3755,7 +3759,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::skipRetrieve()
 		}
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		if(not dataAvailable())
+		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
