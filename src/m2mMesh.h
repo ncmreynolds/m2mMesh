@@ -477,9 +477,9 @@ class m2mMeshClass
 		static const uint32_t MESH_UI_LOG_ERRORS = 1ul;
 		#endif
 
-		static const uint16_t PROTOCOL_USR_FORWARD = 32768;		//Node will forward user data - node will forward user application, essential for a relay but perhaps undesirable on end nodes
-		static const uint16_t PROTOCOL_USR_RECEIVE = 16384;		//Node will process user data - node will process user application data, not necessary on some devices
-		static const uint16_t PROTOCOL_USR_SEND = 8192;			//Node will send user data - node sends user application data, not necessary on some devices
+		static const uint16_t PROTOCOL_USR_FORWARD = 32768;			//Node will forward user data - node will forward user application, essential for a relay but perhaps undesirable on end nodes
+		static const uint16_t PROTOCOL_USR_RECEIVE = 16384;			//Node will process user data - node will process user application data, not necessary on some devices
+		static const uint16_t PROTOCOL_USR_SEND = 8192;				//Node will send user data - node sends user application data, not necessary on some devices
 		static const uint16_t PROTOCOL_NHS_SUPPLY_VOLTAGE = 4096;	//Node will share its power information - useful to check the battery on devices, not essential
 		static const uint16_t PROTOCOL_NHS_TIME_SERVER = 2048;		//Node will share its time information	- this maintains a central timestamp across the nodes to help synchronise events
 		static const uint16_t PROTOCOL_NHS_INCLUDE_ORIGINATORS		//Node will share originator information - it will forward a list of ALL nodes, speeding global mesh discovery
@@ -491,24 +491,27 @@ class m2mMeshClass
 		static const uint16_t PROTOCOL_OGM_RECEIVE = 32;			//Node will process OGM data - it will read information about how to reach non-local nodes
 		static const uint16_t PROTOCOL_OGM_SEND = 16;				//Node will send OGM data - it will share routing information about itself with non-local nodes
 		static const uint16_t PROTOCOL_ELP_INCLUDE_PEERS = 8;		//Node will share neighbour information - it will share information about its nearby neighbours, speeding local mesh discovery
-		static const uint16_t PROTOCOL_ELP_FORWARD = 4;			//Node will forward forward ELP packets - it will forward ELP packets from neighbours, typically this is disabled
-		static const uint16_t PROTOCOL_ELP_RECEIVE = 2;			//Node will process ELP packets - it listens for nearby neighbours
+		static const uint16_t PROTOCOL_ELP_FORWARD = 4;				//Node will forward forward ELP packets - it will forward ELP packets from neighbours, typically this is disabled
+		static const uint16_t PROTOCOL_ELP_RECEIVE = 2;				//Node will process ELP packets - it listens for nearby neighbours
 		static const uint16_t PROTOCOL_ELP_SEND = 1;				//Node will send ELP packets - it will announce itself to nearby neighbours
 		//These should be converted to be compatible with msgpack really
-		static const uint8_t USR_DATA_UINT8_T = 0x01;				//Used to denote an uint8_t in user data
-		static const uint8_t USR_DATA_UINT16_T = 0x2;				//Used to denote an uint16_t in user data
-		static const uint8_t USR_DATA_UINT32_T = 0x03;				//Used to denote an uint32_t in user data
-		static const uint8_t USR_DATA_UINT64_T = 0x0c;				//Used to denote an uint64_t in user data
-		static const uint8_t USR_DATA_INT8_T = 0x04;				//Used to denote an int8_t in user data
-		static const uint8_t USR_DATA_INT16_T = 0x5;				//Used to denote an int16_t in user data
-		static const uint8_t USR_DATA_INT32_T = 0x06;				//Used to denote an int32_t in user data
-		static const uint8_t USR_DATA_INT64_T = 0x0d;				//Used to denote an int64_t in user data
-		static const uint8_t USR_DATA_FLOAT = 0x07;				//Used to denote a float in user data
-		static const uint8_t USR_DATA_CHAR = 0x08;					//Used to denote a char in user data
-		static const uint8_t USR_DATA_STRING = 0x09;				//Used to denote a String in user data
-		static const uint8_t USR_DATA_CHAR_ARRAY = 0x0a;			//Used to denote a character array in user data
-		static const uint8_t USR_DATA_UINT8_T_ARRAY = 0x0b;		//Used to denote a character array in user data
-		static const uint8_t USR_DATA_UNAVAILABLE = 0xff;			//Used to denote an uint8_t in user data
+		static const uint8_t USR_DATA_BOOL =        0x00;			//Used to denote boolean, it also implies the boolean is false
+		//                                          0x01;			//Used to denote boolean, it also implies the boolean is true
+		static const uint8_t USR_DATA_UINT8_T =     0x02;			//Used to denote an uint8_t in user data
+		static const uint8_t USR_DATA_UINT16_T =    0x03;			//Used to denote an uint16_t in user data
+		static const uint8_t USR_DATA_UINT32_T =    0x04;			//Used to denote an uint32_t in user data
+		static const uint8_t USR_DATA_UINT64_T =    0x05;			//Used to denote an uint64_t in user data
+		static const uint8_t USR_DATA_INT8_T =      0x06;			//Used to denote an int8_t in user data
+		static const uint8_t USR_DATA_INT16_T =     0x07;			//Used to denote an int16_t in user data
+		static const uint8_t USR_DATA_INT32_T =     0x08;			//Used to denote an int32_t in user data
+		static const uint8_t USR_DATA_INT64_T =     0x09;			//Used to denote an int64_t in user data
+		static const uint8_t USR_DATA_FLOAT =       0x0a;			//Used to denote a float (32-bit) in user data
+		static const uint8_t USR_DATA_DOUBLE =      0x0b;			//Used to denote a double float (64-bit) in user data
+		static const uint8_t USR_DATA_CHAR =        0x0c;			//Used to denote a char in user data
+		static const uint8_t USR_DATA_STRING =      0x0d;			//Used to denote a String in user data
+		static const uint8_t USR_DATA_CHAR_ARRAY =  0x0e;			//Used to denote a character array in user data
+		static const uint8_t USR_DATA_UINT8_T_ARRAY = 0x0f;			//Used to denote an uint_8t array in user data
+		static const uint8_t USR_DATA_UNAVAILABLE = 0xff;			//Used to denote no more data left, this is never packed in a packet, but can be returned to the application
 
 	private:
 		//High level variables
