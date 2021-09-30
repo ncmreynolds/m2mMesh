@@ -25,9 +25,11 @@ rtcServer	KEYWORD2
 //Sending messages
 destination	KEYWORD2
 add	KEYWORD2
+payloadLeft	KEYWORD2
 send	KEYWORD2
 
 //Receiving messages
+dataAvailable	KEYWORD2
 nextDataType	KEYWORD2
 retrieveUint8_t	KEYWORD2
 retrieveUint16_t	KEYWORD2
