@@ -12,7 +12,7 @@ As the number of fields and their size varies, sometimes there may not be space 
 
 The methods are templated functions that accept most built in Arduino data types, either as single items or arrays. The return value is true if there was enough space left in the message for the data. There may be space for smaller fields if a large one fails.
 
-Typically there is 220-231 bytes available in a message for data, larger items of data will have to be sent in chunks by the application.
+There are 225 bytes available in a message for data with a single destination or 231 bytes if flooded to the whole mesh. Larger items of data will have to be sent in chunks by the application.
 
 The first field of data added causes the message structure to be initialised and further fields are appended until the message is sent, cancelled, or there is no space for the field you are trying to add.
 
