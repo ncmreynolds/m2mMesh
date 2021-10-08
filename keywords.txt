@@ -49,8 +49,8 @@ retrieveStr	KEYWORD2
 skipRetrieve	KEYWORD2
 
 maxNumberOfOriginators	KEYWORD2
-numberOfOriginators	KEYWORD2
-numberOfReachableOriginators	KEYWORD2
+numberOfNodes	KEYWORD2
+numberOfReachableNodes	KEYWORD2
 numberOfActiveNeighbours	KEYWORD2
 nodeId	KEYWORD2
 macAddress	KEYWORD2
