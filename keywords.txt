@@ -27,6 +27,7 @@ destination	KEYWORD2
 add	KEYWORD2
 payloadLeft	KEYWORD2
 send	KEYWORD2
+clearMessage	KEYWORD2
 
 //Receiving messages
 dataAvailable	KEYWORD2
