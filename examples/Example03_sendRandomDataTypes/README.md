@@ -10,7 +10,7 @@ As the number of fields and their size varies, sometimes there may not be space 
 
 ## Methods used for add data to the message
 
-The methods are templated functions that accept most built in Arduino data types, either as single items or arrays. The return value is true if there was enough space left in the message for the data. There may be space for smaller fields if a large one fails.
+The methods are templated functions that accept most built in Arduino data types, either as single items or arrays. The return value is true if there was enough space left in the message for the data. There may be space for smaller fields if a large one fails and this will sometimes happen with this example if the packet is filled with Strings or arrays of larger data types.
 
 There are 225 bytes available in a message for data with a single destination or 231 bytes if flooded to the whole mesh. Larger items of data will have to be sent in chunks by the application.
 
@@ -18,7 +18,7 @@ The first field of data added causes the message structure to be initialised and
 
 ```c++
 bool m2mMesh.add(<data>)
-bool m2mMesh.add(<array>, [uint8_t <arrayLength>])
+bool m2mMesh.add(<array>, uint8_t <arrayLength>)
 ```
 
 Supported types are.
@@ -41,6 +41,8 @@ String		(Arduino Strings, not C strings)
 
 There is a special pseudo-type for NULL-terminated C strings, 'str'. If you omit the array length when passing a C string to *m2mMesh.add(<data>)*, this will be used and the terminating NULL will be stripped during sending, saving a byte in the message. The NULL will be added again on retrieving the data from the field on receipt.
 
+All the fixed length data types can also be sent in an array, which is far more efficient than sending several individual values of the same type. Arrays of Strings and strs are not possible, they must be added individually.
+
 ## Methods for sending the message
 
 There is just one method to send.
@@ -57,6 +59,6 @@ The return value is whether the packet was successfully sent or not, which does 
 
 ```c++
 uint8_t m2mMesh.payloadLeft()	//The number of bytes space left in the current message
-bool clear();					//Abandons the current message, deleting all added fields
+bool m2mMesh.clearMessage()		//Abandons the current message, deleting all added fields
 ```
 
