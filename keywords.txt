@@ -9,7 +9,7 @@ nodeNameIsSet	KEYWORD2
 setNodeName	KEYWORD2
 getNodeName	KEYWORD2
 joined	KEYWORD2
-meshIsStable	KEYWORD2
+stable	KEYWORD2
 supplyVoltage	KEYWORD2
 
 //Time synchronisation
