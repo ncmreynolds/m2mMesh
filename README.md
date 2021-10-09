@@ -138,7 +138,7 @@ The Espressif [ESP-Now resources](https://www.espressif.com/en/products/software
 
 Copyright (c) 2021 Nick Reynolds
 
-This project is licensed under the GNU Lesser General Public License - see [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the GNU Lesser General Public License - see [LICENCE.md](LICENCE.md) file for details.
 
 **[Back to top](#table-of-contents)**
 
