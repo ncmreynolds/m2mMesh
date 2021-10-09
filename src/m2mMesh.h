@@ -50,7 +50,7 @@
 #define M2MMESH_CALLBACK std::function<void(meshEvent)> eventCallback
 #endif
 
-enum class meshEvent : uint8_t {joined, left, stable, changing, synced, message};
+enum class meshEvent : uint8_t {joined, left, stable, changing, complete, synced, message};
 
 //Error messages if debug enabled
 #ifdef m2mMeshIncludeDebugFeatures
@@ -58,26 +58,26 @@ enum class meshEvent : uint8_t {joined, left, stable, changing, synced, message}
 #include <esp_err.h>
 #endif
 const char m2mMesherrorReadBeyondEndOfPacket[] PROGMEM = "\r\nApplication tried to read beyond end of packet";
-const char m2mMeshstartedwithcapacityfordnodes[] PROGMEM = "\r\nMesh started with capacity for %d nodes";
-const char m2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN[] PROGMEM = "\r\nOGM ECHO R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d HOP:%d LEN:%d";
+const char m2mMeshstartedwithcapacityfordnodes[] PROGMEM = "\r\nMesh started with capacity for %u nodes";
+const char m2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN[] PROGMEM = "\r\nOGM ECHO R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u HOP:%u LEN:%u";
 const char m2mMesh02x02x02x02x02x02xsequencenumberprotectionenabled[] PROGMEM = "\r\n%02x:%02x:%02x:%02x:%02x:%02x sequence number protection enabled";
-const char m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod[] PROGMEM = "\r\n%s originator %02x:%02x:%02x:%02x:%02x:%02x changed interval from %d to %d";
-const char nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x[] PROGMEM = "\r\nWARNING: unknown type %d from %02x:%02x:%02x:%02x:%02x:%02x";
-const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d";
-const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d failed";
+const char m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod[] PROGMEM = "\r\n%s originator %02x:%02x:%02x:%02x:%02x:%02x changed interval from %u to %u";
+const char nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x[] PROGMEM = "\r\nWARNING: unknown type %u from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u";
+const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u failed";
 const char m2mMesh02x02x02x02x02x02xsequencenumberprotectiondisabledpossiblereboot[] PROGMEM = "\r\n%02x:%02x:%02x:%02x:%02x:%02x sequence number protection disabled, possible reboot";
-const char m2mMeshWARNINGincorrectprotocolversiondfrom02x02x02x02x02x02x[] PROGMEM = "\r\nWARNING: incorrect protocol version %d from %02x:%02x:%02x:%02x:%02x:%02x";
-const char TTL02dFLG02xSEQ08xLENdNBRd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%08x LEN:%d NBR:%d";
+const char m2mMeshWARNINGincorrectprotocolversiondfrom02x02x02x02x02x02x[] PROGMEM = "\r\nWARNING: incorrect protocol version %u from %02x:%02x:%02x:%02x:%02x:%02x";
+const char TTL02dFLG02xSEQ08xLENdNBRd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%08x LEN:%u NBR:%u";
 const char m2mMeshSent[] PROGMEM = "\r\nSent ";
-const char m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdNBRS02dLENd[] PROGMEM = "\r\nELP RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d NBRS:%02d LEN:%d";
-const char m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLENd[] PROGMEM = "\r\nELP RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d LEN:%d";
+const char m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdNBRS02dLENd[] PROGMEM = "\r\nELP RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u NBRS:%02d LEN:%u";
+const char m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLENd[] PROGMEM = "\r\nELP RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u LEN:%u";
 const char m2mMeshELPneighbour02x02x02x02x02x02xthisnode[] PROGMEM = "\r\nELP neighbour %02x:%02x:%02x:%02x:%02x:%02x - this node";
 const char m2mMeshELPneighbour02x02x02x02x02x02xnewnode[] PROGMEM = "\r\nELP neighbour %02x:%02x:%02x:%02x:%02x:%02x - new node";
 const char m2mMeshELPneighbour02x02x02x02x02x02x[] PROGMEM = "\r\nELP neighbour %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshELP[] PROGMEM =  "\r\nELP ";
-const char m2mMeshOGMSNDTTL02dFLG02xSEQ08xLENd[] PROGMEM = "\r\nOGM SND TTL:%02d FLG:%02x SEQ:%08x LEN:%d";
-const char m2mMeshOGMSNDfailedTTL02dFlags02xSeq08xLENd[] PROGMEM = "\r\nOGM SND failed TTL:%02d Flags:%02x Seq:%08x LEN:%d";
-const char m2mMeshOGMRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLENd[] PROGMEM = "\r\nOGM RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d HOP:%d LEN:%d";
+const char m2mMeshOGMSNDTTL02dFLG02xSEQ08xLENd[] PROGMEM = "\r\nOGM SND TTL:%02d FLG:%02x SEQ:%08x LEN:%u";
+const char m2mMeshOGMSNDfailedTTL02dFlags02xSeq08xLENd[] PROGMEM = "\r\nOGM SND failed TTL:%02d Flags:%02x Seq:%08x LEN:%u";
+const char m2mMeshOGMRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLENd[] PROGMEM = "\r\nOGM RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u HOP:%u LEN:%u";
 const char m2mMeshOGMR02x02x02x02x02x02xselectedforO02x02x02x02x02x02xTQ04x[] PROGMEM = "\r\nOGM R:%02x%02x%02x%02x%02x%02x selected for O:%02x%02x%02x%02x%02x%02x TQ:%04x";
 const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xinferiorTQ04x[] PROGMEM = "\r\nOGM R:%02x%02x%02x%02x%02x%02x for O:%02x%02x%02x%02x%02x%02x inferior TQ:%04x";
 const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xupdateTQ04x[] PROGMEM = "\r\nOGM R:%02x%02x%02x%02x%02x%02x for O:%02x%02x%02x%02x%02x%02x update TQ:%04x";
@@ -87,51 +87,79 @@ const char m2mMeshOGMhoppenaltyappliedTQnow02x[] PROGMEM = "\r\nOGM hop penalty 
 const char m2mMeshOGM02x02x02x02x02x02xhasbecomereachable[] PROGMEM = "\r\nOGM %02x%02x%02x%02x%02x%02x has become reachable";
 const char m2mMeshOGM02x02x02x02x02x02xhasbecomeunreachable[] PROGMEM = "\r\nOGM %02x%02x%02x%02x%02x%02x has become unreachable";
 const char m2mMeshNHSSND[] PROGMEM = "\r\nNHS SND";
-const char TTL02dFLG02xSEQ08xLENd[] PROGMEM = " TTL:%02d FLG:%02x SEQ:%08x LEN:%d";
-const char ORGd[] PROGMEM = " ORG:%d";
+const char TTL02dFLG02xSEQ08xLENd[] PROGMEM = " TTL:%02d FLG:%02x SEQ:%08x LEN:%u";
+const char ORGd[] PROGMEM = " ORG:%u";
 const char m2mMeshsuccess[] PROGMEM = "- success";
 const char m2mMeshfailed[] PROGMEM = "- failed";
 const char m2mMeshfailed_code_[] PROGMEM = "- failed code ";
-const char m2mMeshNHSR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nNHS R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d Length:%d";
-const char m2mMeshNHSUptimedms[] PROGMEM = "\r\nNHS Uptime %dms";
-const char m2mMeshNHSCurrentFreeHeapdd[] PROGMEM = "\r\nNHS Current Free Heap %d/%d";
-const char m2mMeshNHSdroppedpacketsddRXddTX[] PROGMEM = "\r\nNHS dropped packets %d/%dRX %d/%dTX";
-const char m2mMeshNHSActiveneighboursddMAC02x02x02x02x02x02x[] PROGMEM = "\r\nNHS Active neighbours %d/%d MAC:%02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshNHSR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nNHS R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u Length:%u";
+const char m2mMeshNHSUptimedms[] PROGMEM = "\r\nNHS Uptime %ums";
+const char m2mMeshNHSCurrentFreeHeapdd[] PROGMEM = "\r\nNHS Current Free Heap %u/%u";
+const char m2mMeshNHSdroppedpacketsddRXddTX[] PROGMEM = "\r\nNHS dropped packets %u/%uRX %u/%uTX";
+const char m2mMeshNHSActiveneighboursddMAC02x02x02x02x02x02x[] PROGMEM = "\r\nNHS Active neighbours %u/%u MAC:%02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshdiffers[] PROGMEM = " - differs ";
 const char m2mMeshNHSCurrentTXpowerf[] PROGMEM = "\r\nNHS Current TX power %f";
 const char m2mMeshNHSSupplyvoltagefV[] PROGMEM = "\r\nNHS Supply voltage %fV";
-const char m2mMeshNHSMeshtimedms[] PROGMEM = "\r\nNHS Mesh time %dms";
-const char m2mMeshNHSRTCtimeds[] PROGMEM = "\r\nNHS RTC time %d \"%s\"";
+const char m2mMeshNHSMeshtimedms[] PROGMEM = "\r\nNHS Mesh time %ums";
+const char m2mMeshNHSRTCtimeds[] PROGMEM = "\r\nNHS RTC time %u \"%s\"";
 const char m2mMeshNHSRTCtimezonesset[] PROGMEM = "\r\nNHS RTC timezone \"%s\" set";
-const char m2mMeshNHSnodenamelendschangedfroms[] PROGMEM = "\r\nNHS node name len=%d '%s' changed from '%s'!";
-const char m2mMeshNHSnodenamelendsadded[] PROGMEM = "\r\nNHS node name len=%d '%s' added";
-const char m2mMeshNHSnodenamelendsunchanged[] PROGMEM = "\r\nNHS node name len=%d '%s' unchanged";
-const char m2mMeshNHScontainsdoriginators[] PROGMEM = "\r\nNHS contains %d originators";
+const char m2mMeshNHSnodenamelendschangedfroms[] PROGMEM = "\r\nNHS node name len=%u '%s' changed from '%s'!";
+const char m2mMeshNHSnodenamelendsadded[] PROGMEM = "\r\nNHS node name len=%u '%s' added";
+const char m2mMeshNHSnodenamelendsunchanged[] PROGMEM = "\r\nNHS node name len=%u '%s' unchanged";
+const char m2mMeshNHScontainsdoriginators[] PROGMEM = "\r\nNHS contains %u originators";
 const char m2mMeshNHSoriginatordata02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nNHS originator data %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
-const char m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nUSR R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%d Length:%d";
-const char m2mMeshUSRpacketcontainsdfields[] PROGMEM =		"\r\nUSR packet contains %d fields";
-const char m2mMeshUSRdatafieldduint8_td[] PROGMEM =			"\r\nUSR data field %d uint8_t %u";
-const char m2mMeshUSRdatafieldduint16_td[] PROGMEM =		"\r\nUSR data field %d uint16_t %u";
-const char m2mMeshUSRdatafieldduint32_td[] PROGMEM =		"\r\nUSR data field %d uint32_t %u";
-const char m2mMeshUSRdatafieldduint64_td[] PROGMEM =		"\r\nUSR data field %d uint64_t %u";
-const char m2mMeshUSRdatafielddint8_td[] PROGMEM =			"\r\nUSR data field %d int8_t %d";
-const char m2mMeshUSRdatafielddint16_td[] PROGMEM =			"\r\nUSR data field %d int16_t %d";
-const char m2mMeshUSRdatafielddint32_td[] PROGMEM =			"\r\nUSR data field %d int32_t %d";
-const char m2mMeshUSRdatafielddint64_td[] PROGMEM =			"\r\nUSR data field %d int64_t %d";
-const char m2mMeshUSRdatafielddfloatf[] PROGMEM =			"\r\nUSR data field %d float %f";
-const char m2mMeshUSRdatafielddcharc[] PROGMEM =			"\r\nUSR data field %d char '%c'";
-const char m2mMeshUSRdatafielddStringlends[] PROGMEM =		" \r\nUSR data field %d String len=%d '%s'";
-const char m2mMeshUSRdatafielddchararraylends[] PROGMEM =	" \r\nUSR data field %d char array len=%d '%s'";
-const char m2mMeshUSRdatafielddunknowntypedstoppingdecode[] PROGMEM = " \r\nUSR data field %d unknown type %d, stopping decode ";
+const char m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nUSR R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u Length:%u";
+const char m2mMeshUSRpacketcontainsdfields[] PROGMEM =		"\r\nUSR packet contains %u fields";
+const char m2mMeshUSRdatafielddboolfalse[] PROGMEM =			"\r\nUSR data field %u bool false";
+const char m2mMeshUSRdatafielddbooltrue[] PROGMEM =			"\r\nUSR data field %u bool true";
+const char m2mMeshUSRdatafielddbooluarray[] PROGMEM =		"\r\nUSR data field %u bool[%u] array";
+const char m2mMeshUSRdatadboolfalse[] PROGMEM =				"\r\nUSR data          bool[%u] = false";
+const char m2mMeshUSRdatadbooltrue[] PROGMEM =				"\r\nUSR data          bool[%u] = true";
+const char m2mMeshUSRdatafieldduint8_td[] PROGMEM =			"\r\nUSR data field %u uint8_t %u";
+const char m2mMeshUSRdatafieldduint8_tuarray[] PROGMEM =	"\r\nUSR data field %u uint8_t[%u] array";
+const char m2mMeshUSRdataduint8_td[] PROGMEM =				"\r\nUSR data          uint8_t[%u] = %u";
+const char m2mMeshUSRdatafieldduint16_td[] PROGMEM =		"\r\nUSR data field %u uint16_t %u";
+const char m2mMeshUSRdatafieldduint16_tuarray[] PROGMEM =	"\r\nUSR data field %u uint16_t[%u] array";
+const char m2mMeshUSRdataduint16_td[] PROGMEM =				"\r\nUSR data          uint16_t[%u] = %u";
+const char m2mMeshUSRdatafieldduint32_td[] PROGMEM =		"\r\nUSR data field %u uint32_t %u";
+const char m2mMeshUSRdatafieldduint32_tuarray[] PROGMEM =	"\r\nUSR data field %u uint32_t[%u] array";
+const char m2mMeshUSRdataduint32_td[] PROGMEM =				"\r\nUSR data          uint32_t[%u] = %u";
+const char m2mMeshUSRdatafieldduint64_td[] PROGMEM =		"\r\nUSR data field %u uint64_t %u";
+const char m2mMeshUSRdatafieldduint64_tuarray[] PROGMEM =	"\r\nUSR data field %u uint64_t[%u] array";
+const char m2mMeshUSRdataduint64_td[] PROGMEM =				"\r\nUSR data          uint64_t[%u] = %u";
+const char m2mMeshUSRdatafielddint8_td[] PROGMEM =			"\r\nUSR data field %u int8_t %d";
+const char m2mMeshUSRdatafielddint8_tuarray[] PROGMEM =		"\r\nUSR data field %u int8_t[%u] array";
+const char m2mMeshUSRdatadint8_td[] PROGMEM =				"\r\nUSR data          int8_t[%u] = %d";
+const char m2mMeshUSRdatafielddint16_td[] PROGMEM =			"\r\nUSR data field %u int16_t %d";
+const char m2mMeshUSRdatafielddint16_tuarray[] PROGMEM =	"\r\nUSR data field %u int16_t[%u] array";
+const char m2mMeshUSRdatadint16_td[] PROGMEM =				"\r\nUSR data          int16_t[%u] = %d";
+const char m2mMeshUSRdatafielddint32_td[] PROGMEM =			"\r\nUSR data field %u int32_t %d";
+const char m2mMeshUSRdatafielddint32_tuarray[] PROGMEM =	"\r\nUSR data field %u int32_t[%u] array";
+const char m2mMeshUSRdatadint32_td[] PROGMEM =				"\r\nUSR data          int32_t[%u] = %d";
+const char m2mMeshUSRdatafielddint64_td[] PROGMEM =			"\r\nUSR data field %u int64_t %d";
+const char m2mMeshUSRdatafielddint64_tuarray[] PROGMEM =	"\r\nUSR data field %u int64_t[%u] array";
+const char m2mMeshUSRdatadint64_td[] PROGMEM =				"\r\nUSR data          int64_t[%u] = %d";
+const char m2mMeshUSRdatafielddfloatf[] PROGMEM =			"\r\nUSR data field %u float %f";
+const char m2mMeshUSRdatafielddfloatuarray[] PROGMEM =		"\r\nUSR data field %u float[%u] array";
+const char m2mMeshUSRdatadfloatf[] PROGMEM =				"\r\nUSR data          float[%u] = %f";
+const char m2mMeshUSRdatafieldddoublef[] PROGMEM =			"\r\nUSR data field %u double %f";
+const char m2mMeshUSRdatafieldddoubleuarray[] PROGMEM =		"\r\nUSR data field %u double[%u] array";
+const char m2mMeshUSRdataddoublef[] PROGMEM =				"\r\nUSR data          double[%u] = %f";
+const char m2mMeshUSRdatafielddcharc[] PROGMEM =			"\r\nUSR data field %u char '%c'";
+const char m2mMeshUSRdatafielddcharuarray[] PROGMEM =		"\r\nUSR data field %u char[%u] array";
+const char m2mMeshUSRdatadcharc[] PROGMEM =					"\r\nUSR data          char[%u] = %c";
+const char m2mMeshUSRdatafielddStringlends[] PROGMEM =		" \r\nUSR data field %u String len=%u \"%s\"";
+const char m2mMeshUSRdatafielddcstringlends[] PROGMEM =	" \r\nUSR data field %u C string len=%u \"%s\"";
+const char m2mMeshUSRdatafielddunknowntypedstoppingdecode[] PROGMEM = " \r\nUSR data field %u unknown type %02x, stopping decode ";
 const char m2mMeshNHS02x02x02x02x02x02xisnowthetimeserver[] PROGMEM = "\r\nNHS %02x:%02x:%02x:%02x:%02x:%02x is now the time server";
-const char m2mMeshNHStimeoffsetnegdms[] PROGMEM = "\r\nNHS time offset -%dms";
-const char m2mMeshNHStimeoffsetposdms[] PROGMEM = "\r\nNHS time offset +%dms";
+const char m2mMeshNHStimeoffsetnegdms[] PROGMEM = "\r\nNHS time offset -%ums";
+const char m2mMeshNHStimeoffsetposdms[] PROGMEM = "\r\nNHS time offset +%ums";
 const char m2mMeshNHSmeshtimesettos[] PROGMEM = "\r\nNHS mesh time set to %s";
-const char m2mMesh02x02x02x02x02x02xdbytesm2mMeshType[] PROGMEM = "%02x:%02x:%02x:%02x:%02x:%02x %d bytes\r\nType:";
-const char m2mMeshVersiond[] PROGMEM = " Version:%d";
-const char m2mMeshTTLd[] PROGMEM = " TTL:%d";
-const char m2mMeshFlagsd[] PROGMEM = " Flags:%d";
-const char m2mMeshSequencenumberd[] PROGMEM = " Sequence number:%d\r\n";
+const char m2mMesh02x02x02x02x02x02xdbytesm2mMeshType[] PROGMEM = "%02x:%02x:%02x:%02x:%02x:%02x %u bytes\r\nType:";
+const char m2mMeshVersiond[] PROGMEM = " Version:%u";
+const char m2mMeshTTLd[] PROGMEM = " TTL:%u";
+const char m2mMeshFlagsd[] PROGMEM = " Flags:%u";
+const char m2mMeshSequencenumberd[] PROGMEM = " Sequence number:%u\r\n";
 const char m2mMeshSrc02x02x02x02x02x02x[] PROGMEM = "Src:%02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshDst02x02x02x02x02x02x[] PROGMEM = " Dst:%02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshData02x02x02x02x02x02x02x02x[] PROGMEM =	"\r\nData:%02x %02x %02x %02x %02x %02x %02x %02x";
@@ -142,15 +170,15 @@ const char m2mMeshData02x02x02x02x[] PROGMEM =				"\r\nData:%02x %02x %02x %02x 
 const char m2mMeshData02x02x02x[] PROGMEM =					"\r\nData:%02x %02x %02x --";
 const char m2mMeshData02x02x[] PROGMEM =					"\r\nData:%02x %02x --";
 const char m2mMeshData02x[] PROGMEM =						"\r\nData:%02x --";
-const char m2mMesh02x02x02x02x02x02xaddedidd[] PROGMEM = 		"%02x:%02x:%02x:%02x:%02x:%02x added id=%d";
+const char m2mMesh02x02x02x02x02x02xaddedidd[] PROGMEM = 		"%02x:%02x:%02x:%02x:%02x:%02x added id=%u";
 const char m2mMesh02x02x02x02x02x02xcouldnotbeadded[] PROGMEM = "%02x:%02x:%02x:%02x:%02x:%02x could not be added";
 const char m2mMeshNodenamesettos[] PROGMEM = "\r\nNode name set to '%s'";
 const char m2mMeshSendingpackettype02xversion02x[] PROGMEM = "\r\nSending packet type %02x version %02x";
 const char m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x[] PROGMEM = "\r\nUSR SND O:%02x%02x%02x%02x%02x%02x TTL:%02d Flags:%02x";
 const char m2mMeshstartedwithautomaticallocationofmemoryStabilitymaybeimpacted[] PROGMEM = "\r\nstarted with automatic allocation of memory. Stability may be impacted.";
-const char m2mMeshTTL02dFLG02xSEQ08xLENd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%08x LEN:%d";
+const char m2mMeshTTL02dFLG02xSEQ08xLENd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%08x LEN:%u";
 const char m2mMeshTIMEs[] PROGMEM = " TIME:%s";
-const char m2mMeshd02x[] PROGMEM = "%d/%02x ";
+const char m2mMeshd02x[] PROGMEM = "%u/%02x ";
 const char m2mMeshDstALL[] PROGMEM = " Dst:ALL";
 const char m2mMeshInterval[] PROGMEM = " Interval:";
 const char m2mMeshdebuggingenabled[] PROGMEM = "Mesh debugging enabled";
@@ -168,15 +196,15 @@ const char m2mMeshnew[] PROGMEM = " - new";
 const char m2mMeshthisnode[] PROGMEM = " - this node";
 const char m2mMeshPreviousUSRmessagenotreadpacketdropped[] PROGMEM = "\r\nPrevious USR message not read, packet dropped";
 const char m2mMeshTimeserverhasgoneofflinetakingovertimeserverrole[] PROGMEM = "Time server has gone offline, taking over time server role";
-const char m2mMeshfillRCVbufferslotd[] PROGMEM = 	"\r\nFill RCV buffer slot %d %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
-const char m2mMeshreadRCVbufferslotd[] PROGMEM =	"\r\nRead RCV buffer slot %d %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshfillRCVbufferslotd[] PROGMEM = 	"\r\nFill RCV buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshreadRCVbufferslotd[] PROGMEM =	"\r\nRead RCV buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadRCVbufferfull[] PROGMEM =	"\r\nRead RCV buffer full";
-const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nFill APP buffer slot %d %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
-const char m2mMeshreadAPPbufferslotd[] PROGMEM =	"\r\nRead APP buffer slot %d %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nFill APP buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshreadAPPbufferslotd[] PROGMEM =	"\r\nRead APP buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadAPPbufferfull[] PROGMEM =	"\r\nRead APP buffer full";
 //const char m2mMeshPacketsentto02x02x02x02x02x02x[] PROGMEM = "Packet sent to %02x:%02x:%02x:%02x:%02x:%02x";
 //const char m2mMeshNHSincluded02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nNHS included %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
-//const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nNHS included %d originators";
+//const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nNHS included %u originators";
 #endif
 
 //Unions used to pack data into packets
@@ -221,6 +249,12 @@ union floatToBytes
 {
   uint8_t b[4];
   float value;
+};
+
+union doubleToBytes
+{
+  uint8_t b[8];
+  double value;
 };
 
 struct m2mMeshOriginatorInfo									//A structure for storing information about originators (nodes)
@@ -309,14 +343,14 @@ class m2mMeshClass
 		
 		//Status functions
 		bool joined();										//Has this node joined the mesh
-		bool meshIsStable();								//Has the mesh membership changed recently
+		bool stable();										//Has the mesh membership changed recently
 		float supplyVoltage();								//Returns the supply voltage once the resistor ladder value is set
 		bool synced();										//Returns true if 'mesh time' is synced
 		bool amSyncServer();								//Returns true if this node is the 'mesh time' server
 		uint8_t syncServer();								//Returns ID of the 'mesh time' server
 		uint32_t syncedMillis();							//Returns 'mesh time' which should be broadly synced across all the nodes, useful for syncing events
-		uint8_t numberOfOriginators();						//Returns the total number of originators in the mesh
-		uint8_t numberOfReachableOriginators();				//Returns the number of originators reachable from this node
+		uint8_t numberOfNodes();							//Returns the total number of originators in the mesh
+		uint8_t numberOfReachableNodes();				//Returns the number of originators reachable from this node
 		uint32_t expectedUptime(uint8_t);					//Uptime of a node, assuming it has continued running
 
 		//Sending data
@@ -325,22 +359,25 @@ class m2mMeshClass
 		//bool destination(String);			//Add a destination to a message. This can be a node name or MAC address.
 		bool destination(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);	//Add a destination MAC address
 		uint8_t payloadLeft();				//Returns the number of bytes left in the packet, helps with checking before adding
-		bool add(bool);						//Add some bool data to a message
-		bool add(uint8_t);					//Add some uint8_t data to a message
-		bool add(uint16_t);					//Add some uint16_t data to a message
-		bool add(uint32_t);					//Add some uint32_t data to a message
-		bool add(uint64_t);					//Add some uint64_t data to a message
-		bool add(int8_t);					//Add some int8_t data to a message
-		bool add(int16_t);					//Add some int16_t data to a message
-		bool add(int32_t);					//Add some int32_t data to a message
-		bool add(int64_t);					//Add some int64_t data to a message
-		bool add(char);						//Add some char data to a message
-		bool add(float);					//Add some float data to a message
-		bool add(String);					//Add some String data to a message
-		bool add(char *);					//Add some char array data to a message
+		/*
+		bool add(bool);						//Add a bool to a message
+		bool add(uint8_t);					//Add an uint8_t to a message
 		bool add(uint8_t *, uint8_t);		//Add an array of uint8_t, mostly used to send chunks of binary data
+		bool add(uint16_t);					//Add an uint16_t to a message
+		bool add(uint16_t*, uint8_t);		//Add an array of uint16_t to a message
+		bool add(uint32_t);					//Add an uint32_t to a message
+		bool add(uint64_t);					//Add an uint64_t to a message
+		bool add(int8_t);					//Add an int8_t to a message
+		bool add(int16_t);					//Add an int16_t to a message
+		bool add(int32_t);					//Add an int32_t to a message
+		bool add(int64_t);					//Add an int64_t to a message
+		bool add(char);						//Add a char to a message
+		bool add(float);					//Add a float to a message
+		*/
+		bool add(String);					//Add a String to a message, which is a special case
+		bool add(const char *);				//Add a C string to a message, which is a special case
 		bool send(bool wait = true);		//Send the message now, optional 'wait' parameter defaults to true
-		bool clear();						//Clear the message without sending
+		bool clearMessage();				//Clear the message without sending
 
 		//Receiving data
 		m2mMeshClass& setCallback(M2MMESH_CALLBACK);	//Set a callback for mesh events
@@ -352,9 +389,9 @@ class m2mMeshClass
 		uint8_t dataAvailable();			//Is there data to read
 		uint8_t nextDataType();				//Which type the next piece of data is
 		
-		bool retrieve(uint8_t&);				//Retrieve uint8_t data from a message
-		bool retrieve(uint32_t&);				//Retrieve uint32_t data from a message
-		bool retrieve(uint64_t&);				//Retrieve uint64_t data from a message
+		//bool retrieve(uint8_t&);				//Retrieve uint8_t data from a message
+		//bool retrieve(uint32_t&);				//Retrieve uint32_t data from a message
+		//bool retrieve(uint64_t&);				//Retrieve uint64_t data from a message
 
 		bool retrieveBool();					//Retrieve bool data from a message
 		uint8_t retrieveUint8_t();				//Retrieve uint8_t data from a message
@@ -366,13 +403,146 @@ class m2mMeshClass
 		int32_t retrieveInt32_t();				//Retrieve int32_t data from a message
 		int64_t retrieveInt64_t();				//Retrieve int64_t data from a message
 		float retrieveFloat();					//Retrieve float data from a message
+		double retrieveDouble();				//Retrieve double precision float data from a message
 		char retrieveChar();					//Retrieve char data from a message
-		String retrieveString();				//Retrieve String data from a message
 		uint8_t retrieveDataLength();			//Retrieve length of an array from a message
-		void retrieveCharArray(char *);			//Retrieve char array from a message
-		void retrieveUint8_tArray(uint8_t *);	//Retrieve int8_t array from a message
+		bool retrieveStr(char *);				//Retrieve C string from a message NB will be null terminated automatically
+		String retrieveString();				//Retrieve Arduino String data from a message
+		//void retrieveUint8_tArray(uint8_t *);	//Retrieve int8_t array from a message
+		//void retrieveUint16_tArray(uint16_t *);	//Retrieve int16_t array from a message
 		void skipRetrieve();					//Skip retrieving this field
 
+		//Generic templated retrieve function (which must be in the class definition)
+		template<typename typeToRetrieve>
+		void ICACHE_FLASH_ATTR retrieveArray(typeToRetrieve *data)
+		{
+			if(dataAvailable() == 0)
+			{
+				#ifdef m2mMeshIncludeDebugFeatures
+				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
+				{
+					_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
+				}
+				#endif
+				//Return a dummy value if nothing available
+			}
+			else
+			{
+				_receivedUserPacketFieldCounter--;
+				uint8_t dataLength = _numberOfPackedItems(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex],_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex+1]) * sizeof(typeToRetrieve);
+				_receivedUserPacketIndex+=_packingOverhead(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex]);
+				memcpy(data,&_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex],dataLength);
+				_receivedUserPacketIndex+=dataLength;
+				if(dataAvailable() == 0)
+				{
+					markMessageRead();
+				}
+			}
+		}
+		//Generic templated add functions (which must be in the class definition)
+		template<typename typeToAdd>
+		bool ICACHE_FLASH_ATTR add(typeToAdd dataToAdd)
+		{
+			_buildUserPacketHeader();
+			uint8_t dataType = determineType(dataToAdd);
+			if(dataType == USR_DATA_BOOL)	//Bool is a special case for packing
+			{
+				if(_userPacketIndex + sizeof(dataToAdd) < USR_MAX_PACKET_SIZE)
+				{
+					if(dataToAdd == true)
+					{
+						_userPacket[_userPacketIndex++] = USR_DATA_BOOL_TRUE;	//True
+					}
+					else
+					{
+						_userPacket[_userPacketIndex++] = USR_DATA_BOOL;	//False
+					}
+					_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+					return(true);
+				}
+				else
+				{
+					return(false);	//Not enough space left in the packet
+				}
+			}
+			else
+			{
+				if(_userPacketIndex + sizeof(dataToAdd) + 1 < USR_MAX_PACKET_SIZE)
+				{
+					_userPacket[_userPacketIndex++] = dataType;
+					memcpy(&_userPacket[_userPacketIndex],&dataToAdd,sizeof(dataToAdd));						//Copy in the data
+					_userPacketIndex+=sizeof(dataToAdd);														//Advance the index past the data
+					_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+					return(true);
+				}
+				else
+				{
+					return(false);	//Not enough space left in the packet
+				}
+			}
+		}
+		template<typename typeToAdd>
+		bool ICACHE_FLASH_ATTR add(typeToAdd* dataToAdd, uint8_t numberOfElements)
+		{
+			_buildUserPacketHeader();
+			if(numberOfElements < 15)
+			{
+				if(_userPacketIndex + sizeof(dataToAdd[0]) * numberOfElements < USR_MAX_PACKET_SIZE)
+				{
+					_userPacket[_userPacketIndex++] = determinePointerType(dataToAdd) | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
+				}
+				else
+				{
+					return(false);	//Not enough space left in the packet
+				}
+			}
+			else
+			{
+				if(_userPacketIndex + sizeof(dataToAdd[0]) * numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+				{
+					_userPacket[_userPacketIndex++] = determinePointerType(dataToAdd) | 0xf0;	//Mark that this field has 15 members or more
+					_userPacket[_userPacketIndex++] = numberOfElements;
+				}
+				else
+				{
+					return(false);	//Not enough space left in the packet
+				}
+			}
+			memcpy(&_userPacket[_userPacketIndex],dataToAdd,numberOfElements*sizeof(dataToAdd[0]));		//Copy in the data
+			_userPacketIndex+=numberOfElements*sizeof(dataToAdd[0]);									//Advance the index past the data
+			_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+			return(true);
+		}
+		//Overloaded functions to determine type, should be able to do with decltype or similar but I haven't worked out the syntax
+		uint8_t ICACHE_FLASH_ATTR determineType(bool type)		{return(USR_DATA_BOOL		);}
+		uint8_t ICACHE_FLASH_ATTR determineType(char type)		{return(USR_DATA_CHAR		);}
+		uint8_t ICACHE_FLASH_ATTR determineType(uint8_t type)	{return(USR_DATA_UINT8_T	);}
+		uint8_t ICACHE_FLASH_ATTR determineType(int8_t type)	{return(USR_DATA_INT8_T		);}
+		uint8_t ICACHE_FLASH_ATTR determineType(uint16_t type)	{return(USR_DATA_UINT16_T	);}
+		uint8_t ICACHE_FLASH_ATTR determineType(int16_t type)	{return(USR_DATA_INT16_T	);}
+		uint8_t ICACHE_FLASH_ATTR determineType(uint32_t type)	{return(USR_DATA_UINT32_T	);}
+		uint8_t ICACHE_FLASH_ATTR determineType(int32_t type)	{return(USR_DATA_INT32_T	);}
+		uint8_t ICACHE_FLASH_ATTR determineType(uint64_t type)	{return(USR_DATA_UINT64_T	);}
+		uint8_t ICACHE_FLASH_ATTR determineType(int64_t type)	{return(USR_DATA_INT64_T	);}
+		uint8_t ICACHE_FLASH_ATTR determineType(float type)		{return(USR_DATA_FLOAT		);}
+		uint8_t ICACHE_FLASH_ATTR determineType(double type)	{return(USR_DATA_DOUBLE		);}
+		uint8_t ICACHE_FLASH_ATTR determineType(String type)	{return(USR_DATA_STRING		);}
+		template<typename typeToDetermine>
+		uint8_t ICACHE_FLASH_ATTR determineType(typeToDetermine type)	{return(USR_DATA_UNAVAILABLE);}	//Fall through to 'unknown'
+		
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(bool* type)		{return(USR_DATA_BOOL		);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(char* type)		{return(USR_DATA_CHAR		);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(uint8_t* type)	{return(USR_DATA_UINT8_T	);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(int8_t* type)	{return(USR_DATA_INT8_T		);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(uint16_t* type)	{return(USR_DATA_UINT16_T	);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(int16_t* type)	{return(USR_DATA_INT16_T	);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(uint32_t* type)	{return(USR_DATA_UINT32_T	);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(int32_t* type)	{return(USR_DATA_INT32_T	);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(uint64_t* type)	{return(USR_DATA_UINT64_T	);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(int64_t* type)	{return(USR_DATA_INT64_T	);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(float* type)		{return(USR_DATA_FLOAT		);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(double* type)	{return(USR_DATA_DOUBLE		);}
+		uint8_t ICACHE_FLASH_ATTR determinePointerType(String* type)	{return(USR_DATA_STRING		);}
 
 		//Built in peripheral support
 		void enableActivityLed(uint8_t,bool);				//Enables an activity LED, argument are the pin and the 'on' state. This blinks on send/receive.
@@ -511,12 +681,12 @@ class m2mMeshClass
 		static const uint8_t USR_DATA_FLOAT =          0x0a;			//Used to denote a float (32-bit) in user data
 		static const uint8_t USR_DATA_DOUBLE =         0x0b;			//Used to denote a double float (64-bit) in user data
 		static const uint8_t USR_DATA_CHAR =           0x0c;			//Used to denote a char in user data
-		static const uint8_t USR_DATA_STRING =         0x0d;			//Used to denote a String in user data
-		static const uint8_t USR_DATA_CHAR_ARRAY =     0x0e;			//Used to denote a character array in user data
-		static const uint8_t USR_DATA_UINT8_T_ARRAY =  0x0f;			//Used to denote an uint_8t array in user data
-		//Return values for arrays, which are packed differently based off their length, this is never packed in a packet
+		static const uint8_t USR_DATA_STR =            0x0d;			//Used to denote a null terminated C string in user data
+		static const uint8_t USR_DATA_STRING =         0x0e;			//Used to denote a String in user data
+		static const uint8_t USR_DATA_CUSTOM =         0x0f;			//Used to denote a custom field in user data
+		//Return values for arrays, which are packed differently based off their length, this value never packed in a packet
 		static const uint8_t USR_DATA_BOOL_ARRAY =     0xf0;			//Used to denote boolean array in user data
-		//static const uint8_t USR_DATA_UINT8_T_ARRAY =  0xf2;			//Used to denote an uint8_t array in user data
+		static const uint8_t USR_DATA_UINT8_T_ARRAY =  0xf2;			//Used to denote an uint8_t array in user data
 		static const uint8_t USR_DATA_UINT16_T_ARRAY = 0xf3;			//Used to denote an uint16_t array in user data
 		static const uint8_t USR_DATA_UINT32_T_ARRAY = 0xf4;			//Used to denote an uint32_t array in user data
 		static const uint8_t USR_DATA_UINT64_T_ARRAY = 0xf5;			//Used to denote an uint64_t array in user data
@@ -526,6 +696,7 @@ class m2mMeshClass
 		static const uint8_t USR_DATA_INT64_T_ARRAY =  0xf9;			//Used to denote an int64_t in user data
 		static const uint8_t USR_DATA_FLOAT_ARRAY =    0xfa;			//Used to denote a float array (32-bit) in user data
 		static const uint8_t USR_DATA_DOUBLE_ARRAY =   0xfb;			//Used to denote a double float array (64-bit) in user data
+		static const uint8_t USR_DATA_CHAR_ARRAY =     0xfc;			//Used to denote a char array in user data
 
 	private:
 		//High level variables
@@ -543,7 +714,7 @@ class m2mMeshClass
 		uint32_t _lastSent[5];								//Internal timers, per packet type
 		uint32_t _currentTtl[5];							//TTLs, per packet type
 		uint32_t _meshLastChanged = 0;
-		bool _meshIsStable = false;							//Is the mesh stable?
+		bool _stable = false;								//Is the mesh stable?
 		uint32_t _lastHousekeeping = 0;
 		const uint32_t _housekeepingInterval = 1000ul;
 		bool _waitingForSend = false;						//Are we waiting for a synchronous send?
@@ -762,6 +933,8 @@ class m2mMeshClass
 		void _buildUserPacketHeader();														//Create the user packet header for a broadcast packet
 		void _buildUserPacketHeader(uint8_t);												//Create the user packet header based off a station ID
 		void _buildUserPacketHeader(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);	//Create the user packet header based off a MAC address
+		uint8_t _packingOverhead(uint8_t);													//The size of the packing overhead for the current field
+		uint8_t _numberOfPackedItems(uint8_t, uint8_t);										//Number of items of a specific type in a field
 		
 		//Debugging related functions
 		#ifdef m2mMeshIncludeDebugFeatures
