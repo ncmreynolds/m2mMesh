@@ -8,6 +8,8 @@
  
 #include <m2mMesh.h>
 
+bool messageReceived = false;
+
 void meshCallback(meshEvent event)
 {
   if(event == meshEvent::joined)  //This station has gone online
@@ -30,6 +32,11 @@ void meshCallback(meshEvent event)
     Serial.println("Mesh changing");
     return;
   }
+  else if(event == meshEvent::complete) //Every node can reach every other node
+  {
+    Serial.println("Mesh complete");
+    return;
+  }
   else if(event == meshEvent::synced) //Uptime synced with the mesh
   {
     Serial.println("Mesh synced");
@@ -37,8 +44,7 @@ void meshCallback(meshEvent event)
   }
   else if(event == meshEvent::message)  //Message received
   {
-    Serial.println("Mesh message received");
-    m2mMesh.markMessageRead();
+    messageReceived == true;
     return;
   }
   return;
@@ -63,4 +69,10 @@ void setup() {
 
 void loop() {
   m2mMesh.housekeeping();
+  if(messageReceived == true)
+  {
+    Serial.println("Mesh message received");
+    m2mMesh.markMessageRead();
+    messageReceived = false;
+  }
 }

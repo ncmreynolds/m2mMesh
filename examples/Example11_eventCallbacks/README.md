@@ -61,7 +61,7 @@ void meshCallback(meshEvent event)
   }
   else if(event == meshEvent::message)  //Message received
   {
-    messageReceived == true
+    messageReceived == true;
     return;
   }
   return;
