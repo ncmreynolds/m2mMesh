@@ -18,9 +18,12 @@ syncedMillis	KEYWORD2
 syncServer	KEYWORD2
 
 //RTC synchronisation
+setNtpServer	KEYWORD2
+setTimeZone	KEYWORD2
 actingAsRTCServer	KEYWORD2
 rtcSynced	KEYWORD2
 rtcServer	KEYWORD2
+rtcValid	KEYWORD2
 
 //Sending messages
 destination	KEYWORD2
