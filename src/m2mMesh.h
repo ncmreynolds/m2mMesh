@@ -339,6 +339,7 @@ class m2mMeshClass
 		bool actingAsRTCServer();							//Is THIS node acting as an RTC server
 		bool actingAsRTCServer(const uint8_t);				//Is a particular node acting as an RTC server
 		uint8_t rtcServer();								//ID of RTC server
+		bool rtcValid();									//Is the RTC configured and valid? Works for client and server
 		#endif
 		
 		//Status functions
@@ -567,7 +568,7 @@ class m2mMeshClass
 		#ifdef m2mMeshIncludeMeshInfoFeatures
 		//Used for the 'network analyser' sketch
 		uint8_t maxNumberOfOriginators();
-		uint8_t numberOfOriginators(uint8_t);				//Returns the total number of originators in the mesh for this node
+		uint8_t numberOfNodes(uint8_t);						//Returns the total number of originators in the mesh for this node
 		uint8_t numberOfActiveNeighbours();					//Number of active neighbours for this node
 		uint8_t numberOfActiveNeighbours(uint8_t);			//Number of active neighbours for another node
 		uint8_t nodeId(uint8_t *);							//Finds the ID of an originator from the MAC address or MESH_ORIGINATOR_NOT_FOUND if it isn't found
@@ -800,9 +801,9 @@ class m2mMeshClass
 		#elif defined(ESP32)
 		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES | PROCESSOR_ESP32;	//Default NHS flags
 		#endif
-		static const uint8_t NHS_FLAGS_TIMESERVER = 0x1;        	//Flag set when acting as a time server
+		static const uint8_t NHS_FLAGS_TIMESERVER = 0x01;        	//Flag set when acting as a time server
 		#if defined (m2mMeshIncludeRTCFeatures)
-		static const uint8_t NHS_FLAGS_RTCSERVER = 0x2;	        	//Flag set when have a source of real time clock
+		static const uint8_t NHS_FLAGS_RTCSERVER = 0x02;	        	//Flag set when have a source of real time clock
 		#endif
 
 
@@ -819,7 +820,7 @@ class m2mMeshClass
 		uint8_t _currentRTCServer	 						//The current RTC server
 			= MESH_ORIGINATOR_NOT_FOUND;
 		struct tm timeinfo;									//Time data structure for RTC
-		uint32_t epochOffset;								//Used to infer epoch time from mesh time
+		uint32_t epochOffset = 0;							//Used to infer epoch time from mesh time
 		char* timezone = nullptr;							//Timezone string
 		#endif
 

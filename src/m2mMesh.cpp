@@ -1435,11 +1435,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 		packet.data[packet.length++] = temp.b[3];
 	}
 	#if defined (m2mMeshIncludeRTCFeatures)
-	#if defined(ESP32)
-	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && _meshTimeNegotiated==true && getLocalTime(&timeinfo) == true)		//Add the RTC info, if valid
-	#elif defined (ESP8266)
-	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && _meshTimeNegotiated==true && time(nullptr) > 3600)				//Add the RTC info, if valid
-	#endif
+	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && _meshTimeNegotiated==true && rtcValid())				//Add the RTC info, if valid
 	{
 		packet.data[3] = packet.data[3] | NHS_FLAGS_RTCSERVER;
 		//Timezone
@@ -1723,9 +1719,9 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 		#if defined (m2mMeshIncludeRTCFeatures)
 		if(packet.data[3] & NHS_FLAGS_RTCSERVER)		//Check for included TZ and epoch time offset
 		{
-			if(rtc == true)
+			if(rtc == true)	//This node is an RTC source
 			{
-				receivedPacketIndex += (packet.data[receivedPacketIndex] + 4);	//Skip over the RTC info
+				receivedPacketIndex += (packet.data[receivedPacketIndex] + 4);	//Skip over the RTC timezone and offset
 			}
 			else
 			{
@@ -1790,8 +1786,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 						}
 						#endif
 						epochOffset = tempUint32.value;
-						timeval tv = { epochOffset + ((millis() + _meshTimeOffset) / 1000), 0 };
-						settimeofday(&tv, nullptr);
+						if(_meshTimeNegotiated)
+						{
+							timeval tv = { epochOffset + ((millis() + _meshTimeOffset) / 1000), 0 };
+							settimeofday(&tv, nullptr);
+						}
 					}
 				}
 				#ifdef m2mMeshIncludeDebugFeatures
@@ -2316,6 +2315,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_updateMeshTime(const uint32_t newMeshTime,
   {
 	//Have remained the time server from the start
 	_meshTimeNegotiated = true;
+	if(rtc == false && epochOffset != 0)	//RTC is already synced, set the clock
+	{
+		timeval tv = { epochOffset + ((millis() + _meshTimeOffset) / 1000), 0 };
+		settimeofday(&tv, nullptr);
+	}
 	if(eventCallback)
 	{
 		eventCallback(meshEvent::synced);			//Trigger the callback
@@ -2384,6 +2388,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_setMeshTime(const uint32_t newMeshTime, co
 	if(_meshTimeNegotiated == false)
 	{
 		_meshTimeNegotiated = true;
+		if(rtc == false && epochOffset != 0)	//RTC is already synced, set the clock
+		{
+			timeval tv = { epochOffset + ((millis() + _meshTimeOffset) / 1000), 0 };
+			settimeofday(&tv, nullptr);
+		}
 		if(eventCallback)
 		{
 			eventCallback(meshEvent::synced);			//Trigger the callback
@@ -2429,6 +2438,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_becomeTimeServer()
 	if(_meshTimeNegotiated == false)
 	{
 		_meshTimeNegotiated = true;
+		if(rtc == false && epochOffset != 0)	//RTC is already synced, set the clock
+		{
+			timeval tv = { epochOffset + ((millis() + _meshTimeOffset) / 1000), 0 };
+			settimeofday(&tv, nullptr);
+		}
 		if(eventCallback)
 		{
 			eventCallback(meshEvent::synced);			//Trigger the callback
@@ -4222,32 +4236,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::rtcSynced()
 {
 	if(rtc)
 	{
-		#if defined(ESP32)
-		return(getLocalTime(&timeinfo));
-		#elif defined (ESP8266)
-		if(millis()/1000 > time(nullptr)) //if time() ~= millis() then time is not set!
-		{
-			if((millis()/1000 - time(nullptr)) > 1)
-			{
-				return(true);
-			}
-			else
-			{
-				return(false);
-			}
-		}
-		else
-		{
-			if((time(nullptr) - millis()/1000) > 1)
-			{
-				return(true);
-			}
-			else
-			{
-				return(false);
-			}
-		}
-		#endif
+		return(true);
 	}
 	else if(epochOffset > 0)
 	{
@@ -4258,6 +4247,32 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::rtcSynced()
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::rtcServer()
 {
 	return(_currentRTCServer);
+}
+bool ICACHE_FLASH_ATTR m2mMeshClass::rtcValid()
+{
+    #if defined(ESP32)
+    if(getLocalTime(&timeinfo))	//Only works if time is set
+    {
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+    #elif defined(ESP8266)
+	time_t now;
+	time(&now);
+	struct tm * timeinfo;
+	timeinfo = localtime(&now);
+	if(timeinfo->tm_year > 100)	//If it's post-Y2K the time is probably valid. Better suggestions for checking welcome!
+	{
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+	#endif
 }
 #endif
 
@@ -4534,7 +4549,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::maxNumberOfOriginators()
 {
 	return(_maxNumberOfOriginators);
 }
-uint8_t ICACHE_FLASH_ATTR m2mMeshClass::numberOfOriginators(const uint8_t id)
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::numberOfNodes(const uint8_t id)
 {
 	return(_originator[id].numberOfOriginators);
 }
