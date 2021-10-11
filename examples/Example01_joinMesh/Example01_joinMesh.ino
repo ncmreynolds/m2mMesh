@@ -3,6 +3,8 @@
  * 
  * Author: Nick Reynolds
  * License: LGPL v2.1
+ *
+ * See README.md for information
  * 
  */
 
