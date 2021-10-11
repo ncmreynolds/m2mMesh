@@ -187,6 +187,8 @@ const char m2mMeshinitialisingWiFi[] PROGMEM = "\r\nMesh initialising WiFi ";
 const char m2mMeshinitialisingESPNOW[] PROGMEM = "\r\nMesh initialising ESP-NOW ";
 const char m2mMeshWiFiStatus[] PROGMEM = "\r\nWiFi status:";
 const char m2mMeshaddingbroadcastMACaddressasapeertoenablemeshdiscovery[] PROGMEM = "Adding broadcast MAC address as a 'peer' to enable mesh discovery ";
+const char m2mMeshaddedpeerxxxxxxchannelu[] PROGMEM = "\r\nAdded ESP-Now peer %02x:%02x:%02x:%02x:%02x:%02x channel:%u %u/%u";
+const char m2mMeshremovedpeerxxxxxx[] PROGMEM = "\r\nRemoved ESP-Now peer %02x:%02x:%02x:%02x:%02x:%02x %u/%u";
 const char m2mMeshReceivedfrom[] PROGMEM = "Received from ";
 const char m2mMeshRTR[] PROGMEM = "\r\nRTR ";
 const char m2mMeshSoftAPison[] PROGMEM = " SoftAP is on";
@@ -263,6 +265,9 @@ struct m2mMeshOriginatorInfo									//A structure for storing information about
 	uint8_t macAddress[6] = {0, 0, 0, 0, 0, 0};			//Defaults to nothing
 	uint8_t channel = 0;								//Defaults to whatever the mesh channel is
 	uint8_t flags = 0;									//Defaults to no flags
+	//ESP-Now peer management
+	bool isCurrentlyPeer = false;						//Is it an ESP-Now peer
+	uint32_t peerNeeded = 0;							//Last time the peer was needed
 	//Mesh info
 	uint8_t numberOfOriginators = 0;					//Number of originators this node asserts is in the mesh
 	uint8_t numberOfActiveNeighbours = 0;				//Number of active neighbours this node sees traffic from
@@ -746,9 +751,12 @@ class m2mMeshClass
 		#endif
 
 		//Originator related variables
-		m2mMeshOriginatorInfo *_originator;						//Pointer to the originator table, which is allocated in the constructor function
+		m2mMeshOriginatorInfo *_originator;					//Pointer to the originator table, which is allocated in the constructor function
 		uint8_t _maxNumberOfOriginators = 16;				//The default number of maximum originators. This can be changed at begin(). Set to 0 for automatic allocation of resource, which may cause heap fragmentation and affect stability.
 		uint8_t _numberOfOriginators = 0;					//The current number of originators
+		static const uint8_t _maxNumberOfPeers = 20;		//The maximum number of ESP-Now peers
+		uint32_t _peerLifetime = 60000;						//How long a peering lasts without use, default 60s
+		uint8_t _numberOfPeers = 0;							//The current number of ESP-Now peers
 		uint8_t _numberOfReachableOriginators = 0;			//The current number of reachable originators
 		uint8_t _numberOfActiveNeighbours = 0;				//The current number of nearby active neighbours
 		uint8_t _meshMacAddress[6] = {0,0,0,0,0,0};			//A synthetic MAC address XORed from all the members used to indicate stability
@@ -765,20 +773,16 @@ class m2mMeshClass
 
 
 		//ELP - Echo Location Protocol packet flags & values
-		static const uint8_t ELP_PACKET_SIZE = 19;
 		static const uint8_t ELP_PACKET_TYPE = 0x00;				//The first octet of every ESP-Now packet identifies what it is
 		static const uint8_t ELP_DEFAULT_TTL = 0;					//A TTL of >0 means it may be forwarded
 		static const uint8_t ELP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;	//Default ELP flags
 		static const uint8_t ELP_FLAGS_INCLUDES_PEERS = 0x01;		//Flag set when ELP includes peer information
-		static const uint8_t ELP_FLAGS_PEER_REMOVE_REQUEST = 0x02;	//Flag set indicating sending originator would like to be removed as peer
-		static const uint8_t ELP_FLAGS_PEER_REMOVED = 0x04;			//Flag set to indicate destination originator has been removed as peer
 
 		static const uint32_t ELP_DEFAULT_INTERVAL = 10000ul;		//How often to send ELP (default every 10s)
 		static const uint16_t LTQ_MAX_VALUE = 65535;				//Maximum value for Local Transmit Quality
 		static const uint16_t LTQ_STARTING_VALUE = 32768;			//Starting value for Local Transmit Quality given to a new peer
 
 		//OGM - Originator Message packet flags & values
-		static const uint8_t OGM_PACKET_SIZE = 32;					//OGM packets are a fixed size
 		static const uint8_t OGM_PACKET_TYPE = 0x01;				//The first octet of every ESP-Now packet identifies what it is
 		static const uint8_t OGM_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
 		static const uint8_t OGM_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default OGM flags
@@ -833,10 +837,9 @@ class m2mMeshClass
 		uint32_t _droppedAppPackets = 0;					//Monitor app buffer receive problems
 
 		//USR - User data packet flags and values
-		const uint8_t USR_PACKET_SIZE = 15;					//USR packets are variable length but have a 32 byte header
 		const uint8_t USR_PACKET_TYPE = 0x03;				//The first octet of every ESP-Now packet identifies what it is
-		const uint8_t USR_DEFAULT_TTL = 50;					//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
-		const uint8_t USR_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Not yet implemented
+		const uint8_t USR_DEFAULT_TTL = 50;					//A TTL of >0 means it may be forwared.
+		const uint8_t USR_DEFAULT_FLAGS = SEND_TO_ALL_NODES;
 		const uint8_t USR_MAX_PACKET_SIZE = 250;			//Maximum packet size for user data
 		const uint32_t USR_DEFAULT_INTERVAL = 1000;			//How often to send low priority user data
 
@@ -870,6 +873,9 @@ class m2mMeshClass
 		//ESP-NOW related functions in many of these there are lots of preprocessor directives to handle API differences between ESP8266/8285 and ESP32 at compile time
 		bool _initESPNow();											//Initialises ESP-NOW
 		bool _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
+		bool _routeUserPacket();									//Route a user packet
+		bool _addPeer(uint8_t* mac, uint8_t peerChannel);			//Add a peer
+		bool _removePeer(uint8_t originatorId);						//Remove peer
 		/*
 		#if defined(ESP8266)
 		uint8_t _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
