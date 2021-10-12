@@ -52,19 +52,22 @@ void statusView()
     moveToXy(1,14);
     Serial.print(F("Board:"));
     #if defined (ARDUINO_ESP8266_WEMOS_D1MINI)
-    Serial.print(F("WeMos D1 mini"));
+      Serial.print(F("WeMos D1 mini"));
     #elif defined (ARDUINO_ESP8266_WEMOS_D1MINIPRO)
-    Serial.print(F("WeMos D1 mini pro"));
+      Serial.print(F("WeMos D1 mini pro"));
     #elif defined (ARDUINO_ESP8266_GENERIC)
-    Serial.print(F("ESP-01S"));
+      Serial.print(F("ESP-01S"));
     #elif defined (ARDUINO_ESP8266_ESP01)
-    Serial.print(F("ESP8285-M1"));
+      Serial.print(F("ESP8285-M1"));
     #elif defined(ARDUINO_ESP32S2_DEV)
-    Serial.print(F("ESP32S2 Saola-1R"));
+      Serial.print(F("ESP32S2 Saola-1R"));
     #else
-    Serial.print(' ');
-    Serial.print(ARDUINO_BOARD);
-    Serial.print(F("Unknown"));
+      Serial.print(' ');
+      #ifdef ARDUINO_BOARD
+        Serial.print(ARDUINO_BOARD);
+      #else
+        Serial.print(F("Unknown"));
+      #endif
     #endif
     if(logAllNodes)
     {
@@ -104,24 +107,24 @@ void statusView()
     Serial.print(' ');
   }
   //Reachable Originators
-  if(numberOfReachableOriginatorsChanged || drawWholeUi)
+  if(numberOfReachableNodesChanged || drawWholeUi)
   {
     moveToXy(21,2);
-    Serial.printf("%03d",m2mMesh.numberOfReachableOriginators());
-    numberOfReachableOriginatorsChanged = false;
+    Serial.printf("%03d",m2mMesh.numberOfReachableNodes());
+    numberOfReachableNodesChanged = false;
   }
   //Originators
-  if(numberOfOriginatorsChanged || drawWholeUi)
+  if(numberOfNodesChanged || drawWholeUi)
   {
     moveToXy(25,2);
-    Serial.printf("%03d",m2mMesh.numberOfOriginators());
-    numberOfOriginatorsChanged = false;
+    Serial.printf("%03d",m2mMesh.numberOfNodes());
+    numberOfNodesChanged = false;
   }
   //Mesh stability
-  if(meshIsStableChanged ||  drawWholeUi)
+  if(stableChanged ||  drawWholeUi)
   {
     moveToXy(28,2);
-    if(m2mMesh.meshIsStable())
+    if(m2mMesh.stable())
     {
       Serial.print('S');
     }
@@ -169,7 +172,7 @@ void statusView()
     numberOfActiveNeighboursChanged = false;
     {
       uint8_t neighbour = 0;
-      for(uint8_t originatorId = 0; originatorId < m2mMesh.numberOfOriginators(); originatorId++)
+      for(uint8_t originatorId = 0; originatorId < m2mMesh.numberOfNodes(); originatorId++)
       {
         if(m2mMesh.elpIsValid(originatorId) || m2mMesh.ogmIsValid(originatorId))
         {
@@ -239,7 +242,7 @@ void statusView()
   {
     //Draw only what's changed
     uint8_t neighbour = 0;
-    for(uint8_t originatorId = 0; originatorId < m2mMesh.numberOfOriginators(); originatorId++)
+    for(uint8_t originatorId = 0; originatorId < m2mMesh.numberOfNodes(); originatorId++)
     {
       if(m2mMesh.elpIsValid(originatorId) || m2mMesh.ogmIsValid(originatorId))
       {

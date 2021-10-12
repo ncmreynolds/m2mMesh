@@ -83,7 +83,7 @@ void inputHandling()
   case '+':
     if(currentUiView == UI_ORIGINATORS)
     {
-      if(m2mMesh.numberOfOriginators() > 0 && currentlyViewedOriginator < m2mMesh.numberOfOriginators() - 1)
+      if(m2mMesh.numberOfNodes() > 0 && currentlyViewedOriginator < m2mMesh.numberOfNodes() - 1)
       {
         currentlyViewedOriginator++;
       }
@@ -95,7 +95,7 @@ void inputHandling()
     }
     else if(currentUiView == UI_LOGS && logAllNodes == false)
     {
-      if(m2mMesh.numberOfOriginators() > 0 && nodeToLog < m2mMesh.numberOfOriginators() - 1)
+      if(m2mMesh.numberOfNodes() > 0 && nodeToLog < m2mMesh.numberOfNodes() - 1)
       {
         nodeToLog++;
       }
@@ -120,7 +120,7 @@ void inputHandling()
       }
       else
       {
-        currentlyViewedOriginator = m2mMesh.numberOfOriginators() - 1;
+        currentlyViewedOriginator = m2mMesh.numberOfNodes() - 1;
       }
       currentlyViewedOriginatorChanged = true;
     }
@@ -132,7 +132,7 @@ void inputHandling()
       }
       else
       {
-        nodeToLog = m2mMesh.numberOfOriginators() - 1;
+        nodeToLog = m2mMesh.numberOfNodes() - 1;
       }
       m2mMesh.nodeToLog(nodeToLog);
       drawWholeUi = true;
@@ -145,7 +145,7 @@ void inputHandling()
   case 'l':
   if(currentUiView == UI_LOG_CONFIG || currentUiView == UI_LOGS)
   {
-    if(numberOfOriginators > 0)
+    if(numberOfNodes > 0)
     {
       logAllNodes = not logAllNodes;
       if(logAllNodes)

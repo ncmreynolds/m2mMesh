@@ -5,7 +5,7 @@ void originatorView()
     moveToXy(80,24);
     eraseScreen();
     hideCursor();
-    if(m2mMesh.numberOfOriginators() == 0)
+    if(m2mMesh.numberOfNodes() == 0)
     {
       popupBox("No originators to display");
     }
@@ -13,7 +13,7 @@ void originatorView()
     {
       //Which device is it?
       moveToXy(1,1);
-      Serial.printf("Originator:%03d/%03d",currentlyViewedOriginator+1,numberOfOriginators);
+      Serial.printf("Originator:%03d/%03d",currentlyViewedOriginator+1,numberOfNodes);
       //Does it have a name?
       printAtXy(20,1,F("Node name:"));
       //ID and MAC address
@@ -32,9 +32,9 @@ void originatorView()
       printAtXy(3,12,F("OGM:"));
       printAtXy(3,13,F("OGM interval:"));
       printAtXy(3,14,F("OGM last seen:"));
-      printAtXy(3,16,F("OGM calculated TQ:"));
+      printAtXy(3,16,F("OGM calculated LTQ:"));
       printAtXy(3,17,F("OGM selected Router:"));
-      printAtXy(3,18,F("OGM selected Router TQ:"));
+      printAtXy(3,18,F("OGM selected Router GTQ:"));
       printAtXy(3,19,F("OGMs received:"));
       printAtXy(3,20,F("OGMs echoes:"));
 
@@ -60,13 +60,13 @@ void originatorView()
       Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew"));
     }
   }
-  if(numberOfOriginators > 0)
+  if(numberOfNodes > 0)
   {
     if(currentlyViewedOriginatorChanged || drawWholeUi)
     {
       //Which one is this?
       moveToXy(12,1);
-      Serial.printf("%03d/%03d",currentlyViewedOriginator+1,numberOfOriginators);
+      Serial.printf("%03d/%03d",currentlyViewedOriginator+1,numberOfNodes);
       //ID and MAC address
       moveToXy(14,3);
       uint8_t tempMac[6];
@@ -205,7 +205,7 @@ void originatorView()
     moveToXy(61,11);
     if(m2mMesh.nhsIsValid(currentlyViewedOriginator))
     {
-      Serial.printf("%03d/%03d ",m2mMesh.numberOfActiveNeighbours(currentlyViewedOriginator),m2mMesh.numberOfOriginators(currentlyViewedOriginator));
+      Serial.printf("%03d/%03d ",m2mMesh.numberOfActiveNeighbours(currentlyViewedOriginator),m2mMesh.numberOfNodes(currentlyViewedOriginator));
     }
     else
     {
@@ -279,7 +279,7 @@ void originatorView()
       printAtXy(7,12,F("Down"));
     }
     //OGM GTQ
-    moveToXy(21,16);
+    moveToXy(22,16);
     Serial.printf("%04x",m2mMesh.localTransmissionQuality(currentlyViewedOriginator));
     //NHS up?
     if(m2mMesh.nhsIsValid(currentlyViewedOriginator))
@@ -296,14 +296,14 @@ void originatorView()
     {
       Serial.printf("%02x     ",m2mMesh.selectedRouter(currentlyViewedOriginator));
       //OGM TQ
-      moveToXy(26,18);
+      moveToXy(27,18);
       Serial.printf("%04x   ",m2mMesh.globalTransmissionQuality(currentlyViewedOriginator));
     }
     else
     {
       Serial.print(F("Unknown"));
       //OGM TQ
-      moveToXy(26,18);
+      moveToXy(27,18);
       Serial.print(F("Unknown"));
     }
     //OGMs received

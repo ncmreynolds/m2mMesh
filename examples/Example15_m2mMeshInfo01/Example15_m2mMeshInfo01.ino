@@ -31,17 +31,17 @@ uint8_t periodicUIrefresh = 0;
 bool sequenceNumberChanged = false;
 uint32_t sequenceNumber = 0;
 
-bool meshIsStable = false;
-bool meshIsStableChanged = false;
+bool stable = false;
+bool stableChanged = false;
 
 uint8_t numberOfActiveNeighbours = 0;
 bool numberOfActiveNeighboursChanged = false;
 
-uint8_t numberOfOriginators = 0;
-bool numberOfOriginatorsChanged = false;
+uint8_t numberOfNodes = 0;
+bool numberOfNodesChanged = false;
 
-uint8_t numberOfReachableOriginators = 0;
-bool numberOfReachableOriginatorsChanged = false;
+uint8_t numberOfReachableNodes = 0;
+bool numberOfReachableNodesChanged = false;
 
 bool currentlyViewedOriginatorChanged = false;
 
@@ -124,25 +124,25 @@ void loop() {
       numberOfActiveNeighbours = m2mMesh.numberOfActiveNeighbours();
       numberOfActiveNeighboursChanged = true;
     }
-    if(numberOfReachableOriginators != m2mMesh.numberOfReachableOriginators())
+    if(numberOfReachableNodes != m2mMesh.numberOfReachableNodes())
     {
-      numberOfReachableOriginators = m2mMesh.numberOfReachableOriginators();
-      numberOfReachableOriginatorsChanged = true;
+      numberOfReachableNodes = m2mMesh.numberOfReachableNodes();
+      numberOfReachableNodesChanged = true;
     }
-    if(numberOfOriginators != m2mMesh.numberOfOriginators())
+    if(numberOfNodes != m2mMesh.numberOfNodes())
     {
-      numberOfOriginators = m2mMesh.numberOfOriginators();
-      numberOfOriginatorsChanged = true;
+      numberOfNodes = m2mMesh.numberOfNodes();
+      numberOfNodesChanged = true;
     }
     if(sequenceNumber != m2mMesh.sequenceNumber())
     {
       sequenceNumber = m2mMesh.sequenceNumber();
       sequenceNumberChanged = true;
     }
-    if(meshIsStable != m2mMesh.meshIsStable())
+    if(stable != m2mMesh.stable())
     {
-      meshIsStable = m2mMesh.meshIsStable();
-      meshIsStableChanged = true;
+      stable = m2mMesh.stable();
+      stableChanged = true;
     }
     if(loggingLevel != m2mMesh.loggingLevel())
     {
