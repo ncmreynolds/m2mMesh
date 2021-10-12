@@ -549,291 +549,281 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 	#endif
 	//Start processing the packet
 	uint8_t _packetType = packet.data[0] & 0x07;
-	if(packet.data[1] == MESH_PROTOCOL_VERSION)	//Check the protocol version is valid
+	uint8_t routerId = MESH_ORIGINATOR_NOT_FOUND;
+	uint8_t originatorId = MESH_ORIGINATOR_NOT_FOUND;
+	uint8_t destinationId = MESH_ORIGINATOR_NOT_FOUND;
+	bool isEcho = false;
+	//Handle the incoming MAC address. The ESP8266 and ESP32 both vary their MAC address differently depending on whether in STA or AP mode
+	/*if(packet.macAddress[0] & B00000010) && packet.macAddress[1] == packet.data[9] && packet.macAddress[2] == packet.data[10] && packet.macAddress[3] == packet.data[11] && packet.macAddress[4] == packet.data[12] && packet.macAddress[5] == packet.data[13])
+	{*/
+		//This is an ESP8266 in AP mode
+		packet.macAddress[0] = packet.macAddress[0] & B11111101;	//Remove the variable bit for ESP8266/ESP8285
+	/*}
+	else*/ if(packet.macAddress[0] == packet.data[8] && packet.macAddress[1] == packet.data[9] && packet.macAddress[2] == packet.data[10] && packet.macAddress[3] == packet.data[11] && packet.macAddress[4] == packet.data[12] && packet.macAddress[5] == packet.data[13] + 1)
 	{
-		uint8_t routerId = MESH_ORIGINATOR_NOT_FOUND;
-		uint8_t originatorId = MESH_ORIGINATOR_NOT_FOUND;
-		uint8_t destinationId = MESH_ORIGINATOR_NOT_FOUND;
-		bool isEcho = false;
-		//Handle the incoming MAC address. The ESP8266 and ESP32 both vary their MAC address differently depending on whether in STA or AP mode
-		/*if(packet.macAddress[0] & B00000010) && packet.macAddress[1] == packet.data[9] && packet.macAddress[2] == packet.data[10] && packet.macAddress[3] == packet.data[11] && packet.macAddress[4] == packet.data[12] && packet.macAddress[5] == packet.data[13])
-		{*/
-			//This is an ESP8266 in AP mode
-			packet.macAddress[0] = packet.macAddress[0] & B11111101;	//Remove the variable bit for ESP8266/ESP8285
-		/*}
-		else*/ if(packet.macAddress[0] == packet.data[8] && packet.macAddress[1] == packet.data[9] && packet.macAddress[2] == packet.data[10] && packet.macAddress[3] == packet.data[11] && packet.macAddress[4] == packet.data[12] && packet.macAddress[5] == packet.data[13] + 1)
+		//This is an ESP32 in AP mode
+		packet.macAddress[5] = packet.macAddress[5] - 1;			//Decrement the last octet for ESP32
+	}
+	if(not _isLocalMacAddress(packet.macAddress))
+	{
+		routerId = _originatorIdFromMac(packet.macAddress);
+		if(routerId == MESH_ORIGINATOR_NOT_FOUND)
 		{
-			//This is an ESP32 in AP mode
-			packet.macAddress[5] = packet.macAddress[5] - 1;			//Decrement the last octet for ESP32
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
+			{
+				_debugStream->print(m2mMeshRTR);
+			}
+			#endif
+			routerId = _addOriginator(packet.macAddress,_currentChannel);
 		}
-		if(not _isLocalMacAddress(packet.macAddress))
+	}
+	uint8_t originatorMacAddress[6];
+	memcpy(&originatorMacAddress[0], &packet.data[8], 6);
+	//The originator may be a completely new device, so look for it but ignore any echoes of this node's traffic
+	if(_isLocalMacAddress(originatorMacAddress))
+	{
+		isEcho = true;
+	}
+	else
+	{
+		originatorId = _originatorIdFromMac(originatorMacAddress);
+		if(originatorId == MESH_ORIGINATOR_NOT_FOUND)
 		{
-			routerId = _originatorIdFromMac(packet.macAddress);
-			if(routerId == MESH_ORIGINATOR_NOT_FOUND)
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
+			{
+				_debugStream->print(F("\r\nm2mMesh SRC "));
+			}
+			#endif
+			originatorId = _addOriginator(originatorMacAddress,_currentChannel);
+		}
+	}
+	//memcpy(originatorMacAddress, packet.data[8], 6);			//Retrieve the originator address
+	uint8_t destinationMacAddress[6];
+	uint8_t packetIndex = 14;
+	if((packet.data[3] & SEND_TO_ALL_NODES) == 0x00)				//If there's a destination, grab it
+	{
+		memcpy(&destinationMacAddress[0], &packet.data[packetIndex], 6);
+		packetIndex+=6;
+		//The destination may be a completely new device, so look for it but ignore any echoes of this node's traffic
+		if(not _isLocalMacAddress(destinationMacAddress))
+		{
+			destinationId = _originatorIdFromMac(destinationMacAddress);
+			if(destinationId == MESH_ORIGINATOR_NOT_FOUND)
 			{
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 				{
-					_debugStream->print(m2mMeshRTR);
+					_debugStream->print(F("\r\nm2mMesh DST "));
 				}
 				#endif
-				routerId = _addOriginator(packet.macAddress,_currentChannel);
+				destinationId = _addOriginator(destinationMacAddress,_currentChannel);
 			}
 		}
-		uint8_t originatorMacAddress[6];
-		memcpy(&originatorMacAddress[0], &packet.data[8], 6);
-		//The originator may be a completely new device, so look for it but ignore any echoes of this node's traffic
-		if(_isLocalMacAddress(originatorMacAddress))
+	}
+	//At this point we know the router, originator and destination and can check for echoes, which are never processed further
+	if(isEcho)
+	{
+		if(_isLocalMacAddress(originatorMacAddress))						//Process OGM 'echoes'
 		{
-			isEcho = true;
-		}
-		else
-		{
-			originatorId = _originatorIdFromMac(originatorMacAddress);
-			if(originatorId == MESH_ORIGINATOR_NOT_FOUND)
+			if(routerId != MESH_ORIGINATOR_NOT_FOUND && _packetType == OGM_PACKET_TYPE)
 			{
+				_originator[routerId].ogmEchoes = _originator[routerId].ogmEchoes >> 1;			//Right shift the OGM Echo receipt confirmation bitmask, which will make it worse
+				_originator[routerId].ogmEchoes = _originator[routerId].ogmEchoes | 0x8000;		//Set the most significant bit of the OGM Echo receipt confirmation bitmask, which MAY make it 'better'
+				_originator[routerId].ogmEchoLastConfirmed = millis();							//Record when this happened, so the node can spot 'missed' echoes
+				_calculateLtq(routerId);														//Recalculate Local Transmission Quality
 				#ifdef m2mMeshIncludeDebugFeatures
-				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
+				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog))
 				{
-					_debugStream->print(F("\r\nm2mMesh SRC "));
+					_debugStream->printf_P(m2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.data[20],packet.length);
 				}
 				#endif
-				originatorId = _addOriginator(originatorMacAddress,_currentChannel);
 			}
 		}
-		//memcpy(originatorMacAddress, packet.data[8], 6);			//Retrieve the originator address
-		uint8_t destinationMacAddress[6];
-		uint8_t packetIndex = 14;
-		if((packet.data[3] & SEND_TO_ALL_NODES) == 0x00)				//If there's a destination, grab it
+	}
+	else
+	{
+		//Now check the sequence number is sensible or the protection window is disabled
+		union unsignedLongToBytes packetSequenceNumber;
+		packetSequenceNumber.b[0] = packet.data[4];
+		packetSequenceNumber.b[1] = packet.data[5];
+		packetSequenceNumber.b[2] = packet.data[6];
+		packetSequenceNumber.b[3] = packet.data[7];
+		if(packetSequenceNumber.value > _originator[originatorId].lastSequenceNumber || _originator[originatorId].sequenceNumberProtectionWindowActive == false)
 		{
-			memcpy(&destinationMacAddress[0], &packet.data[packetIndex], 6);
-			packetIndex+=6;
-			//The destination may be a completely new device, so look for it but ignore any echoes of this node's traffic
-			if(not _isLocalMacAddress(destinationMacAddress))
+			//The sequence number was valid, or old enough to prompt a reset of the protection window, continue processing but enable protection window again
+			if(_originator[originatorId].sequenceNumberProtectionWindowActive == false)
 			{
-				destinationId = _originatorIdFromMac(destinationMacAddress);
-				if(destinationId == MESH_ORIGINATOR_NOT_FOUND)
-				{
-					#ifdef m2mMeshIncludeDebugFeatures
-					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
-					{
-						_debugStream->print(F("\r\nm2mMesh DST "));
-					}
-					#endif
-					destinationId = _addOriginator(destinationMacAddress,_currentChannel);
-				}
-			}
-		}
-		//At this point we know the router, originator and destination and can check for echoes, which are never processed further
-		if(isEcho)
-		{
-			if(_isLocalMacAddress(originatorMacAddress))						//Process OGM 'echoes'
-			{
-				if(routerId != MESH_ORIGINATOR_NOT_FOUND && _packetType == OGM_PACKET_TYPE)
-				{
-					_originator[routerId].ogmEchoes = _originator[routerId].ogmEchoes >> 1;			//Right shift the OGM Echo receipt confirmation bitmask, which will make it worse
-					_originator[routerId].ogmEchoes = _originator[routerId].ogmEchoes | 0x8000;		//Set the most significant bit of the OGM Echo receipt confirmation bitmask, which MAY make it 'better'
-					_originator[routerId].ogmEchoLastConfirmed = millis();							//Record when this happened, so the node can spot 'missed' echoes
-					_calculateLtq(routerId);														//Recalculate Local Transmission Quality
-					#ifdef m2mMeshIncludeDebugFeatures
-					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog))
-					{
-						_debugStream->printf_P(m2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.data[20],packet.length);
-					}
-					#endif
-				}
-			}
-		}
-		else
-		{
-			//Now check the sequence number is sensible or the protection window is disabled
-			union unsignedLongToBytes packetSequenceNumber;
-			packetSequenceNumber.b[0] = packet.data[4];
-			packetSequenceNumber.b[1] = packet.data[5];
-			packetSequenceNumber.b[2] = packet.data[6];
-			packetSequenceNumber.b[3] = packet.data[7];
-			if(packetSequenceNumber.value > _originator[originatorId].lastSequenceNumber || _originator[originatorId].sequenceNumberProtectionWindowActive == false)
-			{
-				//The sequence number was valid, or old enough to prompt a reset of the protection window, continue processing but enable protection window again
-				if(_originator[originatorId].sequenceNumberProtectionWindowActive == false)
-				{
-					//Re-enable the sequence number protection window
-					_originator[originatorId].sequenceNumberProtectionWindowActive = true;
-					#ifdef m2mMeshIncludeDebugFeatures
-					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-					{
-						_debugStream->printf_P(m2mMesh02x02x02x02x02x02xsequencenumberprotectionenabled,originatorMacAddress[0],originatorMacAddress[1],originatorMacAddress[2],originatorMacAddress[3],originatorMacAddress[4],originatorMacAddress[5]);
-					}
-					#endif
-				}
-				//Update the sequence number
-				_originator[originatorId].lastSequenceNumber = packetSequenceNumber.value;
-				//Refresh first/last seen data
-				_originator[originatorId].lastSeen[_packetType] = millis();
-				//Update the OGM receipt window if it's OGM
-				if(_packetType == OGM_PACKET_TYPE && originatorId == routerId)								//This is an OGM direct from a node
-				{
-					_originator[originatorId].ogmReceived = _originator[originatorId].ogmReceived >> 1;			//Right shift the receipt confirmation bitmask
-					_originator[originatorId].ogmReceived = _originator[originatorId].ogmReceived | 0x8000;		//Set the most significant bit of the receipt confirmation bitmask, which MAY make it 'better'
-					_originator[originatorId].ogmReceiptLastConfirmed = millis();								//Record when this direct OGM was confirmed
-					_calculateLtq(originatorId);																//Recalculate Local Transmission Quality
-				}
-				//Retrieve the interval
-				unsignedLongToBytes packetInterval;
-				packetInterval.b[0] = packet.data[packetIndex++];
-				packetInterval.b[1] = packet.data[packetIndex++];
-				packetInterval.b[2] = packet.data[packetIndex++];
-				packetInterval.b[3] = packet.data[packetIndex++];
-				if(packetInterval.value != _originator[originatorId].interval[_packetType])
-				{
-					#ifdef m2mMeshIncludeDebugFeatures
-					if(_debugEnabled == true && _originator[originatorId].interval[_packetType] > 0 && _loggingLevel & MESH_UI_LOG_INFORMATION && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-					{
-						char packetTypeDescription[] = "UNK";
-						_packetTypeDescription(packetTypeDescription,_packetType);
-						_debugStream->printf_P(m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod,packetTypeDescription,packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],_originator[originatorId].interval[_packetType],packetInterval.value);
-					}
-					#endif
-					_originator[originatorId].interval[_packetType] = packetInterval.value;
-				}
-				//Consider the packet for processing so check the destination. Either it is has to be a flood or have this node as the destination
-				if((packet.data[3] & SEND_TO_ALL_NODES) || (((packet.data[3] & SEND_TO_ALL_NODES) == 0x00) && _isLocalMacAddress(destinationMacAddress)))
-				{
-					if(_packetType == ELP_PACKET_TYPE && (_serviceFlags & PROTOCOL_ELP_RECEIVE))			//This is an ELP packet
-					{
-						_processElp(routerId, originatorId, packet);										//Process the contents of the ELP packet
-					}
-					else if(_packetType == OGM_PACKET_TYPE && (_serviceFlags & PROTOCOL_OGM_RECEIVE))	//This is an OGM packet
-					{
-						_processOgm(routerId, originatorId, packet);										//Process the contents of the OGM packet
-					}
-					else if(_packetType == NHS_PACKET_TYPE && (_serviceFlags & PROTOCOL_NHS_RECEIVE))	//This is a NHS packet
-					{
-						_processNhs(routerId, originatorId, packet);										//Process the contents of the NHS packet
-					}
-					else if(_packetType == USR_PACKET_TYPE && (_serviceFlags & PROTOCOL_USR_RECEIVE))	//This is a USR packet
-					{
-						_processUsr(routerId, originatorId, packet);										//Process the contents of the USR packet
-					}
-					#ifdef m2mMeshIncludeDebugFeatures
-					else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-					{
-						_debugStream->printf_P(nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x,_packetType,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5]);
-					}
-					#endif
-				}
-				else
-				{
-					Serial.printf("\r\nPacket is for another node");
-				}
-				//Consider a packet for forwarding, it may already have been changed in earlier processing
-				//The TTL must be >0 and either a flood or NOT have this node at its source or destination
-				if(packet.data[2] > 0 && ((packet.data[3] & SEND_TO_ALL_NODES != 0) || (not _isLocalMacAddress(destinationMacAddress))))
-				{
-					//Reduce the TTL, regardless whether we end up forwarding or not
-					packet.data[2]--;
-					bool doTheForward = false;
-					#ifdef m2mMeshIncludeDebugFeatures
-					bool logTheForward = false;
-					#endif
-					if(_packetType == ELP_PACKET_TYPE && _serviceFlags & PROTOCOL_ELP_FORWARD)		//This is an ELP packet
-					{
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-						{
-							logTheForward = true;
-						}
-						#endif
-						doTheForward = true;
-					}
-					else if(_packetType == OGM_PACKET_TYPE && _serviceFlags & PROTOCOL_OGM_FORWARD)	//This is an OGM packet
-					{
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-						{
-							logTheForward = true;
-						}
-						#endif
-						doTheForward = true;
-					}
-					else if(_packetType == NHS_PACKET_TYPE && _serviceFlags & PROTOCOL_NHS_FORWARD)		//This is a NHS packet
-					{
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-						{
-							logTheForward = true;
-						}
-						#endif
-						doTheForward = true;
-					}
-					else if(_packetType == USR_PACKET_TYPE && _serviceFlags & PROTOCOL_USR_FORWARD)	//This is a USR packet
-					{
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-						{
-							logTheForward = true;
-						}
-						#endif
-						doTheForward = true;
-					}
-					if(doTheForward == true)	//Forward is OK, we simply use the receive buffer and send from there to avoid copying data
-					{
-						if(packet.data[3] & SEND_TO_ALL_NODES)
-						{
-							//This is a flood, send it to all neighbours
-							memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);
-						}
-						else
-						{
-							//This has a specific destination, send it to the best next hop, if known
-							if(_originator[destinationId].selectedRouter == MESH_ORIGINATOR_NOT_FOUND)
-							{
-								memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);	//Fall back to using a broadcast
-							}
-							else
-							{
-								memcpy(&packet.macAddress[0], &_originator[_originator[destinationId].selectedRouter].macAddress[0], 6);
-							}
-						}
-						bool sendResult = _sendPacket(packet);
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(sendResult == true && logTheForward == true)
-						{
-							char packetTypeDescription[] = "UNK";
-							_packetTypeDescription(packetTypeDescription,_packetType);
-							_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd,packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2]);
-						}
-						else if(logTheForward == true)
-						{
-							char packetTypeDescription[] = "UNK";
-							_packetTypeDescription(packetTypeDescription,_packetType);
-							_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed,packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2]);
-						}
-						#endif
-					}
-				}
-			}
-			else if(_originator[originatorId].lastSequenceNumber - packetSequenceNumber.value > SEQUENCE_NUMBER_MAX_AGE)
-			{
-				//If it's a very old sequence number disable the protection window to allow the next packet to reset the sequence number
-				//this logic is here to handle a reboot, but ignore a single stray weird sequence number
-				_originator[originatorId].sequenceNumberProtectionWindowActive = false;
+				//Re-enable the sequence number protection window
+				_originator[originatorId].sequenceNumberProtectionWindowActive = true;
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMesh02x02x02x02x02x02xsequencenumberprotectiondisabledpossiblereboot,originatorMacAddress[0],originatorMacAddress[1],originatorMacAddress[2],originatorMacAddress[3],originatorMacAddress[4],originatorMacAddress[5]);
+					_debugStream->printf_P(m2mMesh02x02x02x02x02x02xsequencenumberprotectionenabled,originatorMacAddress[0],originatorMacAddress[1],originatorMacAddress[2],originatorMacAddress[3],originatorMacAddress[4],originatorMacAddress[5]);
 				}
 				#endif
 			}
+			//Update the sequence number
+			_originator[originatorId].lastSequenceNumber = packetSequenceNumber.value;
+			//Refresh first/last seen data
+			_originator[originatorId].lastSeen[_packetType] = millis();
+			//Update the OGM receipt window if it's OGM
+			if(_packetType == OGM_PACKET_TYPE && originatorId == routerId)								//This is an OGM direct from a node
+			{
+				_originator[originatorId].ogmReceived = _originator[originatorId].ogmReceived >> 1;			//Right shift the receipt confirmation bitmask
+				_originator[originatorId].ogmReceived = _originator[originatorId].ogmReceived | 0x8000;		//Set the most significant bit of the receipt confirmation bitmask, which MAY make it 'better'
+				_originator[originatorId].ogmReceiptLastConfirmed = millis();								//Record when this direct OGM was confirmed
+				_calculateLtq(originatorId);																//Recalculate Local Transmission Quality
+			}
+			//Retrieve the interval
+			unsignedLongToBytes packetInterval;
+			packetInterval.b[0] = packet.data[packetIndex++];
+			packetInterval.b[1] = packet.data[packetIndex++];
+			packetInterval.b[2] = packet.data[packetIndex++];
+			packetInterval.b[3] = packet.data[packetIndex++];
+			if(packetInterval.value != _originator[originatorId].interval[_packetType])
+			{
+				#ifdef m2mMeshIncludeDebugFeatures
+				if(_debugEnabled == true && _originator[originatorId].interval[_packetType] > 0 && _loggingLevel & MESH_UI_LOG_INFORMATION && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+				{
+					char packetTypeDescription[] = "UNK";
+					_packetTypeDescription(packetTypeDescription,_packetType);
+					_debugStream->printf_P(m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod,packetTypeDescription,packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],_originator[originatorId].interval[_packetType],packetInterval.value);
+				}
+				#endif
+				_originator[originatorId].interval[_packetType] = packetInterval.value;
+			}
+			//Consider the packet for processing so check the destination. Either it is has to be a flood or have this node as the destination
+			if((packet.data[3] & SEND_TO_ALL_NODES) || (((packet.data[3] & SEND_TO_ALL_NODES) == 0x00) && _isLocalMacAddress(destinationMacAddress)))
+			{
+				if(_packetType == ELP_PACKET_TYPE && (_serviceFlags & PROTOCOL_ELP_RECEIVE))			//This is an ELP packet
+				{
+					_processElp(routerId, originatorId, packet);										//Process the contents of the ELP packet
+				}
+				else if(_packetType == OGM_PACKET_TYPE && (_serviceFlags & PROTOCOL_OGM_RECEIVE))	//This is an OGM packet
+				{
+					_processOgm(routerId, originatorId, packet);										//Process the contents of the OGM packet
+				}
+				else if(_packetType == NHS_PACKET_TYPE && (_serviceFlags & PROTOCOL_NHS_RECEIVE))	//This is a NHS packet
+				{
+					_processNhs(routerId, originatorId, packet);										//Process the contents of the NHS packet
+				}
+				else if(_packetType == USR_PACKET_TYPE && (_serviceFlags & PROTOCOL_USR_RECEIVE))	//This is a USR packet
+				{
+					_processUsr(routerId, originatorId, packet);										//Process the contents of the USR packet
+				}
+				#ifdef m2mMeshIncludeDebugFeatures
+				else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+				{
+					_debugStream->printf_P(nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x,_packetType,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5]);
+				}
+				#endif
+			}
+			else
+			{
+				Serial.printf("\r\nPacket is for another node");
+			}
+			//Consider a packet for forwarding, it may already have been changed in earlier processing
+			//The TTL must be >0 and either a flood or NOT have this node at its source or destination
+			if(packet.data[2] > 0 && ((packet.data[3] & SEND_TO_ALL_NODES != 0) || (not _isLocalMacAddress(destinationMacAddress))))
+			{
+				//Reduce the TTL, regardless whether we end up forwarding or not
+				packet.data[2]--;
+				bool doTheForward = false;
+				#ifdef m2mMeshIncludeDebugFeatures
+				bool logTheForward = false;
+				#endif
+				if(_packetType == ELP_PACKET_TYPE && _serviceFlags & PROTOCOL_ELP_FORWARD)		//This is an ELP packet
+				{
+					#ifdef m2mMeshIncludeDebugFeatures
+					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+					{
+						logTheForward = true;
+					}
+					#endif
+					doTheForward = true;
+				}
+				else if(_packetType == OGM_PACKET_TYPE && _serviceFlags & PROTOCOL_OGM_FORWARD)	//This is an OGM packet
+				{
+					#ifdef m2mMeshIncludeDebugFeatures
+					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+					{
+						logTheForward = true;
+					}
+					#endif
+					doTheForward = true;
+				}
+				else if(_packetType == NHS_PACKET_TYPE && _serviceFlags & PROTOCOL_NHS_FORWARD)		//This is a NHS packet
+				{
+					#ifdef m2mMeshIncludeDebugFeatures
+					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+					{
+						logTheForward = true;
+					}
+					#endif
+					doTheForward = true;
+				}
+				else if(_packetType == USR_PACKET_TYPE && _serviceFlags & PROTOCOL_USR_FORWARD)	//This is a USR packet
+				{
+					#ifdef m2mMeshIncludeDebugFeatures
+					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+					{
+						logTheForward = true;
+					}
+					#endif
+					doTheForward = true;
+				}
+				if(doTheForward == true)	//Forward is OK, we simply use the receive buffer and send from there to avoid copying data
+				{
+					if(packet.data[3] & SEND_TO_ALL_NODES)
+					{
+						//This is a flood, send it to all neighbours
+						memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);
+					}
+					else
+					{
+						//This has a specific destination, send it to the best next hop, if known
+						if(_originator[destinationId].selectedRouter == MESH_ORIGINATOR_NOT_FOUND)
+						{
+							memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);	//Fall back to using a broadcast
+						}
+						else
+						{
+							memcpy(&packet.macAddress[0], &_originator[_originator[destinationId].selectedRouter].macAddress[0], 6);
+						}
+					}
+					bool sendResult = _sendPacket(packet);
+					#ifdef m2mMeshIncludeDebugFeatures
+					if(sendResult == true && logTheForward == true)
+					{
+						char packetTypeDescription[] = "UNK";
+						_packetTypeDescription(packetTypeDescription,_packetType);
+						_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd,packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2]);
+					}
+					else if(logTheForward == true)
+					{
+						char packetTypeDescription[] = "UNK";
+						_packetTypeDescription(packetTypeDescription,_packetType);
+						_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed,packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2]);
+					}
+					#endif
+				}
+			}
+		}
+		else if(_originator[originatorId].lastSequenceNumber - packetSequenceNumber.value > SEQUENCE_NUMBER_MAX_AGE)
+		{
+			//If it's a very old sequence number disable the protection window to allow the next packet to reset the sequence number
+			//this logic is here to handle a reboot, but ignore a single stray weird sequence number
+			_originator[originatorId].sequenceNumberProtectionWindowActive = false;
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+			{
+				_debugStream->printf_P(m2mMesh02x02x02x02x02x02xsequencenumberprotectiondisabledpossiblereboot,originatorMacAddress[0],originatorMacAddress[1],originatorMacAddress[2],originatorMacAddress[3],originatorMacAddress[4],originatorMacAddress[5]);
+			}
+			#endif
 		}
 	}
-	#ifdef m2mMeshIncludeDebugFeatures
-	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)	//This is the wrong protocol version
-	{
-		_debugStream->printf_P(m2mMeshWARNINGincorrectprotocolversiondfrom02x02x02x02x02x02x,packet.data[1],packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5]);
-	}
-	#endif
-	packet.length = 0;	//Mark the buffer empty
 }
 
 /*
@@ -900,7 +890,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(uint8_t elpTtl,m2mMeshPacketBuffer
 bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elpTtl,m2mMeshPacketBuffer &packet)
 {
 	packet.data[0] = ELP_PACKET_TYPE;					//Add the ELP packet type
-	packet.data[1] = MESH_PROTOCOL_VERSION;				//Add the mesh protocol version
+	//packet.data[1] = MESH_PROTOCOL_VERSION;				//Add the mesh protocol version
 	packet.data[2] = elpTtl;							//Add the TTL, usually 0 for ELP
 	packet.data[3] = ELP_DEFAULT_FLAGS;					//Add the default flags
 	if(includeNeighbours)								//Modify the flags if neighbours are included
@@ -1067,7 +1057,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 	interval.value = _currentInterval[OGM_PACKET_TYPE];
 	tQ.value = 65535;
 	packet.data[0] = OGM_PACKET_TYPE;
-	packet.data[1] = MESH_PROTOCOL_VERSION;
+	//packet.data[1] = MESH_PROTOCOL_VERSION;
 	packet.data[2] = _currentTtl[OGM_PACKET_TYPE];
 	packet.data[3] = OGM_DEFAULT_FLAGS;
 	packet.data[4] = sequenceNumber.b[0];
@@ -1339,7 +1329,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 		_debugStream->print(F("\r\nm2mMesh building NHS packet "));
 	}*/	
 	packet.data[0] = NHS_PACKET_TYPE;
-	packet.data[1] = MESH_PROTOCOL_VERSION;
+	//packet.data[1] = MESH_PROTOCOL_VERSION;
 	packet.data[2] = _currentTtl[NHS_PACKET_TYPE];
 	packet.data[3] = NHS_DEFAULT_FLAGS;
 	//Use unions to pack the non-8-bit values
@@ -2819,7 +2809,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader(uint8_t destId)
 	if(not _buildingUserPacket)
 	{
 		_userPacket[0] = USR_PACKET_TYPE;
-		_userPacket[1] = MESH_PROTOCOL_VERSION;
+		//_userPacket[1] = MESH_PROTOCOL_VERSION;
 		_userPacket[2] = _currentTtl[USR_PACKET_TYPE];
 		_userPacket[3] = USR_DEFAULT_FLAGS;
 		//The sequence number is put in at time of sending
@@ -3279,6 +3269,51 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 		return(true);
 	}
 }
+
+bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
+{
+	_buildUserPacketHeader();
+	if(dataToAdd == nullptr && _userPacketIndex + 2 < USR_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
+	{
+		_userPacket[_userPacketIndex++] = USR_DATA_STR;
+		_userPacket[_userPacketIndex++] = 0;
+		//Increment the field counter
+		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		return(true);
+	}
+	else
+	{
+		uint16_t numberOfElements = strlen(dataToAdd);
+		if(numberOfElements < 15)
+		{
+			if(_userPacketIndex + numberOfElements < USR_MAX_PACKET_SIZE)
+			{
+				_userPacket[_userPacketIndex++] = USR_DATA_STR | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
+			}
+			else
+			{
+				return(false);	//Not enough space left in the packet
+			}
+		}
+		else
+		{
+			if(_userPacketIndex + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+			{
+				_userPacket[_userPacketIndex++] = USR_DATA_STR | 0xf0;	//Mark that this field has 15 members or more
+				_userPacket[_userPacketIndex++] = numberOfElements;
+			}
+			else
+			{
+				return(false);	//Not enough space left in the packet
+			}
+		}
+		memcpy(&_userPacket[_userPacketIndex],dataToAdd,numberOfElements);							//Copy in the data
+		_userPacketIndex+=numberOfElements;															//Advance the index past the data
+		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+		return(true);
+	}
+}
+
 
 /*	
  *	ESP-Now packets are not ACTUALLY sent until the underlying RTOS gets round to it.

@@ -66,7 +66,6 @@ const char nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x[] PROGMEM = "\r\nWA
 const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u";
 const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u failed";
 const char m2mMesh02x02x02x02x02x02xsequencenumberprotectiondisabledpossiblereboot[] PROGMEM = "\r\n%02x:%02x:%02x:%02x:%02x:%02x sequence number protection disabled, possible reboot";
-const char m2mMeshWARNINGincorrectprotocolversiondfrom02x02x02x02x02x02x[] PROGMEM = "\r\nWARNING: incorrect protocol version %u from %02x:%02x:%02x:%02x:%02x:%02x";
 const char TTL02dFLG02xSEQ08xLENdNBRd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%08x LEN:%u NBR:%u";
 const char m2mMeshSent[] PROGMEM = "\r\nSent ";
 const char m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdNBRS02dLENd[] PROGMEM = "\r\nELP RCV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u NBRS:%02d LEN:%u";
@@ -282,7 +281,7 @@ struct m2mMeshOriginatorInfo									//A structure for storing information about
 	uint32_t ogmEchoLastConfirmed = 0;					//Time of the last OGM echo
 	uint16_t ltq = 0;									//Local Transmission Quality
 	uint16_t gtq = 0;									//Global Transmission Quality
-	uint8_t selectedRouter = 0;							//Best global router for this node
+	uint8_t selectedRouter = 255;						//Best global router for this node, which starts as unknown
 	//Health info
 	uint32_t uptime = 0;								//The time the device has been up
 	float supplyVoltage = 0;							//Supply voltage as measured by the ESP, whether it is the Vcc or battery voltage up to you
@@ -382,6 +381,7 @@ class m2mMeshClass
 		*/
 		bool add(String);					//Add a String to a message, which is a special case
 		bool add(const char *);				//Add a C string to a message, which is a special case
+		bool add(char *);					//Add a C string to a message, which is a special case
 		bool send(bool wait = true);		//Send the message now, optional 'wait' parameter defaults to true
 		bool clearMessage();				//Clear the message without sending
 
@@ -764,7 +764,7 @@ class m2mMeshClass
 		//Global packet flags & values
 		static const uint8_t ESP_NOW_MIN_PACKET_SIZE = 64;			//Minimum packet size
 		static const uint8_t ESP_NOW_MAX_PACKET_SIZE = 250;			//Maximum packet size
-		static const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
+		//static const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
 		static const uint8_t NO_FLAGS = 0x00;						//No flags on packet
 		static const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
 		static const uint32_t ANTI_COLLISION_JITTER = 250ul;		//Jitter in milliseconds to try and avoid in-air collisions
