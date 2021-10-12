@@ -155,9 +155,9 @@ const char m2mMeshNHStimeoffsetnegdms[] PROGMEM = "\r\nNHS time offset -%ums";
 const char m2mMeshNHStimeoffsetposdms[] PROGMEM = "\r\nNHS time offset +%ums";
 const char m2mMeshNHSmeshtimesettos[] PROGMEM = "\r\nNHS mesh time set to %s";
 const char m2mMesh02x02x02x02x02x02xdbytesm2mMeshType[] PROGMEM = "%02x:%02x:%02x:%02x:%02x:%02x %u bytes\r\nType:";
-const char m2mMeshVersiond[] PROGMEM = " Version:%u";
+const char m2mMeshChecksumx[] PROGMEM = " Checksum:%02x";
 const char m2mMeshTTLd[] PROGMEM = " TTL:%u";
-const char m2mMeshFlagsd[] PROGMEM = " Flags:%u";
+const char m2mMeshFlags2x[] PROGMEM = " Flags:%02x";
 const char m2mMeshSequencenumberd[] PROGMEM = " Sequence number:%u\r\n";
 const char m2mMeshSrc02x02x02x02x02x02x[] PROGMEM = "Src:%02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshDst02x02x02x02x02x02x[] PROGMEM = " Dst:%02x:%02x:%02x:%02x:%02x:%02x";
@@ -179,7 +179,7 @@ const char m2mMeshTTL02dFLG02xSEQ08xLENd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%08x
 const char m2mMeshTIMEs[] PROGMEM = " TIME:%s";
 const char m2mMeshd02x[] PROGMEM = "%u/%02x ";
 const char m2mMeshDstALL[] PROGMEM = " Dst:ALL";
-const char m2mMeshInterval[] PROGMEM = " Interval:";
+const char m2mMeshIntervalu[] PROGMEM = " Interval:%u";
 const char m2mMeshdebuggingenabled[] PROGMEM = "Mesh debugging enabled";
 const char m2mMeshdebuggingdisabled[] PROGMEM = "Mesh debugging disabled";
 const char m2mMeshinitialisingWiFi[] PROGMEM = "\r\nMesh initialising WiFi ";
@@ -203,6 +203,8 @@ const char m2mMeshreadRCVbufferfull[] PROGMEM =	"\r\nRead RCV buffer full";
 const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nFill APP buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadAPPbufferslotd[] PROGMEM =	"\r\nRead APP buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadAPPbufferfull[] PROGMEM =	"\r\nRead APP buffer full";
+const char m2mMeshchecksumValid[] PROGMEM =	"\r\nChecksum valid";
+const char m2mMeshchecksumInvalid[] PROGMEM =	"\r\nChecksum invalid";
 //const char m2mMeshPacketsentto02x02x02x02x02x02x[] PROGMEM = "Packet sent to %02x:%02x:%02x:%02x:%02x:%02x";
 //const char m2mMeshNHSincluded02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nNHS included %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
 //const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nNHS included %u originators";
@@ -258,7 +260,7 @@ union doubleToBytes
   double value;
 };
 
-struct m2mMeshOriginatorInfo									//A structure for storing information about originators (nodes)
+struct m2mMeshOriginatorInfo							//A structure for storing information about originators (nodes)
 {
 	char *nodeName = nullptr;							//Node name, which may or may not be set. Memory is allocated dynamically at runtime
 	uint8_t macAddress[6] = {0, 0, 0, 0, 0, 0};			//Defaults to nothing
@@ -296,7 +298,7 @@ struct m2mMeshOriginatorInfo									//A structure for storing information about
 	uint32_t droppedTxPackets = 0;						//Monitor buffer send problems
 };
 
-struct m2mMeshPacketBuffer										//A structure for storing ESP-Now packets
+struct m2mMeshPacketBuffer								//A structure for storing ESP-Now packets
 {
 	uint8_t macAddress[6] = {0, 0, 0, 0, 0, 0};			//Source or destination MAC address
 	uint8_t length;										//Amount of data in the packet
@@ -707,6 +709,7 @@ class m2mMeshClass
 	private:
 		//High level variables
 		uint8_t _currentChannel = 1;						//Mesh channel is set at begin() and should never change
+		uint8_t _meshId = B01010101;						//Used to modify checksum
 		char *_nodeName = nullptr;							//Node name, set with setNodeName()
 		uint8_t _localMacAddress[6];						//Local MAC address
 		uint8_t _broadcastMacAddress[6] = 					//Broadcast MAC address
@@ -872,6 +875,9 @@ class m2mMeshClass
 		
 		//ESP-NOW related functions in many of these there are lots of preprocessor directives to handle API differences between ESP8266/8285 and ESP32 at compile time
 		bool _initESPNow();											//Initialises ESP-NOW
+		uint8_t _calculateChecksum(m2mMeshPacketBuffer &);			//Calculate checksum
+		void _addChecksum(m2mMeshPacketBuffer &);					//Adds the checksum to packet
+		bool _checksumCorrect(m2mMeshPacketBuffer &);				//Checks the checksum
 		bool _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
 		bool _routeUserPacket();									//Route a user packet
 		bool _addPeer(uint8_t* mac, uint8_t peerChannel);			//Add a peer
