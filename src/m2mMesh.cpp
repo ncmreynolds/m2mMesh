@@ -425,7 +425,18 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_addChecksum(m2mMeshPacketBuffer &packet)
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::_checksumCorrect(m2mMeshPacketBuffer &packet)
 {
-	return(packet.data[1] == _calculateChecksum(packet));
+	uint8_t checksum = _calculateChecksum(packet);
+	if(checksum == packet.data[1])
+	{
+		return(true);
+	}
+	#ifdef m2mMeshIncludeDebugFeatures
+	else if(_debugEnabled == true && _loggingLevel & m2mMesh.MESH_UI_LOG_ERRORS)
+	{
+		_debugStream->printf_P(m2mMeshchecksumInvalidreceived2xshouldbe2x, packet.data[1], checksum);
+	}
+	#endif
+	return(false);
 }
 
 void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
@@ -569,7 +580,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 		_debugPacket(packet);
 	}
 	#endif
-	if(_checksumCorrect(packet))	//Always check the checksum ASAP
+	if(_checksumCorrect(packet) == true)	//Always check the checksum ASAP
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ALL_RECEIVED_PACKETS)
@@ -855,12 +866,6 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 			}
 		}
 	}
-	#ifdef m2mMeshIncludeDebugFeatures
-	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ALL_RECEIVED_PACKETS)
-	{
-		_debugStream->print(m2mMeshchecksumInvalid);
-	}
-	#endif
 	packet.length = 0;	//Mark the buffer empty
 }
 
@@ -2846,40 +2851,40 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader(uint8_t destId)
 {
 	if(not _buildingUserPacket)
 	{
-		_userPacket[0] = USR_PACKET_TYPE;
-		//_userPacket[1] = MESH_PROTOCOL_VERSION;
-		_userPacket[2] = _currentTtl[USR_PACKET_TYPE];
-		_userPacket[3] = USR_DEFAULT_FLAGS;
+		_userPacketBuffer.data[0] = USR_PACKET_TYPE;
+		//_userPacketBuffer.data[1] = MESH_PROTOCOL_VERSION;
+		_userPacketBuffer.data[2] = _currentTtl[USR_PACKET_TYPE];
+		_userPacketBuffer.data[3] = USR_DEFAULT_FLAGS;
 		//The sequence number is put in at time of sending
 		//Origin address
-		_userPacket[8] = _localMacAddress[0];
-		_userPacket[9] = _localMacAddress[1];
-		_userPacket[10] = _localMacAddress[2];
-		_userPacket[11] = _localMacAddress[3];
-		_userPacket[12] = _localMacAddress[4];
-		_userPacket[13] = _localMacAddress[5];
+		_userPacketBuffer.data[8] = _localMacAddress[0];
+		_userPacketBuffer.data[9] = _localMacAddress[1];
+		_userPacketBuffer.data[10] = _localMacAddress[2];
+		_userPacketBuffer.data[11] = _localMacAddress[3];
+		_userPacketBuffer.data[12] = _localMacAddress[4];
+		_userPacketBuffer.data[13] = _localMacAddress[5];
 		//From here the packet specification is flexible, so use an incrementing index
-		_userPacketIndex = 14;
+		_userPacketBuffer.length = 14;
 		if(destId != MESH_ORIGINATOR_NOT_FOUND)
 		{
-			_userPacket[3] = _userPacket[3] & ~SEND_TO_ALL_NODES;
-			_userPacket[_userPacketIndex++] = _originator[destId].macAddress[0];
-			_userPacket[_userPacketIndex++] = _originator[destId].macAddress[1];
-			_userPacket[_userPacketIndex++] = _originator[destId].macAddress[2];
-			_userPacket[_userPacketIndex++] = _originator[destId].macAddress[3];
-			_userPacket[_userPacketIndex++] = _originator[destId].macAddress[4];
-			_userPacket[_userPacketIndex++] = _originator[destId].macAddress[5];
+			_userPacketBuffer.data[3] = _userPacketBuffer.data[3] & ~SEND_TO_ALL_NODES;
+			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[0];
+			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[1];
+			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[2];
+			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[3];
+			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[4];
+			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[5];
 		}
 		//Interval
 		union unsignedLongToBytes usrInterval;
 		usrInterval.value = _currentInterval[USR_PACKET_TYPE];
-		_userPacket[_userPacketIndex++] = usrInterval.b[0];
-		_userPacket[_userPacketIndex++] = usrInterval.b[1];
-		_userPacket[_userPacketIndex++] = usrInterval.b[2];
-		_userPacket[_userPacketIndex++] = usrInterval.b[3];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = usrInterval.b[0];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = usrInterval.b[1];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = usrInterval.b[2];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = usrInterval.b[3];
 		//Number of fields, record where in the packet it is stored
-		_userPacketFieldCounterIndex = _userPacketIndex;
-		_userPacket[_userPacketIndex++] = 0;
+		_userPacketFieldCounterIndex = _userPacketBuffer.length;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = 0;
 		_buildingUserPacket = true;
 	}
 }
@@ -2892,7 +2897,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader(const uint8_t mac0, 
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::payloadLeft()
 {
 	_buildUserPacketHeader();
-	return(USR_MAX_PACKET_SIZE - _userPacketIndex);
+	return(USR_MAX_PACKET_SIZE - _userPacketBuffer.length);
 }
 
 //Functions for setting destination on a packet before sending. These are overloaded to make it easier to set a destination.
@@ -2956,18 +2961,18 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::destination(String dest)
 /*bool ICACHE_FLASH_ATTR m2mMeshClass::add(const bool dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + 1 < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + 1 < USR_MAX_PACKET_SIZE)
 	{
 		if(dataToAdd == false)
 		{
-			_userPacket[_userPacketIndex++] = USR_DATA_BOOL;
+			_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_BOOL;
 		}
 		else
 		{
-			_userPacket[_userPacketIndex++] = USR_DATA_BOOL_TRUE;
+			_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_BOOL_TRUE;
 		}
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -2979,12 +2984,12 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::destination(String dest)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint8_t dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(uint8_t) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(uint8_t) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_UINT8_T;
-		_userPacket[_userPacketIndex++] = dataToAdd;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT8_T;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = dataToAdd;
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -2997,15 +3002,15 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint8_t dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint16_t dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(uint16_t) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(uint16_t) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_UINT16_T;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT16_T;
 		unsignedIntToBytes temp;
 		temp.value = dataToAdd;
-		_userPacket[_userPacketIndex++] = temp.b[0];
-		_userPacket[_userPacketIndex++] = temp.b[1];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3019,9 +3024,9 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint16_t dataToAdd)
 	//uint8_t numberOfElements = sizeof(dataToAdd)/sizeof(dataToAdd[0]);
 	if(numberOfElements < 15)
 	{
-		if(_userPacketIndex + sizeof(dataToAdd[0]) * numberOfElements < USR_MAX_PACKET_SIZE)
+		if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements < USR_MAX_PACKET_SIZE)
 		{
-			_userPacket[_userPacketIndex++] = USR_DATA_UINT16_T | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
+			_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT16_T | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
 		}
 		else
 		{
@@ -3030,10 +3035,10 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint16_t dataToAdd)
 	}
 	else
 	{
-		if(_userPacketIndex + sizeof(dataToAdd[0]) * numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+		if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements + 1 < USR_MAX_PACKET_SIZE)
 		{
-			_userPacket[_userPacketIndex++] = USR_DATA_UINT16_T | 0xf0;	//Mark that this field has 15 members or more
-			_userPacket[_userPacketIndex++] = numberOfElements;
+			_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT16_T | 0xf0;	//Mark that this field has 15 members or more
+			_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
 		}
 		else
 		{
@@ -3044,27 +3049,27 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint16_t dataToAdd)
 	for(int index = 0 ; index < numberOfElements ; index++)
 	{
 		temp.value = dataToAdd[index];
-		_userPacket[_userPacketIndex++] = temp.b[0];
-		_userPacket[_userPacketIndex++] = temp.b[1];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
 	}
 	//Increment the field counter
-	_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+	_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 	return(true);
 }*/
 /*bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint32_t dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(uint32_t) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(uint32_t) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_UINT32_T;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT32_T;
 		unsignedLongToBytes temp;
 		temp.value = dataToAdd;
-		_userPacket[_userPacketIndex++] = temp.b[0];
-		_userPacket[_userPacketIndex++] = temp.b[1];
-		_userPacket[_userPacketIndex++] = temp.b[2];
-		_userPacket[_userPacketIndex++] = temp.b[3];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3075,21 +3080,21 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint16_t dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint64_t dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(uint64_t) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(uint64_t) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_UINT64_T;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT64_T;
 		unsignedLongLongToBytes temp;
 		temp.value = dataToAdd;
-		_userPacket[_userPacketIndex++] = temp.b[0];
-		_userPacket[_userPacketIndex++] = temp.b[1];
-		_userPacket[_userPacketIndex++] = temp.b[2];
-		_userPacket[_userPacketIndex++] = temp.b[3];
-		_userPacket[_userPacketIndex++] = temp.b[4];
-		_userPacket[_userPacketIndex++] = temp.b[5];
-		_userPacket[_userPacketIndex++] = temp.b[6];
-		_userPacket[_userPacketIndex++] = temp.b[7];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[4];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[5];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[6];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[7];
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3100,12 +3105,12 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint64_t dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int8_t dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(int8_t) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(int8_t) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_INT8_T;
-		_userPacket[_userPacketIndex++] = uint8_t(dataToAdd);
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_INT8_T;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = uint8_t(dataToAdd);
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3116,15 +3121,15 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int8_t dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int16_t dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(int16_t) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(int16_t) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_INT16_T;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_INT16_T;
 		intToBytes temp;
 		temp.value = dataToAdd;
-		_userPacket[_userPacketIndex++] = temp.b[0];
-		_userPacket[_userPacketIndex++] = temp.b[1];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3135,17 +3140,17 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int16_t dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int32_t dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(int32_t) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(int32_t) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_INT32_T;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_INT32_T;
 		longToBytes temp;
 		temp.value = dataToAdd;
-		_userPacket[_userPacketIndex++] = temp.b[0];
-		_userPacket[_userPacketIndex++] = temp.b[1];
-		_userPacket[_userPacketIndex++] = temp.b[2];
-		_userPacket[_userPacketIndex++] = temp.b[3];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3156,21 +3161,21 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int32_t dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int64_t dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(int64_t) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(int64_t) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_INT64_T;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_INT64_T;
 		longLongToBytes temp;
 		temp.value = dataToAdd;
-		_userPacket[_userPacketIndex++] = temp.b[0];
-		_userPacket[_userPacketIndex++] = temp.b[1];
-		_userPacket[_userPacketIndex++] = temp.b[2];
-		_userPacket[_userPacketIndex++] = temp.b[3];
-		_userPacket[_userPacketIndex++] = temp.b[4];
-		_userPacket[_userPacketIndex++] = temp.b[5];
-		_userPacket[_userPacketIndex++] = temp.b[6];
-		_userPacket[_userPacketIndex++] = temp.b[7];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[4];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[5];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[6];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[7];
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3181,12 +3186,12 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int64_t dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(char) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(char) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_CHAR;
-		_userPacket[_userPacketIndex++] = uint8_t(dataToAdd);
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_CHAR;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = uint8_t(dataToAdd);
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3197,17 +3202,17 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const float dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(_userPacketIndex + sizeof(float) < USR_MAX_PACKET_SIZE)
+	if(_userPacketBuffer.length + sizeof(float) < USR_MAX_PACKET_SIZE)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_FLOAT;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_FLOAT;
 		floatToBytes temp;
 		temp.value = dataToAdd;
-		_userPacket[_userPacketIndex++] = temp.b[0];
-		_userPacket[_userPacketIndex++] = temp.b[1];
-		_userPacket[_userPacketIndex++] = temp.b[2];
-		_userPacket[_userPacketIndex++] = temp.b[3];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
+		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3221,18 +3226,18 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 	uint16_t numberOfElements = dataToAdd.length();
 	if(numberOfElements == 0)
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_STRING | 0xf0;
-		_userPacket[_userPacketIndex++] = 0;
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STRING | 0xf0;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = 0;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
 		return(true);
 	}
-	else if(_userPacketIndex + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+	else if(_userPacketBuffer.length + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
 	{
 		if(numberOfElements < 15)
 		{
-			if(_userPacketIndex + numberOfElements < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements < USR_MAX_PACKET_SIZE)
 			{
-				_userPacket[_userPacketIndex++] = USR_DATA_STRING | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
+				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STRING | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
 			}
 			else
 			{
@@ -3241,10 +3246,10 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 		}
 		else
 		{
-			if(_userPacketIndex + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
 			{
-				_userPacket[_userPacketIndex++] = USR_DATA_STRING | 0xf0;	//Mark that this field has 15 members or more
-				_userPacket[_userPacketIndex++] = numberOfElements;
+				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STRING | 0xf0;	//Mark that this field has 15 members or more
+				_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
 			}
 			else
 			{
@@ -3253,9 +3258,9 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 		}
 		for(int i = 0 ; i < numberOfElements ; i++)
 		{
-			_userPacket[_userPacketIndex++] = dataToAdd[i];
+			_userPacketBuffer.data[_userPacketBuffer.length++] = dataToAdd[i];
 		}
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
 		return(true);
 	}
 	else
@@ -3267,12 +3272,12 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(dataToAdd == nullptr && _userPacketIndex + 2 < USR_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
+	if(dataToAdd == nullptr && _userPacketBuffer.length + 2 < USR_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_STR;
-		_userPacket[_userPacketIndex++] = 0;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = 0;
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3280,9 +3285,9 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 		uint16_t numberOfElements = strlen(dataToAdd);
 		if(numberOfElements < 15)
 		{
-			if(_userPacketIndex + numberOfElements < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements < USR_MAX_PACKET_SIZE)
 			{
-				_userPacket[_userPacketIndex++] = USR_DATA_STR | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
+				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
 			}
 			else
 			{
@@ -3291,19 +3296,19 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 		}
 		else
 		{
-			if(_userPacketIndex + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
 			{
-				_userPacket[_userPacketIndex++] = USR_DATA_STR | 0xf0;	//Mark that this field has 15 members or more
-				_userPacket[_userPacketIndex++] = numberOfElements;
+				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR | 0xf0;	//Mark that this field has 15 members or more
+				_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
 			}
 			else
 			{
 				return(false);	//Not enough space left in the packet
 			}
 		}
-		memcpy(&_userPacket[_userPacketIndex],dataToAdd,numberOfElements);							//Copy in the data
-		_userPacketIndex+=numberOfElements;															//Advance the index past the data
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+		memcpy(&_userPacketBuffer.data[_userPacketBuffer.length],dataToAdd,numberOfElements);							//Copy in the data
+		_userPacketBuffer.length+=numberOfElements;															//Advance the index past the data
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
 		return(true);
 	}
 }
@@ -3311,12 +3316,12 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(dataToAdd == nullptr && _userPacketIndex + 2 < USR_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
+	if(dataToAdd == nullptr && _userPacketBuffer.length + 2 < USR_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
 	{
-		_userPacket[_userPacketIndex++] = USR_DATA_STR;
-		_userPacket[_userPacketIndex++] = 0;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = 0;
 		//Increment the field counter
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
 		return(true);
 	}
 	else
@@ -3324,9 +3329,9 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
 		uint16_t numberOfElements = strlen(dataToAdd);
 		if(numberOfElements < 15)
 		{
-			if(_userPacketIndex + numberOfElements < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements < USR_MAX_PACKET_SIZE)
 			{
-				_userPacket[_userPacketIndex++] = USR_DATA_STR | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
+				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
 			}
 			else
 			{
@@ -3335,19 +3340,19 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
 		}
 		else
 		{
-			if(_userPacketIndex + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
 			{
-				_userPacket[_userPacketIndex++] = USR_DATA_STR | 0xf0;	//Mark that this field has 15 members or more
-				_userPacket[_userPacketIndex++] = numberOfElements;
+				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR | 0xf0;	//Mark that this field has 15 members or more
+				_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
 			}
 			else
 			{
 				return(false);	//Not enough space left in the packet
 			}
 		}
-		memcpy(&_userPacket[_userPacketIndex],dataToAdd,numberOfElements);							//Copy in the data
-		_userPacketIndex+=numberOfElements;															//Advance the index past the data
-		_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+		memcpy(&_userPacketBuffer.data[_userPacketBuffer.length],dataToAdd,numberOfElements);							//Copy in the data
+		_userPacketBuffer.length+=numberOfElements;															//Advance the index past the data
+		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
 		return(true);
 	}
 }
@@ -3375,35 +3380,35 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 		_waitingForSend = true;
 		_sendSuccess = false;
 	}
-	while(_userPacketIndex < ESP_NOW_MIN_PACKET_SIZE)	//Pad the packet out to the minimum size with garbage
+	while(_userPacketBuffer.length < ESP_NOW_MIN_PACKET_SIZE)	//Pad the packet out to the minimum size with garbage
 	{
-		_userPacket[_userPacketIndex++] = 0x00;
+		_userPacketBuffer.data[_userPacketBuffer.length++] = 0x00;
 	}
 	//Use unions to pack the non-8-bit values
 	//Sequence number is added immediately before sending
 	union unsignedLongToBytes temp;
 	temp.value = _sequenceNumber++;
-	_userPacket[4] = temp.b[0];
-	_userPacket[5] = temp.b[1];
-	_userPacket[6] = temp.b[2];
-	_userPacket[7] = temp.b[3];
+	_userPacketBuffer.data[4] = temp.b[0];
+	_userPacketBuffer.data[5] = temp.b[1];
+	_userPacketBuffer.data[6] = temp.b[2];
+	_userPacketBuffer.data[7] = temp.b[3];
 	#ifdef m2mMeshIncludeDebugFeatures
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 	{
-		_debugStream->printf_P(m2mMeshSendingpackettype02xversion02x,_userPacket[0],_userPacket[1]);
+		_debugStream->printf_P(m2mMeshSendingpackettype02xversion02x,_userPacketBuffer.data[0],_userPacketBuffer.data[1]);
 	}
 	#endif
-	if(_routeUserPacket() == true)
-	//if(esp_now_send(_broadcastMacAddress, _userPacket, _userPacketIndex) == ESP_OK)
+	if(_routePacket(_userPacketBuffer) == true)
+	//if(esp_now_send(_broadcastMacAddress, _userPacket, _userPacketBuffer.length) == ESP_OK)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_SEND)
 		{
-			_debugStream->printf_P(m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x,_userPacket[8],_userPacket[9],_userPacket[10],_userPacket[11],_userPacket[12],_userPacket[13],_userPacket[2],_userPacket[3]);
+			_debugStream->printf_P(m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x,_userPacketBuffer.data[8],_userPacketBuffer.data[9],_userPacketBuffer.data[10],_userPacketBuffer.data[11],_userPacketBuffer.data[12],_userPacketBuffer.data[13],_userPacketBuffer.data[2],_userPacketBuffer.data[3]);
 		}
 		#endif
 		_txPackets++;	//Update the packet stats
-		_userPacketIndex = 0;
+		_userPacketBuffer.length = 0;
 		_buildingUserPacket = false;		
 		if(wait == true)	//If this is a synchronous send, wait here for the callback to acknowledge sending
 		{
@@ -3437,7 +3442,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 	}
 	else
 	{
-		_userPacketIndex = 0;
+		_userPacketBuffer.length = 0;
 		_buildingUserPacket = false;
 		_waitingForSend = false;
 		_droppedTxPackets++;	//Update the packet stats
@@ -3445,11 +3450,12 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 	}
 }
 
-bool ICACHE_FLASH_ATTR m2mMeshClass::_routeUserPacket()
+bool ICACHE_FLASH_ATTR m2mMeshClass::_routePacket(m2mMeshPacketBuffer &packet, bool wait)
 {
-	if(_userPacket[3] & SEND_TO_ALL_NODES)
+	_addChecksum(packet);	//Always add the checksum immediately before sending
+	if(packet.data[3] & SEND_TO_ALL_NODES)
 	{
-		if(esp_now_send(_broadcastMacAddress, _userPacket, _userPacketIndex) == ESP_OK)
+		if(esp_now_send(_broadcastMacAddress, packet.data, _userPacketBuffer.length) == ESP_OK)
 		{
 			return(true);
 		}
@@ -3460,13 +3466,13 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_routeUserPacket()
 	}
 	else
 	{
-		uint8_t destId = _originatorIdFromMac(_userPacket[14], _userPacket[15], _userPacket[16], _userPacket[17], _userPacket[18], _userPacket[19]);
+		uint8_t destId = _originatorIdFromMac(packet.data[14], packet.data[15], packet.data[16], packet.data[17], packet.data[18], packet.data[19]);
 		if(destId != MESH_ORIGINATOR_NOT_FOUND)
 		{
 			_originator[destId].peerNeeded = millis();	//Update the record of when the peer was last needed
 			if(_originator[destId].isCurrentlyPeer == false)
 			{
-				if(_addPeer(&_userPacket[14], _currentChannel) == false)
+				if(_addPeer(&packet.data[14], _currentChannel) == false)
 				{
 					return(false);
 				}
@@ -3475,7 +3481,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_routeUserPacket()
 					_originator[destId].isCurrentlyPeer = true;
 				}
 			}
-			if(esp_now_send(&_userPacket[14], _userPacket, _userPacketIndex) == ESP_OK)
+			if(esp_now_send(&packet.data[14], packet.data, _userPacketBuffer.length) == ESP_OK)
 			{
 				return(true);
 			}
@@ -3546,9 +3552,9 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_removePeer(uint8_t originatorId)
 bool ICACHE_FLASH_ATTR m2mMeshClass::clearMessage()	//Clear the message without sending, return true if there was something to clear
 {
 	_buildingUserPacket = false;
-	if(_userPacketIndex > 0)
+	if(_userPacketBuffer.length > 0)
 	{
-		_userPacketIndex = 0;
+		_userPacketBuffer.length = 0;
 		return(true);
 	}
 	else

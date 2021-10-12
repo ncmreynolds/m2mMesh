@@ -204,7 +204,7 @@ const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nFill APP buffer slot %u %
 const char m2mMeshreadAPPbufferslotd[] PROGMEM =	"\r\nRead APP buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadAPPbufferfull[] PROGMEM =	"\r\nRead APP buffer full";
 const char m2mMeshchecksumValid[] PROGMEM =	"\r\nChecksum valid";
-const char m2mMeshchecksumInvalid[] PROGMEM =	"\r\nChecksum invalid";
+const char m2mMeshchecksumInvalidreceived2xshouldbe2x[] PROGMEM =	"\r\nChecksum invalid, received %02x, should be %02x";
 //const char m2mMeshPacketsentto02x02x02x02x02x02x[] PROGMEM = "Packet sent to %02x:%02x:%02x:%02x:%02x:%02x";
 //const char m2mMeshNHSincluded02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nNHS included %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
 //const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nNHS included %u originators";
@@ -455,17 +455,17 @@ class m2mMeshClass
 			uint8_t dataType = determineType(dataToAdd);
 			if(dataType == USR_DATA_BOOL)	//Bool is a special case for packing
 			{
-				if(_userPacketIndex + sizeof(dataToAdd) < USR_MAX_PACKET_SIZE)
+				if(_userPacketBuffer.length + sizeof(dataToAdd) < USR_MAX_PACKET_SIZE)
 				{
 					if(dataToAdd == true)
 					{
-						_userPacket[_userPacketIndex++] = USR_DATA_BOOL_TRUE;	//True
+						_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_BOOL_TRUE;	//True
 					}
 					else
 					{
-						_userPacket[_userPacketIndex++] = USR_DATA_BOOL;	//False
+						_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_BOOL;	//False
 					}
-					_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+					_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
 					return(true);
 				}
 				else
@@ -475,12 +475,12 @@ class m2mMeshClass
 			}
 			else
 			{
-				if(_userPacketIndex + sizeof(dataToAdd) + 1 < USR_MAX_PACKET_SIZE)
+				if(_userPacketBuffer.length + sizeof(dataToAdd) + 1 < USR_MAX_PACKET_SIZE)
 				{
-					_userPacket[_userPacketIndex++] = dataType;
-					memcpy(&_userPacket[_userPacketIndex],&dataToAdd,sizeof(dataToAdd));						//Copy in the data
-					_userPacketIndex+=sizeof(dataToAdd);														//Advance the index past the data
-					_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+					_userPacketBuffer.data[_userPacketBuffer.length++] = dataType;
+					memcpy(&_userPacketBuffer.data[_userPacketBuffer.length],&dataToAdd,sizeof(dataToAdd));						//Copy in the data
+					_userPacketBuffer.length+=sizeof(dataToAdd);														//Advance the index past the data
+					_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
 					return(true);
 				}
 				else
@@ -495,9 +495,9 @@ class m2mMeshClass
 			_buildUserPacketHeader();
 			if(numberOfElements < 15)
 			{
-				if(_userPacketIndex + sizeof(dataToAdd[0]) * numberOfElements < USR_MAX_PACKET_SIZE)
+				if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements < USR_MAX_PACKET_SIZE)
 				{
-					_userPacket[_userPacketIndex++] = determinePointerType(dataToAdd) | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
+					_userPacketBuffer.data[_userPacketBuffer.length++] = determinePointerType(dataToAdd) | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
 				}
 				else
 				{
@@ -506,19 +506,19 @@ class m2mMeshClass
 			}
 			else
 			{
-				if(_userPacketIndex + sizeof(dataToAdd[0]) * numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+				if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements + 1 < USR_MAX_PACKET_SIZE)
 				{
-					_userPacket[_userPacketIndex++] = determinePointerType(dataToAdd) | 0xf0;	//Mark that this field has 15 members or more
-					_userPacket[_userPacketIndex++] = numberOfElements;
+					_userPacketBuffer.data[_userPacketBuffer.length++] = determinePointerType(dataToAdd) | 0xf0;	//Mark that this field has 15 members or more
+					_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
 				}
 				else
 				{
 					return(false);	//Not enough space left in the packet
 				}
 			}
-			memcpy(&_userPacket[_userPacketIndex],dataToAdd,numberOfElements*sizeof(dataToAdd[0]));		//Copy in the data
-			_userPacketIndex+=numberOfElements*sizeof(dataToAdd[0]);									//Advance the index past the data
-			_userPacket[_userPacketFieldCounterIndex] = _userPacket[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
+			memcpy(&_userPacketBuffer.data[_userPacketBuffer.length],dataToAdd,numberOfElements*sizeof(dataToAdd[0]));		//Copy in the data
+			_userPacketBuffer.length+=numberOfElements*sizeof(dataToAdd[0]);									//Advance the index past the data
+			_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
 			return(true);
 		}
 		//Overloaded functions to determine type, should be able to do with decltype or similar but I haven't worked out the syntax
@@ -878,8 +878,8 @@ class m2mMeshClass
 		uint8_t _calculateChecksum(m2mMeshPacketBuffer &);			//Calculate checksum
 		void _addChecksum(m2mMeshPacketBuffer &);					//Adds the checksum to packet
 		bool _checksumCorrect(m2mMeshPacketBuffer &);				//Checks the checksum
+		bool _routePacket(m2mMeshPacketBuffer &, bool wait = true);	//Route and send a user packet
 		bool _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
-		bool _routeUserPacket();									//Route a user packet
 		bool _addPeer(uint8_t* mac, uint8_t peerChannel);			//Add a peer
 		bool _removePeer(uint8_t originatorId);						//Remove peer
 		/*
@@ -938,9 +938,10 @@ class m2mMeshClass
 		void _blinkActivityLed();							//Function switches on activity LED
 
 		//User data related variables
-		uint8_t _userPacketIndex = 0;								//Current position in the user packet
+		//uint8_t _userPacketIndex = 0;								//Current position in the user packet
 		uint8_t _userPacketFieldCounterIndex = 0;					//The index where the field count is
-		uint8_t _userPacket[ESP_NOW_MAX_PACKET_SIZE];				//The user packet
+		//uint8_t _userPacket[ESP_NOW_MAX_PACKET_SIZE];				//The user packet
+		m2mMeshPacketBuffer _userPacketBuffer;						//The user packet
 		
 		bool _buildingUserPacket = false;													//Are we building a user data packet? Mustn't do it twice
 		void _buildUserPacketHeader();														//Create the user packet header for a broadcast packet
