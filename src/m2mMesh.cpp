@@ -910,42 +910,36 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elp
 			}
 		}
 	}
-	if(_routePacket(packet))
+	memcpy(&packet.macAddress[0], &_broadcastMacAddress[0],6);	//Nothing needs doing beyond adding broadcast address
+	bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(sendResult == true && _debugEnabled == true)
 	{
-		bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
-		#ifdef m2mMeshIncludeDebugFeatures
-		if(sendResult == true && _debugEnabled == true)
+		if(_loggingLevel & MESH_UI_LOG_ELP_SEND)
 		{
-			if(_loggingLevel & MESH_UI_LOG_ELP_SEND)
+			_debugStream->print(F("\r\nm2mMesh ELP SND "));
+			if(includeNeighbours)
 			{
-				_debugStream->print(F("\r\nm2mMesh ELP SND "));
-				if(includeNeighbours)
-				{
-					_debugStream->printf_P(TTL02dFLG02xSEQ08xLENdNBRd,packet.data[2],packet.data[3],sequenceNumber,packet.length,_numberOfActiveNeighbours);
-				}
-				else
-				{
-					_debugStream->printf_P(m2mMeshTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],sequenceNumber,packet.length);
-				}
+				_debugStream->printf_P(TTL02dFLG02xSEQ08xLENdNBRd,packet.data[2],packet.data[3],sequenceNumber,packet.length,_numberOfActiveNeighbours);
 			}
-			if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
+			else
 			{
-				_debugStream->print(m2mMeshSent);
-				_debugPacket(packet);
+				_debugStream->printf_P(m2mMeshTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],sequenceNumber,packet.length);
 			}
 		}
-		else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_SEND)
+		if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 		{
-			_debugStream->print(F("\r\nm2mMesh ELP SND fail"));
+			_debugStream->print(m2mMeshSent);
+			_debugPacket(packet);
 		}
-		#endif
-		_sequenceNumber++;
-		return(sendResult);
 	}
-	else
+	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_SEND)
 	{
-		return(false);
+		_debugStream->print(F("\r\nm2mMesh ELP SND fail"));
 	}
+	#endif
+	_sequenceNumber++;
+	return(sendResult);
 }
 
 void ICACHE_FLASH_ATTR m2mMeshClass::_processElp(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
@@ -1050,35 +1044,29 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 	memcpy(&packet.data[18], &tQ, sizeof(tQ));
 	packet.data[20] = 0;
 	packet.length = 21;
-	if(_routePacket(packet))
+	memcpy(&packet.macAddress[0], &_broadcastMacAddress[0],6);	//Nothing needs doing beyond adding broadcast address
+	bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(sendResult == true && _debugEnabled == true)
 	{
-		bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
-		#ifdef m2mMeshIncludeDebugFeatures
-		if(sendResult == true && _debugEnabled == true)
+		if(_loggingLevel & MESH_UI_LOG_OGM_SEND)
 		{
-			if(_loggingLevel & MESH_UI_LOG_OGM_SEND)
-			{
-				_debugStream->printf_P(m2mMeshOGMSNDTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],_sequenceNumber,packet.length);
-			}
-			if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
-			{
-				_debugStream->println();
-				_debugStream->print(m2mMeshSent);
-				_debugPacket(packet);
-			}
+			_debugStream->printf_P(m2mMeshOGMSNDTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],_sequenceNumber,packet.length);
 		}
-		else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_SEND)
+		if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 		{
-			_debugStream->printf_P(m2mMeshOGMSNDfailedTTL02dFlags02xSeq08xLENd,packet.data[2],packet.data[3],_sequenceNumber,packet.length);
+			_debugStream->println();
+			_debugStream->print(m2mMeshSent);
+			_debugPacket(packet);
 		}
-		#endif
-		_sequenceNumber++;
-		return(sendResult);
 	}
-	else
+	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_SEND)
 	{
-		return(false);
+		_debugStream->printf_P(m2mMeshOGMSNDfailedTTL02dFlags02xSeq08xLENd,packet.data[2],packet.data[3],_sequenceNumber,packet.length);
 	}
+	#endif
+	_sequenceNumber++;
+	return(sendResult);
 }
 
 void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
@@ -1463,44 +1451,38 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 		_debugStream->print(m2mMeshNHSSND);
 	}
 	#endif
-	if(_routePacket(packet))
+	memcpy(&packet.macAddress[0], &_broadcastMacAddress[0],6);	//Nothing needs doing beyond adding broadcast address
+	bool sendResult = _sendPacket(packet);
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(sendResult == true && _debugEnabled == true)
 	{
-		bool sendResult = _sendPacket(packet);
-		#ifdef m2mMeshIncludeDebugFeatures
-		if(sendResult == true && _debugEnabled == true)
+		if(_loggingLevel & MESH_UI_LOG_NHS_SEND)
 		{
-			if(_loggingLevel & MESH_UI_LOG_NHS_SEND)
+			_debugStream->printf_P(TTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],_sequenceNumber, packet.length);
+			if(_actingAsTimeServer)
 			{
-				_debugStream->printf_P(TTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],_sequenceNumber, packet.length);
-				if(_actingAsTimeServer)
-				{
-					char uptime[10];
-					_friendlyUptime(syncedMillis(),uptime);
-					_debugStream->printf_P(m2mMeshTIMEs,uptime);
-				}
-				if(_serviceFlags & PROTOCOL_NHS_INCLUDE_ORIGINATORS && packet.data[originatorCountIndex]>0)
-				{
-					_debugStream->printf_P(ORGd,packet.data[originatorCountIndex]);
-				}
+				char uptime[10];
+				_friendlyUptime(syncedMillis(),uptime);
+				_debugStream->printf_P(m2mMeshTIMEs,uptime);
 			}
-			if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
+			if(_serviceFlags & PROTOCOL_NHS_INCLUDE_ORIGINATORS && packet.data[originatorCountIndex]>0)
 			{
-				_debugStream->print(m2mMeshSent);
-				_debugPacket(packet);
+				_debugStream->printf_P(ORGd,packet.data[originatorCountIndex]);
 			}
 		}
-		else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
+		if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 		{
-			_debugStream->print(m2mMeshfailed);
+			_debugStream->print(m2mMeshSent);
+			_debugPacket(packet);
 		}
-		#endif
-		_sequenceNumber++;
-		return(sendResult);
 	}
-	else
+	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
 	{
-		return(false);
+		_debugStream->print(m2mMeshfailed);
 	}
+	#endif
+	_sequenceNumber++;
+	return(sendResult);
 }
 
 void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
