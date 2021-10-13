@@ -251,6 +251,7 @@ struct m2mMeshOriginatorInfo							//A structure for storing information about o
 struct m2mMeshPacketBuffer								//A structure for storing ESP-Now packets
 {
 	uint8_t macAddress[6] = {0, 0, 0, 0, 0, 0};			//Source or destination MAC address
+	uint8_t routerId = 255;								//ID of next hop
 	uint8_t length;										//Amount of data in the packet
 	uint8_t data[250];									//Size the data for the largest possible packet
 	uint32_t timestamp = 0;								//Time when the packet went into the buffer
@@ -828,7 +829,7 @@ class m2mMeshClass
 		uint8_t _calculateChecksum(m2mMeshPacketBuffer &);			//Calculate checksum
 		void _addChecksum(m2mMeshPacketBuffer &);					//Adds the checksum to packet
 		bool _checksumCorrect(m2mMeshPacketBuffer &);				//Checks the checksum
-		bool _routePacket(m2mMeshPacketBuffer &, bool wait = true);	//Route and send a user packet
+		bool _routePacket(m2mMeshPacketBuffer &);					//Route a packet (not send)
 		bool _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
 		bool _addPeer(uint8_t* mac, uint8_t peerChannel);			//Add a peer
 		bool _removePeer(uint8_t originatorId);						//Remove peer

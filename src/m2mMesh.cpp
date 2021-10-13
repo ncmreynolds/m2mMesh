@@ -358,54 +358,6 @@ m2mMeshClass& ICACHE_FLASH_ATTR m2mMeshClass::setCallback(M2MMESH_CALLBACK)
     return *this;
 }
 
-bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet, bool wait)
-{
-	if(wait == true)	//This is a synchronous send, the default which is safest
-	{
-		_sendtimer = 0;
-		_waitingForSend = true;
-		_sendSuccess = false;
-	}
-	_addChecksum(packet);	//Checksum is added immediately before any send or forward
-	if(esp_now_send(packet.macAddress, packet.data, packet.length) == ESP_OK)
-	{
-		if(wait == true)	//If this is a synchronous send, wait here for the callback to acknowledge sending
-		{
-			while(_waitingForSend == true && _sendtimer++ < _sendTimeout)
-			{
-				delay(1);	//Yield to system for handling callbacks
-			}
-			if(_sendSuccess == true)
-			{
-				if(_activityLedEnabled)
-				{
-					_blinkActivityLed();
-				}
-				_txPackets++;			//Update the packet stats
-				return(true);			//Feed back the result from the callback function
-			}
-			else
-			{
-				_droppedTxPackets++;	//Update the packet stats
-				return(false);
-			}
-		}
-		else
-		{
-			if(_activityLedEnabled)
-			{
-				_blinkActivityLed();
-			}
-			return(true);
-		}
-	}
-	else
-	{
-		_waitingForSend = false;
-		_droppedTxPackets++;	//Update the packet stats
-		return(false);
-	}
-}
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_calculateChecksum(m2mMeshPacketBuffer &packet)
 {
 	uint8_t checksum = 0;
@@ -735,19 +687,19 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				{
 					if(_packetType == ELP_PACKET_TYPE && (_serviceFlags & PROTOCOL_ELP_RECEIVE))			//This is an ELP packet
 					{
-						_processElp(routerId, originatorId, packet);										//Process the contents of the ELP packet
+						_processElp(routerId, originatorId, packet);	//Process the contents of the ELP packet
 					}
 					else if(_packetType == OGM_PACKET_TYPE && (_serviceFlags & PROTOCOL_OGM_RECEIVE))	//This is an OGM packet
 					{
-						_processOgm(routerId, originatorId, packet);										//Process the contents of the OGM packet
+						_processOgm(routerId, originatorId, packet);	//Process the contents of the OGM packet
 					}
 					else if(_packetType == NHS_PACKET_TYPE && (_serviceFlags & PROTOCOL_NHS_RECEIVE))	//This is a NHS packet
 					{
-						_processNhs(routerId, originatorId, packet);										//Process the contents of the NHS packet
+						_processNhs(routerId, originatorId, packet);	//Process the contents of the NHS packet
 					}
 					else if(_packetType == USR_PACKET_TYPE && (_serviceFlags & PROTOCOL_USR_RECEIVE))	//This is a USR packet
 					{
-						_processUsr(routerId, originatorId, packet);										//Process the contents of the USR packet
+						_processUsr(routerId, originatorId, packet);	//Process the contents of the USR packet
 					}
 					#ifdef m2mMeshIncludeDebugFeatures
 					else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -756,10 +708,12 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 					}
 					#endif
 				}
-				else
+				#ifdef m2mMeshIncludeDebugFeatures
+				else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 				{
-					Serial.printf("\r\nPacket is for another node");
+					_debugStream->print("\r\nPacket is for another node");
 				}
+				#endif
 				//Consider a packet for forwarding, it may already have been changed in earlier processing
 				//The TTL must be >0 and either a flood or NOT have this node at its source or destination
 				if(packet.data[2] > 0 && ((packet.data[3] & SEND_TO_ALL_NODES != 0) || (not _isLocalMacAddress(destinationMacAddress))))
@@ -829,7 +783,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 								memcpy(&packet.macAddress[0], &_originator[_originator[destinationId].selectedRouter].macAddress[0], 6);
 							}
 						}
-						bool sendResult = _sendPacket(packet);
+						bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
 						#ifdef m2mMeshIncludeDebugFeatures
 						if(sendResult == true && logTheForward == true)
 						{
@@ -956,40 +910,42 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elp
 			}
 		}
 	}
-	while(packet.length < ESP_NOW_MIN_PACKET_SIZE)		//If the packet is still not big enough, pad it
+	if(_routePacket(packet))
 	{
-		packet.data[packet.length++] = 0x00;				//Fill any spare space with nonsense
-	}
-	memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);	//Set the destination MAC address
-	bool sendResult = _sendPacket(packet);
-	#ifdef m2mMeshIncludeDebugFeatures
-	if(sendResult == true && _debugEnabled == true)
-	{
-		if(_loggingLevel & MESH_UI_LOG_ELP_SEND)
+		bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
+		#ifdef m2mMeshIncludeDebugFeatures
+		if(sendResult == true && _debugEnabled == true)
 		{
-			_debugStream->print(F("\r\nm2mMesh ELP SND "));
-			if(includeNeighbours)
+			if(_loggingLevel & MESH_UI_LOG_ELP_SEND)
 			{
-				_debugStream->printf_P(TTL02dFLG02xSEQ08xLENdNBRd,packet.data[2],packet.data[3],sequenceNumber,packet.length,_numberOfActiveNeighbours);
+				_debugStream->print(F("\r\nm2mMesh ELP SND "));
+				if(includeNeighbours)
+				{
+					_debugStream->printf_P(TTL02dFLG02xSEQ08xLENdNBRd,packet.data[2],packet.data[3],sequenceNumber,packet.length,_numberOfActiveNeighbours);
+				}
+				else
+				{
+					_debugStream->printf_P(m2mMeshTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],sequenceNumber,packet.length);
+				}
 			}
-			else
+			if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 			{
-				_debugStream->printf_P(m2mMeshTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],sequenceNumber,packet.length);
+				_debugStream->print(m2mMeshSent);
+				_debugPacket(packet);
 			}
 		}
-		if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
+		else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_SEND)
 		{
-			_debugStream->print(m2mMeshSent);
-			_debugPacket(packet);
+			_debugStream->print(F("\r\nm2mMesh ELP SND fail"));
 		}
+		#endif
+		_sequenceNumber++;
+		return(sendResult);
 	}
-	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_SEND)
+	else
 	{
-		_debugStream->print(F("\r\nm2mMesh ELP SND fail"));
+		return(false);
 	}
-	#endif
-	_sequenceNumber++;
-	return(sendResult);
 }
 
 void ICACHE_FLASH_ATTR m2mMeshClass::_processElp(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
@@ -1094,33 +1050,35 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 	memcpy(&packet.data[18], &tQ, sizeof(tQ));
 	packet.data[20] = 0;
 	packet.length = 21;
-	while(packet.length < ESP_NOW_MIN_PACKET_SIZE)
+	if(_routePacket(packet))
 	{
-		packet.data[packet.length++] = 0x00;
-	}
-	memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);	//Set the destination MAC address
-	bool sendResult = _sendPacket(packet);
-	#ifdef m2mMeshIncludeDebugFeatures
-	if(sendResult == true && _debugEnabled == true)
-	{
-		if(_loggingLevel & MESH_UI_LOG_OGM_SEND)
+		bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
+		#ifdef m2mMeshIncludeDebugFeatures
+		if(sendResult == true && _debugEnabled == true)
 		{
-			_debugStream->printf_P(m2mMeshOGMSNDTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],_sequenceNumber,packet.length);
+			if(_loggingLevel & MESH_UI_LOG_OGM_SEND)
+			{
+				_debugStream->printf_P(m2mMeshOGMSNDTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],_sequenceNumber,packet.length);
+			}
+			if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
+			{
+				_debugStream->println();
+				_debugStream->print(m2mMeshSent);
+				_debugPacket(packet);
+			}
 		}
-		if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
+		else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_SEND)
 		{
-			_debugStream->println();
-			_debugStream->print(m2mMeshSent);
-			_debugPacket(packet);
+			_debugStream->printf_P(m2mMeshOGMSNDfailedTTL02dFlags02xSeq08xLENd,packet.data[2],packet.data[3],_sequenceNumber,packet.length);
 		}
+		#endif
+		_sequenceNumber++;
+		return(sendResult);
 	}
-	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_SEND)
+	else
 	{
-		_debugStream->printf_P(m2mMeshOGMSNDfailedTTL02dFlags02xSeq08xLENd,packet.data[2],packet.data[3],_sequenceNumber,packet.length);
+		return(false);
 	}
-	#endif
-	_sequenceNumber++;
-	return(sendResult);
 }
 
 void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
@@ -1498,10 +1456,6 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 			_debugStream->printf_P(m2mMeshNHSincludeddoriginators,packet.data[originatorCountIndex]);
 		}*/
 	}
-	while(packet.length < ESP_NOW_MIN_PACKET_SIZE)		//Fill any spare space with nonsense
-	{
-		packet.data[packet.length++] = 0xAA;
-	}
 	memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);	//Set the destination MAC address
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
@@ -1509,37 +1463,44 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 		_debugStream->print(m2mMeshNHSSND);
 	}
 	#endif
-	bool sendResult = _sendPacket(packet);
-	#ifdef m2mMeshIncludeDebugFeatures
-	if(sendResult == true && _debugEnabled == true)
+	if(_routePacket(packet))
 	{
-		if(_loggingLevel & MESH_UI_LOG_NHS_SEND)
+		bool sendResult = _sendPacket(packet);
+		#ifdef m2mMeshIncludeDebugFeatures
+		if(sendResult == true && _debugEnabled == true)
 		{
-			_debugStream->printf_P(TTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],_sequenceNumber, packet.length);
-			if(_actingAsTimeServer)
+			if(_loggingLevel & MESH_UI_LOG_NHS_SEND)
 			{
-				char uptime[10];
-				_friendlyUptime(syncedMillis(),uptime);
-				_debugStream->printf_P(m2mMeshTIMEs,uptime);
+				_debugStream->printf_P(TTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],_sequenceNumber, packet.length);
+				if(_actingAsTimeServer)
+				{
+					char uptime[10];
+					_friendlyUptime(syncedMillis(),uptime);
+					_debugStream->printf_P(m2mMeshTIMEs,uptime);
+				}
+				if(_serviceFlags & PROTOCOL_NHS_INCLUDE_ORIGINATORS && packet.data[originatorCountIndex]>0)
+				{
+					_debugStream->printf_P(ORGd,packet.data[originatorCountIndex]);
+				}
 			}
-			if(_serviceFlags & PROTOCOL_NHS_INCLUDE_ORIGINATORS && packet.data[originatorCountIndex]>0)
+			if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 			{
-				_debugStream->printf_P(ORGd,packet.data[originatorCountIndex]);
+				_debugStream->print(m2mMeshSent);
+				_debugPacket(packet);
 			}
 		}
-		if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
+		else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
 		{
-			_debugStream->print(m2mMeshSent);
-			_debugPacket(packet);
+			_debugStream->print(m2mMeshfailed);
 		}
+		#endif
+		_sequenceNumber++;
+		return(sendResult);
 	}
-	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
+	else
 	{
-		_debugStream->print(m2mMeshfailed);
+		return(false);
 	}
-	#endif
-	_sequenceNumber++;
-	return(sendResult);
 }
 
 void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
@@ -2241,7 +2202,6 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processUsr(uint8_t routerId, uint8_t origi
 	{
 		_droppedAppPackets++;
 	}
-	packet.length = 0;						//Mark the packet buffer as read, but really we've just copied it
 }
 
 
@@ -2999,17 +2959,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 {
-	if(wait == true)	//This is a synchronous send, the default which is safest
-	{
-		_sendtimer = 0;
-		_waitingForSend = true;
-		_sendSuccess = false;
-	}
-	while(_userPacketBuffer.length < ESP_NOW_MIN_PACKET_SIZE)	//Pad the packet out to the minimum size with garbage
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = 0x00;
-	}
-	//Sequence number is added immediately before sending
+	//Sequence number is added immediately before routing
 	memcpy(&_userPacketBuffer.data[4], &_sequenceNumber, sizeof(_sequenceNumber));
 	_sequenceNumber++;
 	#ifdef m2mMeshIncludeDebugFeatures
@@ -3018,102 +2968,118 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 		_debugStream->printf_P(m2mMeshSendingpackettype02xversion02x,_userPacketBuffer.data[0],_userPacketBuffer.data[1]);
 	}
 	#endif
-	if(_routePacket(_userPacketBuffer) == true)
-	//if(esp_now_send(_broadcastMacAddress, _userPacket, _userPacketBuffer.length) == ESP_OK)
+	if(_routePacket(_userPacketBuffer) == true)	//Choose the best router for this packet
+	{
+		if(_sendPacket(_userPacketBuffer, wait) == true)
+		{
+			#ifdef m2mMeshIncludeDebugFeatures
+			if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_SEND)
+			{
+				_debugStream->printf_P(m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x,_userPacketBuffer.data[8],_userPacketBuffer.data[9],_userPacketBuffer.data[10],_userPacketBuffer.data[11],_userPacketBuffer.data[12],_userPacketBuffer.data[13],_userPacketBuffer.data[2],_userPacketBuffer.data[3]);
+			}
+			#endif
+			_userPacketBuffer.length = 0;
+			_buildingUserPacket = false;
+			return(true);
+		}
+	}
+	_userPacketBuffer.length = 0;
+	_buildingUserPacket = false;
+	_waitingForSend = false;
+	_droppedTxPackets++;	//Update the packet stats
+	return(false);
+}
+
+bool ICACHE_FLASH_ATTR m2mMeshClass::_routePacket(m2mMeshPacketBuffer &packet)
+{
+	if(packet.data[3] & SEND_TO_ALL_NODES)
+	{
+		memcpy(&packet.macAddress[0], &_broadcastMacAddress[0],6);	//Nothing needs doing beyond adding broadcast address
+		return(true);
+	}
+	else
+	{
+		packet.routerId = _originatorIdFromMac(packet.data[14], packet.data[15], packet.data[16], packet.data[17], packet.data[18], packet.data[19]);	//Opening gamit is direct sending
+		if(packet.routerId != MESH_ORIGINATOR_NOT_FOUND)
+		{
+			memcpy(&packet.macAddress[0], &packet.data[14], 6);	//Send direct to this node
+			_originator[packet.routerId].peerNeeded = millis();	//Update the record of when the peer was last needed
+			if(_originator[packet.routerId].isCurrentlyPeer == false)
+			{
+				if(_addPeer(&packet.macAddress[0], _currentChannel) == false)
+				{
+					return(false);		//Failed to add peer
+				}
+				else
+				{
+					_originator[packet.routerId].isCurrentlyPeer = true;
+				}
+			}
+			return(true);
+		}
+		else
+		{
+			return(false);	//Unknown node
+		}
+	}
+}
+bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet, bool wait)
+{
+	if(packet.length == 0)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
-		if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_SEND)
+		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->printf_P(m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x,_userPacketBuffer.data[8],_userPacketBuffer.data[9],_userPacketBuffer.data[10],_userPacketBuffer.data[11],_userPacketBuffer.data[12],_userPacketBuffer.data[13],_userPacketBuffer.data[2],_userPacketBuffer.data[3]);
+			_debugStream->print("\r\nSkipping sending zero length packet");
 		}
 		#endif
-		_txPackets++;	//Update the packet stats
-		_userPacketBuffer.length = 0;
-		_buildingUserPacket = false;		
-		if(wait == true)	//If this is a synchronous send, wait here for the callback to acknowledge sending
+		return(true);
+	}
+	while(packet.length < ESP_NOW_MIN_PACKET_SIZE)	//Pad the packet out to the minimum size with garbage
+	{
+		packet.data[packet.length++] = 0x00;
+	}
+	_addChecksum(packet);	//Checksum is added immediately before any send or forward
+	if(_activityLedEnabled)
+	{
+		_blinkActivityLed();
+	}
+	if(wait == true)	//This is a synchronous send, the default which is safest
+	{
+		_sendtimer = 0;
+		_waitingForSend = true;
+		_sendSuccess = false;
+	}
+	if(esp_now_send(packet.macAddress, packet.data, packet.length) == ESP_OK)
+	{
+		if(wait == true)				//If this is a synchronous send, wait here for the callback to acknowledge sending
 		{
 			while(_waitingForSend == true && _sendtimer++ < _sendTimeout)
 			{
-				delay(1);	//Yield to system for handling callbacks
+				delay(1);				//Yield to system for handling callbacks
 			}
 			if(_sendSuccess == true)
 			{
-				if(_activityLedEnabled)
-				{
-					_blinkActivityLed();
-				}
 				_txPackets++;			//Update the packet stats
 				return(true);			//Feed back the result from the callback function
 			}
 			else
 			{
 				_droppedTxPackets++;	//Update the packet stats
-				return(false);
+				return(false);			//Feed back the result from the callback function
 			}
 		}
 		else
 		{
-			if(_activityLedEnabled)
-			{
-				_blinkActivityLed();
-			}
+			_txPackets++;				//Update the packet stats
 			return(true);
 		}
 	}
 	else
 	{
-		_userPacketBuffer.length = 0;
-		_buildingUserPacket = false;
 		_waitingForSend = false;
 		_droppedTxPackets++;	//Update the packet stats
 		return(false);
-	}
-}
-
-bool ICACHE_FLASH_ATTR m2mMeshClass::_routePacket(m2mMeshPacketBuffer &packet, bool wait)
-{
-	_addChecksum(packet);	//Always add the checksum immediately before sending
-	if(packet.data[3] & SEND_TO_ALL_NODES)
-	{
-		if(esp_now_send(_broadcastMacAddress, packet.data, _userPacketBuffer.length) == ESP_OK)
-		{
-			return(true);
-		}
-		else
-		{
-			return(false);
-		}
-	}
-	else
-	{
-		uint8_t destId = _originatorIdFromMac(packet.data[14], packet.data[15], packet.data[16], packet.data[17], packet.data[18], packet.data[19]);
-		if(destId != MESH_ORIGINATOR_NOT_FOUND)
-		{
-			_originator[destId].peerNeeded = millis();	//Update the record of when the peer was last needed
-			if(_originator[destId].isCurrentlyPeer == false)
-			{
-				if(_addPeer(&packet.data[14], _currentChannel) == false)
-				{
-					return(false);
-				}
-				else
-				{
-					_originator[destId].isCurrentlyPeer = true;
-				}
-			}
-			if(esp_now_send(&packet.data[14], packet.data, _userPacketBuffer.length) == ESP_OK)
-			{
-				return(true);
-			}
-			else
-			{
-				return(false);
-			}
-		}
-		else
-		{
-			return(false);
-		}
 	}
 }
 
