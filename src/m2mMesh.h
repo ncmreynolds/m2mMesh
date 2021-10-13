@@ -210,56 +210,6 @@ const char m2mMeshchecksumInvalidreceived2xshouldbe2x[] PROGMEM =	"\r\nChecksum 
 //const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nNHS included %u originators";
 #endif
 
-//Unions used to pack data into packets
-
-union unsignedIntToBytes
-{
-  uint8_t b[2];
-  uint16_t value;
-};
-
-union unsignedLongToBytes
-{
-  uint8_t b[4];
-  uint32_t value;
-};
-
-union unsignedLongLongToBytes
-{
-  uint8_t b[8];
-  uint64_t value;
-};
-
-union intToBytes
-{
-  uint8_t b[2];
-  int16_t value;
-};
-
-union longToBytes
-{
-  uint8_t b[4];
-  int32_t value;
-};
-
-union longLongToBytes
-{
-  uint8_t b[8];
-  int64_t value;
-};
-
-union floatToBytes
-{
-  uint8_t b[4];
-  float value;
-};
-
-union doubleToBytes
-{
-  uint8_t b[8];
-  double value;
-};
-
 struct m2mMeshOriginatorInfo							//A structure for storing information about originators (nodes)
 {
 	char *nodeName = nullptr;							//Node name, which may or may not be set. Memory is allocated dynamically at runtime

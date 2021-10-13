@@ -686,12 +686,9 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 		else
 		{
 			//Now check the sequence number is sensible or the protection window is disabled
-			union unsignedLongToBytes packetSequenceNumber;
-			packetSequenceNumber.b[0] = packet.data[4];
-			packetSequenceNumber.b[1] = packet.data[5];
-			packetSequenceNumber.b[2] = packet.data[6];
-			packetSequenceNumber.b[3] = packet.data[7];
-			if(packetSequenceNumber.value > _originator[originatorId].lastSequenceNumber || _originator[originatorId].sequenceNumberProtectionWindowActive == false)
+			uint32_t packetSequenceNumber;
+			memcpy(&packetSequenceNumber,&packet.data[4],sizeof(packetSequenceNumber));
+			if(packetSequenceNumber > _originator[originatorId].lastSequenceNumber || _originator[originatorId].sequenceNumberProtectionWindowActive == false)
 			{
 				//The sequence number was valid, or old enough to prompt a reset of the protection window, continue processing but enable protection window again
 				if(_originator[originatorId].sequenceNumberProtectionWindowActive == false)
@@ -706,7 +703,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 					#endif
 				}
 				//Update the sequence number
-				_originator[originatorId].lastSequenceNumber = packetSequenceNumber.value;
+				_originator[originatorId].lastSequenceNumber = packetSequenceNumber;
 				//Refresh first/last seen data
 				_originator[originatorId].lastSeen[_packetType] = millis();
 				//Update the OGM receipt window if it's OGM
@@ -718,22 +715,20 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 					_calculateLtq(originatorId);																//Recalculate Local Transmission Quality
 				}
 				//Retrieve the interval
-				unsignedLongToBytes packetInterval;
-				packetInterval.b[0] = packet.data[packetIndex++];
-				packetInterval.b[1] = packet.data[packetIndex++];
-				packetInterval.b[2] = packet.data[packetIndex++];
-				packetInterval.b[3] = packet.data[packetIndex++];
-				if(packetInterval.value != _originator[originatorId].interval[_packetType])
+				uint32_t packetInterval;
+				memcpy(&packetInterval,&packet.data[packetIndex],sizeof(packetInterval));
+				packetIndex+=sizeof(packetInterval);
+				if(packetInterval != _originator[originatorId].interval[_packetType])
 				{
 					#ifdef m2mMeshIncludeDebugFeatures
 					if(_debugEnabled == true && _originator[originatorId].interval[_packetType] > 0 && _loggingLevel & MESH_UI_LOG_INFORMATION && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 					{
 						char packetTypeDescription[] = "UNK";
 						_packetTypeDescription(packetTypeDescription,_packetType);
-						_debugStream->printf_P(m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod,packetTypeDescription,packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],_originator[originatorId].interval[_packetType],packetInterval.value);
+						_debugStream->printf_P(m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod,packetTypeDescription,packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],_originator[originatorId].interval[_packetType],packetInterval);
 					}
 					#endif
-					_originator[originatorId].interval[_packetType] = packetInterval.value;
+					_originator[originatorId].interval[_packetType] = packetInterval;
 				}
 				//Consider the packet for processing so check the destination. Either it is has to be a flood or have this node as the destination
 				if((packet.data[3] & SEND_TO_ALL_NODES) || (((packet.data[3] & SEND_TO_ALL_NODES) == 0x00) && _isLocalMacAddress(destinationMacAddress)))
@@ -852,7 +847,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 					}
 				}
 			}
-			else if(_originator[originatorId].lastSequenceNumber - packetSequenceNumber.value > SEQUENCE_NUMBER_MAX_AGE)
+			else if(_originator[originatorId].lastSequenceNumber - packetSequenceNumber > SEQUENCE_NUMBER_MAX_AGE)
 			{
 				//If it's a very old sequence number disable the protection window to allow the next packet to reset the sequence number
 				//this logic is here to handle a reboot, but ignore a single stray weird sequence number
@@ -941,19 +936,10 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elp
 		//Set the includes peers flag
 		packet.data[3] = packet.data[3] | ELP_FLAGS_INCLUDES_PEERS;
 	}
-	union unsignedLongToBytes sequenceNumber;			//Use a union to pack the sequence number
-	sequenceNumber.value = _sequenceNumber;
-	packet.data[4] = sequenceNumber.b[0];				//Add the sequence number
-	packet.data[5] = sequenceNumber.b[1];
-	packet.data[6] = sequenceNumber.b[2];
-	packet.data[7] = sequenceNumber.b[3];
-	memcpy(&packet.data[8], &_localMacAddress[0], 6);	//Add the source address
-	union unsignedLongToBytes interval;						//Use a union to pack the number of neighbours
-	interval.value = _currentInterval[ELP_PACKET_TYPE];
-	packet.data[14] = interval.b[0];		//Add the interval
-	packet.data[15] = interval.b[1];
-	packet.data[16] = interval.b[2];
-	packet.data[17] = interval.b[3];
+	uint32_t sequenceNumber;
+	memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number
+	memcpy(&packet.data[8], &_localMacAddress[0], 6);					//Add the source address
+	memcpy(&packet.data[14], &_currentInterval[ELP_PACKET_TYPE], sizeof(_currentInterval[ELP_PACKET_TYPE]));	//Add the interval
 	packet.length = 18;								//This will iterate through filling in the data if necessary
 	if(includeNeighbours)									//If adding neighbours, iterate through adding them
 	{
@@ -984,11 +970,11 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elp
 			_debugStream->print(F("\r\nm2mMesh ELP SND "));
 			if(includeNeighbours)
 			{
-				_debugStream->printf_P(TTL02dFLG02xSEQ08xLENdNBRd,packet.data[2],packet.data[3],sequenceNumber.value,packet.length,_numberOfActiveNeighbours);
+				_debugStream->printf_P(TTL02dFLG02xSEQ08xLENdNBRd,packet.data[2],packet.data[3],sequenceNumber,packet.length,_numberOfActiveNeighbours);
 			}
 			else
 			{
-				_debugStream->printf_P(m2mMeshTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],sequenceNumber.value,packet.length);
+				_debugStream->printf_P(m2mMeshTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],sequenceNumber,packet.length);
 			}
 		}
 		if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
@@ -1092,33 +1078,20 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processElp(uint8_t routerId, uint8_t origi
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 {
-	//Use unions to pack the non-8-bit values
-	union unsignedLongToBytes sequenceNumber;
-	sequenceNumber.value = _sequenceNumber;
-	union unsignedIntToBytes tQ;
-	union unsignedLongToBytes interval;
-	interval.value = _currentInterval[OGM_PACKET_TYPE];
-	tQ.value = 65535;
+	uint16_t tQ = 65535;
 	packet.data[0] = OGM_PACKET_TYPE;
 	//packet.data[1] = MESH_PROTOCOL_VERSION;
 	packet.data[2] = _currentTtl[OGM_PACKET_TYPE];
 	packet.data[3] = OGM_DEFAULT_FLAGS;
-	packet.data[4] = sequenceNumber.b[0];
-	packet.data[5] = sequenceNumber.b[1];
-	packet.data[6] = sequenceNumber.b[2];
-	packet.data[7] = sequenceNumber.b[3];
+	memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));
 	packet.data[8] = _localMacAddress[0];
 	packet.data[9] = _localMacAddress[1];
 	packet.data[10] = _localMacAddress[2];
 	packet.data[11] = _localMacAddress[3];
 	packet.data[12] = _localMacAddress[4];
 	packet.data[13] = _localMacAddress[5];
-	packet.data[14] = interval.b[0];
-	packet.data[15] = interval.b[1];
-	packet.data[16] = interval.b[2];
-	packet.data[17] = interval.b[3];
-	packet.data[18] = tQ.b[0];
-	packet.data[19] = tQ.b[1];
+	memcpy(&packet.data[14], &_currentInterval[OGM_PACKET_TYPE], sizeof(_currentInterval[OGM_PACKET_TYPE]));
+	memcpy(&packet.data[18], &tQ, sizeof(tQ));
 	packet.data[20] = 0;
 	packet.length = 21;
 	while(packet.length < ESP_NOW_MIN_PACKET_SIZE)
@@ -1158,20 +1131,19 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 		_debugStream->printf_P(m2mMeshOGMRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLENd,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.data[20],packet.length);
 	}
 	#endif
-	union unsignedIntToBytes tq;				//Retrieve the transmission quality in the packet
-	tq.b[0] = packet.data[18];
-	tq.b[1] = packet.data[19];
+	uint16_t tq;
+	memcpy(&tq, &packet.data[18], sizeof(tq));	//Retrieve the transmission quality in the packet
 	if(routerId != originatorId)
 	{
 		uint16_t currentGtq = _originator[originatorId].gtq;		//Store current TQ for later comparison
 		//Compare routerId with originatorID to see if this is direct or forwarded
 		if(routerId != _originator[originatorId].selectedRouter)
 		{
-			if(tq.value > currentGtq)
+			if(tq > currentGtq)
 			{
 				//This is a better indirect route than we already have
 				_originator[originatorId].selectedRouter = routerId;
-				_originator[originatorId].gtq = tq.value;
+				_originator[originatorId].gtq = tq;
 				if(_stable == true)
 				{
 					_meshLastChanged = millis();
@@ -1184,7 +1156,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xselectedforO02x02x02x02x02x02xTQ04x,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq.value);
+					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xselectedforO02x02x02x02x02x02xTQ04x,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
 				}
 				#endif
 			}
@@ -1194,22 +1166,22 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 				//This does not change the routing
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xinferiorTQ04x,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq.value);
+					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xinferiorTQ04x,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
 				}
 			}
 			#endif
 		}
 		else if(routerId == _originator[originatorId].selectedRouter)
 		{
-			if(tq.value != currentGtq)
+			if(tq != currentGtq)
 			{
 				//Update the TQ of the existing route
-				_originator[originatorId].gtq = tq.value;
+				_originator[originatorId].gtq = tq;
 				//This does not change the routing
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xupdateTQ04x,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq.value);
+					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xupdateTQ04x,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
 				}
 				#endif
 			}
@@ -1217,7 +1189,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 			//This does not change the routing
 			else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
-				_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xTQ04x,packet.data[2],packet.data[3],packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq.value);
+				_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xTQ04x,packet.data[2],packet.data[3],packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
 			}
 			#endif
 		}
@@ -1244,17 +1216,17 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 	if(packet.data[2] > 0)
 	{
 		//If our route back to the originator is worse than the GTQ in the packet, reduce GTQ to the LTQ value
-		if(_originator[routerId].ltq < tq.value)
+		if(_originator[routerId].ltq < tq)
 		{
-			tq.value = _originator[routerId].ltq;
+			tq = _originator[routerId].ltq;
 		}
 		//Impose an arbitrary hop penalty on GTQ and only forward if GTQ is still > 0
-		if(tq.value > OGM_HOP_PENALTY)
+		if(tq > OGM_HOP_PENALTY)
 		{
-			tq.value = tq.value - OGM_HOP_PENALTY;
-			//Update GTQ in the packet
-			packet.data[18] = tq.b[0];
-			packet.data[19] = tq.b[1];
+			tq = tq - OGM_HOP_PENALTY;
+			//packet.data[18] = tq.b[0];
+			//packet.data[19] = tq.b[1];
+			memcpy(&packet.data[18], &tq, sizeof(tq));	//Update GTQ in the packet
 		}
 		else if(routerId != originatorId)
 		{
@@ -1267,7 +1239,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
-				_debugStream->printf_P(m2mMeshOGMhoppenaltyappliedTQnow02x, tq.value);
+				_debugStream->printf_P(m2mMeshOGMhoppenaltyappliedTQnow02x, tq);
 			}
 			#endif
 			if(21+(packet.data[20]+1)*6 < ESP_NOW_MAX_PACKET_SIZE)	//Add in this node's address to the forwarding chain if there's space.
@@ -1375,13 +1347,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	//packet.data[1] = MESH_PROTOCOL_VERSION;
 	packet.data[2] = _currentTtl[NHS_PACKET_TYPE];
 	packet.data[3] = NHS_DEFAULT_FLAGS;
-	//Use unions to pack the non-8-bit values
-	union unsignedLongToBytes temp;
-	temp.value = _sequenceNumber;
-	packet.data[4] = temp.b[0];
-	packet.data[5] = temp.b[1];
-	packet.data[6] = temp.b[2];
-	packet.data[7] = temp.b[3];
+	memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));
 	//Origin address
 	packet.data[8] = _localMacAddress[0];
 	packet.data[9] = _localMacAddress[1];
@@ -1389,61 +1355,63 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	packet.data[11] = _localMacAddress[3];
 	packet.data[12] = _localMacAddress[4];
 	packet.data[13] = _localMacAddress[5];
-	union unsignedLongToBytes interval;
-	interval.value = _currentInterval[NHS_PACKET_TYPE];
-	packet.data[14] = interval.b[0];
-	packet.data[15] = interval.b[1];
-	packet.data[16] = interval.b[2];
-	packet.data[17] = interval.b[3];
-	temp.value = millis();								//Add the current millis() for 'uptime'
-	packet.data[18] = temp.b[0];
-	packet.data[19] = temp.b[1];
-	packet.data[20] = temp.b[2];
-	packet.data[21] = temp.b[3];
-	temp.value = uint32_t(ESP.getFreeHeap());			//Add the current free heap
+	memcpy(&packet.data[14], &_currentInterval[NHS_PACKET_TYPE], sizeof(_currentInterval[NHS_PACKET_TYPE]));
+	uint32_t now = millis();							//Add the current millis() for 'uptime'
+	memcpy(&packet.data[18], &now, sizeof(now));
+	/*temp.value = uint32_t(ESP.getFreeHeap());			//Add the current free heap
 	packet.data[22] = temp.b[0];
 	packet.data[23] = temp.b[1];
 	packet.data[24] = temp.b[2];
-	packet.data[25] = temp.b[3];
-	temp.value = _initialFreeHeap;						//Add the initial free heap
+	packet.data[25] = temp.b[3];*/
+	uint32_t freeHeap = uint32_t(ESP.getFreeHeap());	//Add the current free heap
+	memcpy(&packet.data[22], &freeHeap, sizeof(freeHeap));
+	/*temp.value = _initialFreeHeap;						//Add the initial free heap
 	packet.data[26] = temp.b[0];
 	packet.data[27] = temp.b[1];
 	packet.data[28] = temp.b[2];
-	packet.data[29] = temp.b[3];
+	packet.data[29] = temp.b[3];*/
+	memcpy(&packet.data[26], &_initialFreeHeap, sizeof(_initialFreeHeap));	//Add the initial free heap
 	#if defined(ESP8266)
-	temp.value = uint32_t(ESP.getMaxFreeBlockSize());	//Add the max block size
+	//temp.value = uint32_t(ESP.getMaxFreeBlockSize());	//Add the max block size
+	uint32_t maxFreeBlockSize = uint32_t(ESP.getMaxFreeBlockSize());	//Add the max block size
 	#elif defined(ESP32)
-	temp.value = 0;
+	//temp.value = 0;
+	uint32_t maxFreeBlockSize = 0;
 	#endif
-	packet.data[30] = temp.b[0];
+	/*packet.data[30] = temp.b[0];
 	packet.data[31] = temp.b[1];
 	packet.data[32] = temp.b[2];
-	packet.data[33] = temp.b[3];
+	packet.data[33] = temp.b[3];*/
+	memcpy(&packet.data[30], &maxFreeBlockSize, sizeof(maxFreeBlockSize));
 	#if defined(ESP8266)
 	packet.data[34] = ESP.getHeapFragmentation();		//Add the heap fragmentation
 	#elif defined(ESP32)
 	packet.data[34] = 0;
 	#endif
-	temp.value = _rxPackets;							//Add the RX packets
+	/*temp.value = _rxPackets;							//Add the RX packets
 	packet.data[35] = temp.b[0];
 	packet.data[36] = temp.b[1];
 	packet.data[37] = temp.b[2];
-	packet.data[38] = temp.b[3];
-	temp.value = _droppedRxPackets;						//Add the dropped RX packets
+	packet.data[38] = temp.b[3];*/
+	memcpy(&packet.data[35], &_rxPackets, sizeof(_rxPackets)); //Add the RX packets
+	/*temp.value = _droppedRxPackets;						//Add the dropped RX packets
 	packet.data[39] = temp.b[0];
 	packet.data[40] = temp.b[1];
 	packet.data[41] = temp.b[2];
-	packet.data[42] = temp.b[3];
-	temp.value = _txPackets;							//Add the TX packets
+	packet.data[42] = temp.b[3];*/
+	memcpy(&packet.data[39], &_droppedRxPackets, sizeof(_droppedRxPackets));	//Add the dropped RX packets
+	/*temp.value = _txPackets;							//Add the TX packets
 	packet.data[43] = temp.b[0];
 	packet.data[44] = temp.b[1];
 	packet.data[45] = temp.b[2];
-	packet.data[46] = temp.b[3];
-	temp.value = _droppedTxPackets;						//Add the dropped TX packets
+	packet.data[46] = temp.b[3];*/
+	memcpy(&packet.data[43], &_txPackets, sizeof(_txPackets));	//Add the TX packets
+	/*temp.value = _droppedTxPackets;						//Add the dropped TX packets
 	packet.data[47] = temp.b[0];
 	packet.data[48] = temp.b[1];
 	packet.data[49] = temp.b[2];
-	packet.data[50] = temp.b[3];
+	packet.data[50] = temp.b[3];*/
+	memcpy(&packet.data[47], &_droppedTxPackets, sizeof(_droppedTxPackets));//Add the dropped TX packets
 	packet.data[51] = _numberOfActiveNeighbours;		//Add the number of activeNeighbours
 	packet.data[52] = _numberOfOriginators;				//Add the number of originators
 	packet.data[53] = _meshMacAddress[0];				//Add the mesh MAC address
@@ -1457,21 +1425,21 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	if(_serviceFlags & PROTOCOL_NHS_SUPPLY_VOLTAGE)				//Add the power supply voltage
 	{
 		packet.data[3] = packet.data[3] | NHS_FLAGS_INCLUDES_VCC;
-		union floatToBytes supplyV;
-		supplyV.value = supplyVoltage();
-		packet.data[packet.length++] = supplyV.b[0];
-		packet.data[packet.length++] = supplyV.b[1];
-		packet.data[packet.length++] = supplyV.b[2];
-		packet.data[packet.length++] = supplyV.b[3];
+		float supplyV = supplyVoltage();
+		memcpy(&packet.data[packet.length], &supplyV, sizeof(supplyV));
+		packet.length+=sizeof(supplyV);
 	}
 	if(_serviceFlags & PROTOCOL_NHS_TIME_SERVER && _actingAsTimeServer && _stable)	//Add the mesh time
 	{
 		packet.data[3] = packet.data[3] | NHS_FLAGS_TIMESERVER;
-		temp.value = syncedMillis();
+		/*temp.value = syncedMillis();
 		packet.data[packet.length++] = temp.b[0];
 		packet.data[packet.length++] = temp.b[1];
 		packet.data[packet.length++] = temp.b[2];
-		packet.data[packet.length++] = temp.b[3];
+		packet.data[packet.length++] = temp.b[3];*/
+		uint32_t uptimeOffset = syncedMillis();
+		memcpy(&packet.data[packet.length], &uptimeOffset, sizeof(uptimeOffset));
+		packet.length+=sizeof(uptimeOffset);
 	}
 	#if defined (m2mMeshIncludeRTCFeatures)
 	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && _meshTimeNegotiated==true && rtcValid())				//Add the RTC info, if valid
@@ -1484,11 +1452,14 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 		//Epoch offset
 		time_t epoch;
 		time(&epoch);
-		temp.value = epoch - ((millis() + _meshTimeOffset)/1000); //Mesh time is in ms so divide by 1000
+		/*temp.value = epoch - ((millis() + _meshTimeOffset)/1000); //Mesh time is in ms so divide by 1000
 		packet.data[packet.length++] = temp.b[0];
 		packet.data[packet.length++] = temp.b[1];
 		packet.data[packet.length++] = temp.b[2];
-		packet.data[packet.length++] = temp.b[3];
+		packet.data[packet.length++] = temp.b[3];*/
+		uint32_t epochOffset = epoch - ((millis() + _meshTimeOffset)/1000); //Mesh time is in ms so divide by 1000
+		memcpy(&packet.data[packet.length], &epochOffset, sizeof(epochOffset));
+		packet.length+=sizeof(epochOffset);
 	}
 	#endif
 	if(_nodeName != nullptr)													//Insert the node name, if set
@@ -1514,10 +1485,8 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 			packet.data[packet.length++] = _originator[originatorToSend].macAddress[3];
 			packet.data[packet.length++] = _originator[originatorToSend].macAddress[4];
 			packet.data[packet.length++] = _originator[originatorToSend].macAddress[5];
-			unsignedIntToBytes packetLtq;
-			packetLtq.value = _originator[originatorToSend].ltq;
-			packet.data[packet.length++] = packetLtq.b[0];
-			packet.data[packet.length++] = packetLtq.b[1];
+			memcpy(&packet.data[packet.length], &_originator[originatorToSend].ltq, sizeof(_originator[originatorToSend].ltq));
+			packet.length+=sizeof(_originator[originatorToSend].ltq);
 			packet.data[originatorCountIndex]++;
 			/*if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
 			{
@@ -1549,8 +1518,8 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 			_debugStream->printf_P(TTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[3],_sequenceNumber, packet.length);
 			if(_actingAsTimeServer)
 			{
-				char uptime[] = "00h00m00s";
-				_friendlyUptime(temp.value,uptime);
+				char uptime[10];
+				_friendlyUptime(syncedMillis(),uptime);
 				_debugStream->printf_P(m2mMeshTIMEs,uptime);
 			}
 			if(_serviceFlags & PROTOCOL_NHS_INCLUDE_ORIGINATORS && packet.data[originatorCountIndex]>0)
@@ -1586,30 +1555,27 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 		//Extract the flags
 		_originator[originatorId].flags = packet.data[3];
 		//Extract the uptime
-		union unsignedLongToBytes tempUint32;
-		tempUint32.b[0] = packet.data[18];
-		tempUint32.b[1] = packet.data[19];
-		tempUint32.b[2] = packet.data[20];
-		tempUint32.b[3] = packet.data[21];
-		_originator[originatorId].uptime = tempUint32.value;
+		memcpy(&_originator[originatorId].uptime, &packet.data[18], sizeof(_originator[originatorId].uptime));
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
-			_debugStream->printf_P(m2mMeshNHSUptimedms,tempUint32.value);
+			_debugStream->printf_P(m2mMeshNHSUptimedms,_originator[originatorId].uptime);
 		}
 		#endif
 		//Extract the current free Heap
-		tempUint32.b[0] = packet.data[22];
+		/*tempUint32.b[0] = packet.data[22];
 		tempUint32.b[1] = packet.data[23];
 		tempUint32.b[2] = packet.data[24];
 		tempUint32.b[3] = packet.data[25];
-		_originator[originatorId].currentFreeHeap = tempUint32.value;
+		_originator[originatorId].currentFreeHeap = tempUint32.value;*/
+		memcpy(&_originator[originatorId].currentFreeHeap, &packet.data[22], sizeof(_originator[originatorId].currentFreeHeap));
 		//Extract the initial free heap
-		tempUint32.b[0] = packet.data[26];
+		/*tempUint32.b[0] = packet.data[26];
 		tempUint32.b[1] = packet.data[27];
 		tempUint32.b[2] = packet.data[28];
 		tempUint32.b[3] = packet.data[29];
-		_originator[originatorId].initialFreeHeap = tempUint32.value;
+		_originator[originatorId].initialFreeHeap = tempUint32.value;*/
+		memcpy(&_originator[originatorId].initialFreeHeap, &packet.data[26], sizeof(_originator[originatorId].initialFreeHeap));
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
@@ -1617,33 +1583,38 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 		}
 		#endif
 		//Extract the max block size
-		tempUint32.b[0] = packet.data[30];
+		/*tempUint32.b[0] = packet.data[30];
 		tempUint32.b[1] = packet.data[31];
 		tempUint32.b[2] = packet.data[32];
 		tempUint32.b[3] = packet.data[33];
-		_originator[originatorId].largestFreeBlock = tempUint32.value;
+		_originator[originatorId].largestFreeBlock = tempUint32.value;*/
+		memcpy(&_originator[originatorId].largestFreeBlock, &packet.data[30], sizeof(_originator[originatorId].largestFreeBlock));
 		_originator[originatorId].heapFragmentation = packet.data[34];
 		//Extract the packet statistics
-		tempUint32.b[0] = packet.data[35];
+		/*tempUint32.b[0] = packet.data[35];
 		tempUint32.b[1] = packet.data[36];
 		tempUint32.b[2] = packet.data[37];
 		tempUint32.b[3] = packet.data[38];
-		_originator[originatorId].rxPackets = tempUint32.value;
-		tempUint32.b[0] = packet.data[39];
+		_originator[originatorId].rxPackets = tempUint32.value;*/
+		memcpy(&_originator[originatorId].rxPackets, &packet.data[35], sizeof(_originator[originatorId].rxPackets));
+		/*tempUint32.b[0] = packet.data[39];
 		tempUint32.b[1] = packet.data[40];
 		tempUint32.b[2] = packet.data[41];
 		tempUint32.b[3] = packet.data[42];
-		_originator[originatorId].droppedRxPackets = tempUint32.value;
-		tempUint32.b[0] = packet.data[43];
+		_originator[originatorId].droppedRxPackets = tempUint32.value;*/
+		memcpy(&_originator[originatorId].droppedRxPackets, &packet.data[39], sizeof(_originator[originatorId].droppedRxPackets));
+		/*tempUint32.b[0] = packet.data[43];
 		tempUint32.b[1] = packet.data[44];
 		tempUint32.b[2] = packet.data[45];
 		tempUint32.b[3] = packet.data[46];
-		_originator[originatorId].txPackets = tempUint32.value;
-		tempUint32.b[0] = packet.data[47];
+		_originator[originatorId].txPackets = tempUint32.value;*/
+		memcpy(&_originator[originatorId].txPackets, &packet.data[43], sizeof(_originator[originatorId].txPackets));
+		/*tempUint32.b[0] = packet.data[47];
 		tempUint32.b[1] = packet.data[48];
 		tempUint32.b[2] = packet.data[49];
 		tempUint32.b[3] = packet.data[50];
-		_originator[originatorId].droppedTxPackets = tempUint32.value;
+		_originator[originatorId].droppedTxPackets = tempUint32.value;*/
+		memcpy(&_originator[originatorId].droppedTxPackets, &packet.data[47], sizeof(_originator[originatorId].droppedTxPackets));
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 		{
@@ -1719,16 +1690,12 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 		if(packet.data[3] & NHS_FLAGS_INCLUDES_VCC)
 		{
 			//Packet includes information about the supply voltage
-			union floatToBytes nhsSupplyVoltage;
-			nhsSupplyVoltage.b[0] = packet.data[receivedPacketIndex++];
-			nhsSupplyVoltage.b[1] = packet.data[receivedPacketIndex++];
-			nhsSupplyVoltage.b[2] = packet.data[receivedPacketIndex++];
-			nhsSupplyVoltage.b[3] = packet.data[receivedPacketIndex++];
-			_originator[originatorId].supplyVoltage = nhsSupplyVoltage.value;
+			memcpy(&_originator[originatorId].supplyVoltage, &packet.data[receivedPacketIndex], sizeof(_originator[originatorId].supplyVoltage));
+			receivedPacketIndex+=sizeof(_originator[originatorId].supplyVoltage);
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
-				_debugStream->printf_P(m2mMeshNHSSupplyvoltagefV,nhsSupplyVoltage.value);
+				_debugStream->printf_P(m2mMeshNHSSupplyvoltagefV,_originator[originatorId].supplyVoltage);
 			}
 			#endif
 		}
@@ -1740,19 +1707,22 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 		{
 			//The NHS packet is flagged as being from an active time server, which sends mesh time separately from uptime
 			//To help with accuracy only updates with the least number of hops are accepted
-			tempUint32.b[0] = packet.data[receivedPacketIndex++];
+			/*tempUint32.b[0] = packet.data[receivedPacketIndex++];
 			tempUint32.b[1] = packet.data[receivedPacketIndex++];
 			tempUint32.b[2] = packet.data[receivedPacketIndex++];
-			tempUint32.b[3] = packet.data[receivedPacketIndex++];
+			tempUint32.b[3] = packet.data[receivedPacketIndex++];*/
+			uint32_t uptimeOffset;
+			memcpy(&uptimeOffset, &packet.data[receivedPacketIndex], sizeof(uptimeOffset));
+			receivedPacketIndex+=sizeof(uptimeOffset);
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
-				_debugStream->printf_P(m2mMeshNHSMeshtimedms,tempUint32.value);
+				_debugStream->printf_P(m2mMeshNHSMeshtimedms,uptimeOffset);
 			}
 			#endif
-			if(_stable)
+			if(_stable == true)
 			{
-				_updateMeshTime(tempUint32.value,originatorId);
+				_updateMeshTime(uptimeOffset,originatorId);
 			}
 		}
 		#if defined (m2mMeshIncludeRTCFeatures)
@@ -1786,18 +1756,21 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 				}
 				receivedPacketIndex += tzLength;
 				//Now get the offset, the node prefers the one with the best uptime to avoid jitter
-				tempUint32.b[0] = packet.data[receivedPacketIndex++];
+				/*tempUint32.b[0] = packet.data[receivedPacketIndex++];
 				tempUint32.b[1] = packet.data[receivedPacketIndex++];
 				tempUint32.b[2] = packet.data[receivedPacketIndex++];
-				tempUint32.b[3] = packet.data[receivedPacketIndex++];
+				tempUint32.b[3] = packet.data[receivedPacketIndex++];*/
+				uint32_t receivedEpochOffset;
+				memcpy(&receivedEpochOffset, &packet.data[receivedPacketIndex], sizeof(receivedEpochOffset));
+				receivedPacketIndex+=sizeof(receivedEpochOffset);
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					char strftime_buf[64];
 					//strftime(strftime_buf, sizeof(strftime_buf), "%c", localtime(const_cast<time_t>(&tempUint32.value)));
-					const time_t timestamp = tempUint32.value + ((millis() + _meshTimeOffset)/1000);
+					const time_t timestamp = receivedEpochOffset + ((millis() + _meshTimeOffset)/1000);
 					strftime(strftime_buf, sizeof(strftime_buf), "%c", localtime(&timestamp));
-					_debugStream->printf_P(m2mMeshNHSRTCtimeds,tempUint32.value,strftime_buf);
+					_debugStream->printf_P(m2mMeshNHSRTCtimeds,receivedEpochOffset,strftime_buf);
 				}
 				#endif
 				if(_currentRTCServer == MESH_ORIGINATOR_NOT_FOUND ||						//No RTC server selected
@@ -1808,23 +1781,23 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 					{
 						_currentRTCServer = originatorId;
 					}
-					if(tempUint32.value != epochOffset)	//Check for epoch time update
+					if(receivedEpochOffset != epochOffset)	//Check for epoch time update
 					{
 						#ifdef m2mMeshIncludeDebugFeatures
 						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog) && epochOffset != 0)
 						{
 							_debugStream->print(m2mMeshdiffers);
-							if(tempUint32.value > epochOffset)
+							if(receivedEpochOffset > epochOffset)
 							{
-								_debugStream->print(tempUint32.value -  epochOffset);
+								_debugStream->print(receivedEpochOffset -  epochOffset);
 							}
 							else
 							{
-								_debugStream->print(epochOffset - tempUint32.value);
+								_debugStream->print(epochOffset - receivedEpochOffset);
 							}
 						}
 						#endif
-						epochOffset = tempUint32.value;
+						epochOffset = receivedEpochOffset;
 						if(_meshTimeNegotiated)
 						{
 							timeval tv = { epochOffset + ((millis() + _meshTimeOffset) / 1000), 0 };
@@ -1904,9 +1877,8 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 			#endif
 			for(uint8_t i = 0; i<originatorCount && receivedPacketIndex + 8 < ESP_NOW_MAX_PACKET_SIZE; i++) //The node will have filled in as many as it can in the space in the packet
 			{
-				unsignedIntToBytes packetLtq;
-				packetLtq.b[0] = packet.data[receivedPacketIndex+6];
-				packetLtq.b[1] = packet.data[receivedPacketIndex+7];
+				uint16_t packetLtq;
+				memcpy(&packetLtq, &packet.data[receivedPacketIndex+6], sizeof(packetLtq));
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
@@ -2029,80 +2001,64 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processUsr(uint8_t routerId, uint8_t origi
 				else if(packet.data[receivedPacketIndex] == USR_DATA_UINT16_T)	//Single uint16_t
 				{
 					receivedPacketIndex++;
-					unsignedIntToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafieldduint16_td,field++,temp.value);
+					uint16_t temp;
+					memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+					receivedPacketIndex+=sizeof(temp);
+					_debugStream->printf_P(m2mMeshUSRdatafieldduint16_td,field++,temp);
 				}
 				else if((packet.data[receivedPacketIndex] & 0x0f) == USR_DATA_UINT16_T)	//Array of uint16_t
 				{
 					uint8_t arrayLength = _numberOfPackedItems(packet.data[receivedPacketIndex], packet.data[receivedPacketIndex+1]);
 					receivedPacketIndex+=_packingOverhead(packet.data[receivedPacketIndex]);
 					_debugStream->printf_P(m2mMeshUSRdatafieldduint16_tuarray,field++,arrayLength);
-					unsignedIntToBytes temp;
+					uint16_t temp;
 					for(uint8_t index = 0; index < arrayLength; index++)
 					{
-						temp.b[0] = packet.data[receivedPacketIndex++];
-						temp.b[1] = packet.data[receivedPacketIndex++];
-						_debugStream->printf_P(m2mMeshUSRdataduint16_td,index,temp.value);
+						memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+						receivedPacketIndex+=sizeof(temp);
+						_debugStream->printf_P(m2mMeshUSRdataduint16_td,index,temp);
 					}
 				}
 				else if(packet.data[receivedPacketIndex] == USR_DATA_UINT32_T)	//Single uint32_t
 				{
 					receivedPacketIndex++;
-					unsignedLongToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					temp.b[2] = packet.data[receivedPacketIndex++];
-					temp.b[3] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafieldduint32_td,field++,temp.value);
+					uint32_t temp;
+					memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+					receivedPacketIndex+=sizeof(temp);
+					_debugStream->printf_P(m2mMeshUSRdatafieldduint32_td,field++,temp);
 				}
 				else if((packet.data[receivedPacketIndex] & 0x0f) == USR_DATA_UINT32_T)	//Array of uint32_t
 				{
 					uint8_t arrayLength = _numberOfPackedItems(packet.data[receivedPacketIndex], packet.data[receivedPacketIndex+1]);
 					receivedPacketIndex+=_packingOverhead(packet.data[receivedPacketIndex]);
 					_debugStream->printf_P(m2mMeshUSRdatafieldduint32_tuarray,field++,arrayLength);
-					unsignedLongToBytes temp;
+					uint32_t temp;
 					for(uint8_t index = 0; index < arrayLength; index++)
 					{
-						temp.b[0] = packet.data[receivedPacketIndex++];
-						temp.b[1] = packet.data[receivedPacketIndex++];
-						temp.b[2] = packet.data[receivedPacketIndex++];
-						temp.b[3] = packet.data[receivedPacketIndex++];
-						_debugStream->printf_P(m2mMeshUSRdataduint32_td,index,temp.value);
+						memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+						receivedPacketIndex+=sizeof(temp);
+						_debugStream->printf_P(m2mMeshUSRdataduint32_td,index,temp);
 					}
 				}
 				else if(packet.data[receivedPacketIndex] == USR_DATA_UINT64_T)	//Single uint64_t
 				{
 					receivedPacketIndex++;
-					unsignedLongLongToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					temp.b[2] = packet.data[receivedPacketIndex++];
-					temp.b[3] = packet.data[receivedPacketIndex++];
-					temp.b[4] = packet.data[receivedPacketIndex++];
-					temp.b[5] = packet.data[receivedPacketIndex++];
-					temp.b[6] = packet.data[receivedPacketIndex++];
-					temp.b[7] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafieldduint64_td,field++,temp.value);
+					uint64_t temp;
+					memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+					receivedPacketIndex+=sizeof(temp);
+					_debugStream->printf_P(m2mMeshUSRdatafieldduint64_td,field++,temp);
 				}
 				else if((packet.data[receivedPacketIndex] & 0x0f) == USR_DATA_UINT64_T)	//Array of uint64_t
 				{
 					uint8_t arrayLength = _numberOfPackedItems(packet.data[receivedPacketIndex], packet.data[receivedPacketIndex+1]);
 					receivedPacketIndex+=_packingOverhead(packet.data[receivedPacketIndex]);
 					_debugStream->printf_P(m2mMeshUSRdatafieldduint64_tuarray,field++,arrayLength);
-					unsignedLongLongToBytes temp;
+					uint64_t temp;
 					for(uint8_t index = 0; index < arrayLength; index++)
 					{
-						temp.b[0] = packet.data[receivedPacketIndex++];
-						temp.b[1] = packet.data[receivedPacketIndex++];
-						temp.b[2] = packet.data[receivedPacketIndex++];
-						temp.b[3] = packet.data[receivedPacketIndex++];
-						temp.b[4] = packet.data[receivedPacketIndex++];
-						temp.b[5] = packet.data[receivedPacketIndex++];
-						temp.b[6] = packet.data[receivedPacketIndex++];
-						temp.b[7] = packet.data[receivedPacketIndex++];
-						_debugStream->printf_P(m2mMeshUSRdataduint64_td,index,temp.value);
+						memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+						receivedPacketIndex+=sizeof(temp);
+						_debugStream->printf_P(m2mMeshUSRdataduint64_td,index,temp);
 					}
 				}
 				else if(packet.data[receivedPacketIndex] == USR_DATA_INT8_T)	//Single int8_t
@@ -2123,138 +2079,106 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processUsr(uint8_t routerId, uint8_t origi
 				else if(packet.data[receivedPacketIndex] == USR_DATA_INT16_T)	//Single int16_t
 				{
 					receivedPacketIndex++;
-					intToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafielddint16_td,field++,temp.value);
+					int16_t temp;
+					memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+					receivedPacketIndex+=sizeof(temp);
+					_debugStream->printf_P(m2mMeshUSRdatafielddint16_td,field++,temp);
 				}
 				else if((packet.data[receivedPacketIndex] & 0x0f) == USR_DATA_INT16_T)	//Array of int16_t
 				{
 					uint8_t arrayLength = _numberOfPackedItems(packet.data[receivedPacketIndex], packet.data[receivedPacketIndex+1]);
 					receivedPacketIndex+=_packingOverhead(packet.data[receivedPacketIndex]);
 					_debugStream->printf_P(m2mMeshUSRdatafielddint16_tuarray,field++,arrayLength);
-					intToBytes temp;
+					int16_t temp;
 					for(uint8_t index = 0; index < arrayLength; index++)
 					{
-						temp.b[0] = packet.data[receivedPacketIndex++];
-						temp.b[1] = packet.data[receivedPacketIndex++];
-						_debugStream->printf_P(m2mMeshUSRdatadint16_td,index,temp.value);
+						memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+						receivedPacketIndex+=sizeof(temp);
+						_debugStream->printf_P(m2mMeshUSRdatadint16_td,index,temp);
 					}
 				}
 				else if(packet.data[receivedPacketIndex] == USR_DATA_INT32_T)	//Single int32_t
 				{
 					receivedPacketIndex++;
-					longToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					temp.b[2] = packet.data[receivedPacketIndex++];
-					temp.b[3] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafielddint32_td,field++,temp.value);
+					int32_t temp;
+					memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+					receivedPacketIndex+=sizeof(temp);
+					_debugStream->printf_P(m2mMeshUSRdatafielddint32_td,field++,temp);
 				}
 				else if((packet.data[receivedPacketIndex] & 0x0f) == USR_DATA_INT32_T)	//Array of int32_t
 				{
 					uint8_t arrayLength = _numberOfPackedItems(packet.data[receivedPacketIndex], packet.data[receivedPacketIndex+1]);
 					receivedPacketIndex+=_packingOverhead(packet.data[receivedPacketIndex]);
 					_debugStream->printf_P(m2mMeshUSRdatafielddint32_tuarray,field++,arrayLength);
-					longToBytes temp;
+					int32_t temp;
 					for(uint8_t index = 0; index < arrayLength; index++)
 					{
-						temp.b[0] = packet.data[receivedPacketIndex++];
-						temp.b[1] = packet.data[receivedPacketIndex++];
-						temp.b[2] = packet.data[receivedPacketIndex++];
-						temp.b[3] = packet.data[receivedPacketIndex++];
-						_debugStream->printf_P(m2mMeshUSRdatadint32_td,index,temp.value);
+						memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+						receivedPacketIndex+=sizeof(temp);
+						_debugStream->printf_P(m2mMeshUSRdatadint32_td,index,temp);
 					}
 				}
 				else if(packet.data[receivedPacketIndex] == USR_DATA_INT64_T)	//Single int64_t
 				{
 					receivedPacketIndex++;
-					longLongToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					temp.b[2] = packet.data[receivedPacketIndex++];
-					temp.b[3] = packet.data[receivedPacketIndex++];
-					temp.b[4] = packet.data[receivedPacketIndex++];
-					temp.b[5] = packet.data[receivedPacketIndex++];
-					temp.b[6] = packet.data[receivedPacketIndex++];
-					temp.b[7] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafielddint64_td,field++,temp.value);
+					int64_t temp;
+					memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+					receivedPacketIndex+=sizeof(temp);
+					_debugStream->printf_P(m2mMeshUSRdatafielddint64_td,field++,temp);
 				}
 				else if((packet.data[receivedPacketIndex] & 0x0f) == USR_DATA_INT64_T) //Array of int64_t
 				{
 					uint8_t arrayLength = _numberOfPackedItems(packet.data[receivedPacketIndex], packet.data[receivedPacketIndex+1]);
 					receivedPacketIndex+=_packingOverhead(packet.data[receivedPacketIndex]);
 					_debugStream->printf_P(m2mMeshUSRdatafielddint64_tuarray,field++,arrayLength);
-					longLongToBytes temp;
+					int64_t temp;
 					for(uint8_t index = 0; index < arrayLength; index++)
 					{
-						temp.b[0] = packet.data[receivedPacketIndex++];
-						temp.b[1] = packet.data[receivedPacketIndex++];
-						temp.b[2] = packet.data[receivedPacketIndex++];
-						temp.b[3] = packet.data[receivedPacketIndex++];
-						temp.b[4] = packet.data[receivedPacketIndex++];
-						temp.b[5] = packet.data[receivedPacketIndex++];
-						temp.b[6] = packet.data[receivedPacketIndex++];
-						temp.b[7] = packet.data[receivedPacketIndex++];
-						_debugStream->printf_P(m2mMeshUSRdatadint64_td,index,temp.value);
+						memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+						receivedPacketIndex+=sizeof(temp);
+						_debugStream->printf_P(m2mMeshUSRdatadint64_td,index,temp);
 					}
 				}
 				else if(packet.data[receivedPacketIndex] == USR_DATA_FLOAT)	//Single float
 				{
 					receivedPacketIndex++;
-					floatToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					temp.b[2] = packet.data[receivedPacketIndex++];
-					temp.b[3] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafielddfloatf,field++,temp.value);
+					float temp;
+					memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+					receivedPacketIndex+=sizeof(temp);
+					_debugStream->printf_P(m2mMeshUSRdatafielddfloatf,field++,temp);
 				}
 				else if((packet.data[receivedPacketIndex] & 0x0f) == USR_DATA_FLOAT)	//Array of floats
 				{
 					uint8_t arrayLength = _numberOfPackedItems(packet.data[receivedPacketIndex], packet.data[receivedPacketIndex+1]);
 					receivedPacketIndex+=_packingOverhead(packet.data[receivedPacketIndex]);
 					_debugStream->printf_P(m2mMeshUSRdatafielddfloatuarray,field++,arrayLength);
-					floatToBytes temp;
+					float temp;
 					for(uint8_t index = 0; index < arrayLength; index++)
 					{
-						temp.b[0] = packet.data[receivedPacketIndex++];
-						temp.b[1] = packet.data[receivedPacketIndex++];
-						temp.b[2] = packet.data[receivedPacketIndex++];
-						temp.b[3] = packet.data[receivedPacketIndex++];
-						_debugStream->printf_P(m2mMeshUSRdatadfloatf,index,temp.value);
+						memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+						receivedPacketIndex+=sizeof(temp);
+						_debugStream->printf_P(m2mMeshUSRdatadfloatf,index,temp);
 					}
 				}
 				else if(packet.data[receivedPacketIndex] == USR_DATA_DOUBLE)	//Single double
 				{
 					receivedPacketIndex++;
-					doubleToBytes temp;
-					temp.b[0] = packet.data[receivedPacketIndex++];
-					temp.b[1] = packet.data[receivedPacketIndex++];
-					temp.b[2] = packet.data[receivedPacketIndex++];
-					temp.b[3] = packet.data[receivedPacketIndex++];
-					temp.b[4] = packet.data[receivedPacketIndex++];
-					temp.b[5] = packet.data[receivedPacketIndex++];
-					temp.b[6] = packet.data[receivedPacketIndex++];
-					temp.b[7] = packet.data[receivedPacketIndex++];
-					_debugStream->printf_P(m2mMeshUSRdatafieldddoublef,field++,temp.value);
+					double temp;
+					memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+					receivedPacketIndex+=sizeof(temp);
+					_debugStream->printf_P(m2mMeshUSRdatafieldddoublef,field++,temp);
 				}
 				else if((packet.data[receivedPacketIndex] & 0x0f) == USR_DATA_DOUBLE)	//Array of doubles
 				{
 					uint8_t arrayLength = _numberOfPackedItems(packet.data[receivedPacketIndex], packet.data[receivedPacketIndex+1]);
 					receivedPacketIndex+=_packingOverhead(packet.data[receivedPacketIndex]);
 					_debugStream->printf_P(m2mMeshUSRdatafieldddoubleuarray,field++,arrayLength);
-					doubleToBytes temp;
+					double temp;
 					for(uint8_t index = 0; index < arrayLength; index++)
 					{
-						temp.b[0] = packet.data[receivedPacketIndex++];
-						temp.b[1] = packet.data[receivedPacketIndex++];
-						temp.b[2] = packet.data[receivedPacketIndex++];
-						temp.b[3] = packet.data[receivedPacketIndex++];
-						temp.b[4] = packet.data[receivedPacketIndex++];
-						temp.b[5] = packet.data[receivedPacketIndex++];
-						temp.b[6] = packet.data[receivedPacketIndex++];
-						temp.b[7] = packet.data[receivedPacketIndex++];
-						_debugStream->printf_P(m2mMeshUSRdataddoublef,index,temp.value);
+						memcpy(&temp, &packet.data[receivedPacketIndex], sizeof(temp));
+						receivedPacketIndex+=sizeof(temp);
+						_debugStream->printf_P(m2mMeshUSRdataddoublef,index,temp);
 					}
 				}
 				else if(packet.data[receivedPacketIndex] == USR_DATA_CHAR)	//Single char
@@ -2876,12 +2800,8 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader(uint8_t destId)
 			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[5];
 		}
 		//Interval
-		union unsignedLongToBytes usrInterval;
-		usrInterval.value = _currentInterval[USR_PACKET_TYPE];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = usrInterval.b[0];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = usrInterval.b[1];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = usrInterval.b[2];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = usrInterval.b[3];
+		memcpy(&_userPacketBuffer.data[_userPacketBuffer.length], &_currentInterval[USR_PACKET_TYPE], sizeof(_currentInterval[USR_PACKET_TYPE]));
+		_userPacketBuffer.length+=sizeof(_currentInterval[USR_PACKET_TYPE]);
 		//Number of fields, record where in the packet it is stored
 		_userPacketFieldCounterIndex = _userPacketBuffer.length;
 		_userPacketBuffer.data[_userPacketBuffer.length++] = 0;
@@ -2924,302 +2844,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::destination(uint8_t destId)
 	}
 	return(false);
 }
-/*
-bool ICACHE_FLASH_ATTR m2mMeshClass::destination(char* dest)
-{
-	if(not buildingUserPacket)
-	{
-		buildUserPacketHeader(MESH_ORIGINATOR_NOT_FOUND);
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-bool ICACHE_FLASH_ATTR m2mMeshClass::destination(String dest)
-{	
-	if(not buildingUserPacket)
-	{
-		//Need to handle various cases here
-		for(int i=0; i<numberOfOriginators;i++)
-		{
-			if(dest == String(originator[i].nodeName))
-			{
-				buildUserPacketHeader(i);
-				return(true);
-			}
-		}
-		return(false);
-	}
-	else
-	{
-		return(false);
-	}
-}*/
 
-/*bool ICACHE_FLASH_ATTR m2mMeshClass::add(const bool dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + 1 < USR_MAX_PACKET_SIZE)
-	{
-		if(dataToAdd == false)
-		{
-			_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_BOOL;
-		}
-		else
-		{
-			_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_BOOL_TRUE;
-		}
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-
-bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint8_t dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(uint8_t) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT8_T;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = dataToAdd;
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}*/
-
-/*
-bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint16_t dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(uint16_t) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT16_T;
-		unsignedIntToBytes temp;
-		temp.value = dataToAdd;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}*/
-/*bool ICACHE_FLASH_ATTR m2mMeshClass::add(uint16_t* dataToAdd, uint8_t numberOfElements)
-{
-	_buildUserPacketHeader();
-	//uint8_t numberOfElements = sizeof(dataToAdd)/sizeof(dataToAdd[0]);
-	if(numberOfElements < 15)
-	{
-		if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements < USR_MAX_PACKET_SIZE)
-		{
-			_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT16_T | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
-		}
-		else
-		{
-			return(false);	//Not enough space left in the packet
-		}
-	}
-	else
-	{
-		if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements + 1 < USR_MAX_PACKET_SIZE)
-		{
-			_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT16_T | 0xf0;	//Mark that this field has 15 members or more
-			_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
-		}
-		else
-		{
-			return(false);	//Not enough space left in the packet
-		}
-	}
-	unsignedIntToBytes temp;
-	for(int index = 0 ; index < numberOfElements ; index++)
-	{
-		temp.value = dataToAdd[index];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
-	}
-	//Increment the field counter
-	_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-	return(true);
-}*/
-/*bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint32_t dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(uint32_t) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT32_T;
-		unsignedLongToBytes temp;
-		temp.value = dataToAdd;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-bool ICACHE_FLASH_ATTR m2mMeshClass::add(const uint64_t dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(uint64_t) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_UINT64_T;
-		unsignedLongLongToBytes temp;
-		temp.value = dataToAdd;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[4];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[5];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[6];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[7];
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int8_t dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(int8_t) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_INT8_T;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = uint8_t(dataToAdd);
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int16_t dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(int16_t) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_INT16_T;
-		intToBytes temp;
-		temp.value = dataToAdd;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int32_t dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(int32_t) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_INT32_T;
-		longToBytes temp;
-		temp.value = dataToAdd;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-bool ICACHE_FLASH_ATTR m2mMeshClass::add(const int64_t dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(int64_t) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_INT64_T;
-		longLongToBytes temp;
-		temp.value = dataToAdd;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[4];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[5];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[6];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[7];
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(char) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_CHAR;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = uint8_t(dataToAdd);
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}
-bool ICACHE_FLASH_ATTR m2mMeshClass::add(const float dataToAdd)
-{
-	_buildUserPacketHeader();
-	if(_userPacketBuffer.length + sizeof(float) < USR_MAX_PACKET_SIZE)
-	{
-		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_FLOAT;
-		floatToBytes temp;
-		temp.value = dataToAdd;
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[0];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[1];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[2];
-		_userPacketBuffer.data[_userPacketBuffer.length++] = temp.b[3];
-		//Increment the field counter
-		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;
-		return(true);
-	}
-	else
-	{
-		return(false);
-	}
-}*/
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 {
 	_buildUserPacketHeader();
@@ -3384,14 +3009,9 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 	{
 		_userPacketBuffer.data[_userPacketBuffer.length++] = 0x00;
 	}
-	//Use unions to pack the non-8-bit values
 	//Sequence number is added immediately before sending
-	union unsignedLongToBytes temp;
-	temp.value = _sequenceNumber++;
-	_userPacketBuffer.data[4] = temp.b[0];
-	_userPacketBuffer.data[5] = temp.b[1];
-	_userPacketBuffer.data[6] = temp.b[2];
-	_userPacketBuffer.data[7] = temp.b[3];
+	memcpy(&_userPacketBuffer.data[4], &_sequenceNumber, sizeof(_sequenceNumber));
+	_sequenceNumber++;
 	#ifdef m2mMeshIncludeDebugFeatures
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 	{
@@ -3806,14 +3426,14 @@ uint16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint16_t()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		unsignedIntToBytes temp;
-		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
+		uint16_t temp;
+		memcpy(&temp, &_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex], sizeof(temp));
+		_receivedUserPacketIndex+=sizeof(temp);
 		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
-		return(temp.value);
+		return(temp);
 	}
 }
 uint32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint32_t()
@@ -3835,16 +3455,14 @@ uint32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint32_t()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		unsignedLongToBytes temp;
-		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
+		uint32_t temp;
+		memcpy(&temp, &_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex], sizeof(temp));
+		_receivedUserPacketIndex+=sizeof(temp);
 		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
-		return(temp.value);
+		return(temp);
 	}
 }
 /*bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint32_t &recipient)
@@ -3898,20 +3516,14 @@ uint64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveUint64_t()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		unsignedLongToBytes temp;
-		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[4] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[5] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[6] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[7] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
+		uint64_t temp;
+		memcpy(&temp, &_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex], sizeof(temp));
+		_receivedUserPacketIndex+=sizeof(temp);
 		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
-		return(temp.value);
+		return(temp);
 	}
 }
 /*bool ICACHE_FLASH_ATTR m2mMeshClass::retrieve(uint64_t &recipient)
@@ -3996,14 +3608,14 @@ int16_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt16_t()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		intToBytes temp;
-		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
+		int16_t temp;
+		memcpy(&temp, &_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex], sizeof(temp));
+		_receivedUserPacketIndex+=sizeof(temp);
 		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
-		return(temp.value);
+		return(temp);
 	}
 }
 int32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt32_t()
@@ -4025,16 +3637,14 @@ int32_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt32_t()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		longToBytes temp;
-		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
+		int32_t temp;
+		memcpy(&temp, &_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex], sizeof(temp));
+		_receivedUserPacketIndex+=sizeof(temp);
 		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
-		return(temp.value);
+		return(temp);
 	}
 }
 int64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt64_t()
@@ -4056,20 +3666,14 @@ int64_t ICACHE_FLASH_ATTR m2mMeshClass::retrieveInt64_t()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		longLongToBytes temp;
-		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[4] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[5] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[6] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[7] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
+		int64_t temp;
+		memcpy(&temp, &_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex], sizeof(temp));
+		_receivedUserPacketIndex+=sizeof(temp);
 		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
-		return(temp.value);
+		return(temp);
 	}
 }
 float ICACHE_FLASH_ATTR m2mMeshClass::retrieveFloat()
@@ -4091,16 +3695,14 @@ float ICACHE_FLASH_ATTR m2mMeshClass::retrieveFloat()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		floatToBytes temp;
-		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
+		float temp;
+		memcpy(&temp, &_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex], sizeof(temp));
+		_receivedUserPacketIndex+=sizeof(temp);
 		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
-		return(temp.value);
+		return(temp);
 	}
 }
 double ICACHE_FLASH_ATTR m2mMeshClass::retrieveDouble()
@@ -4122,20 +3724,14 @@ double ICACHE_FLASH_ATTR m2mMeshClass::retrieveDouble()
 		_receivedUserPacketIndex++;
 		//Decrement the count of data fields
 		_receivedUserPacketFieldCounter--;
-		doubleToBytes temp;
-		temp.b[0] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[1] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[2] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[3] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[4] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[5] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[6] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
-		temp.b[7] = _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex++];
+		double temp;
+		memcpy(&temp, &_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex], sizeof(temp));
+		_receivedUserPacketIndex+=sizeof(temp);
 		if(dataAvailable() == 0)
 		{
 			markMessageRead();
 		}
-		return(temp.value);
+		return(temp);
 	}
 }
 char ICACHE_FLASH_ATTR m2mMeshClass::retrieveChar()
