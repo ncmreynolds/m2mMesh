@@ -486,13 +486,13 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 				_meshMacAddress[4] = _meshMacAddress[4] ^ _originator[originatorId].macAddress[4];	//XOR the originator MAC address
 				_meshMacAddress[5] = _meshMacAddress[5] ^ _originator[originatorId].macAddress[5];	//XOR the originator MAC address
 			}
-			if(millis() - _originator[originatorId].ogmEchoLastConfirmed > _currentInterval[OGM_PACKET_TYPE])	//We have missed an OGM echo
+			if(millis() - (_originator[originatorId].ogmEchoLastConfirmed + ANTI_COLLISION_JITTER) > _currentInterval[OGM_PACKET_TYPE])	//We have missed an OGM echo
 			{
 				_originator[originatorId].ogmEchoes = _originator[originatorId].ogmEchoes >> 1;					//Right shift the OGM Echo receipt confirmation bitmask, which will make it worse
 				_calculateLtq(originatorId);																	//Recalculate the Local Transmission quality
 				_originator[originatorId].ogmEchoLastConfirmed = millis();										//Record the time of the last missed OGM echo
 			}
-			if(millis() - _originator[originatorId].ogmReceiptLastConfirmed > _originator[originatorId].interval[OGM_PACKET_TYPE])	//We have missed an OGM
+			if(millis() - (_originator[originatorId].ogmReceiptLastConfirmed + ANTI_COLLISION_JITTER) > _originator[originatorId].interval[OGM_PACKET_TYPE])	//We have missed an OGM
 			{
 				_originator[originatorId].ogmReceived = _originator[originatorId].ogmReceived >> 1;				//Right shift the OGM receipt confirmation bitmask, which will make it worse
 				_calculateLtq(originatorId);																	//Recalculate the Local Transmission quality
