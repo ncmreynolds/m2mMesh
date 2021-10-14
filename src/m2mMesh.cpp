@@ -621,7 +621,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 				{
-					_debugStream->print(F("\r\nm2mMesh SRC "));
+					_debugStream->print(F("\r\nSRC "));
 				}
 				#endif
 				originatorId = _addOriginator(originatorMacAddress,_currentChannel);
@@ -640,7 +640,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 						#ifdef m2mMeshIncludeDebugFeatures
 						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 						{
-							_debugStream->print(F("\r\nm2mMesh DST "));
+							_debugStream->print(F("\r\nDST "));
 						}
 						#endif
 						destinationId = _addOriginator(destinationMacAddress,_currentChannel);
@@ -725,7 +725,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				#endif
 				//Consider a packet for forwarding, it may already have been changed in earlier processing
 				//The TTL must be >0 and either a flood or NOT have this node at its source or destination
-				if(packet.data[2] > 0 && ((packet.data[3] & SEND_TO_ALL_NODES != 0x00) || (not _isLocalMacAddress(destinationMacAddress))))
+				if(packet.data[2] > 0 && (bool(packet.data[3] & SEND_TO_ALL_NODES) || (not _isLocalMacAddress(destinationMacAddress))))
 				{
 					//Reduce the TTL, regardless whether we end up forwarding or not
 					packet.data[2]--;
@@ -792,9 +792,9 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 								memcpy(&packet.macAddress[0], &_originator[_originator[destinationId].selectedRouter].macAddress[0], 6);
 							}
 						}
-						if(packet.data[3] & SEND_TO_ALL_NODES != 0x00)
+						if(packet.data[3] & SEND_TO_ALL_NODES)
 						{
-							delay(_localMacAddress[5]*4);	//Delay up to 1024ms
+							delay(_localMacAddress[5]*4);	//Delay up to 1024ms to reduce flood collisions
 						}
 						bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
 						#ifdef m2mMeshIncludeDebugFeatures
@@ -930,7 +930,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elp
 	{
 		if(_loggingLevel & MESH_UI_LOG_ELP_SEND)
 		{
-			_debugStream->print(F("\r\nm2mMesh ELP SND "));
+			_debugStream->print(F("\r\nELP SEND "));
 			if(includeNeighbours)
 			{
 				_debugStream->printf_P(TTL02dFLG02xSEQ08xLENdNBRd,packet.data[2],packet.data[3],sequenceNumber,packet.length,_numberOfActiveNeighbours);
@@ -948,7 +948,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elp
 	}
 	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_SEND)
 	{
-		_debugStream->print(F("\r\nm2mMesh ELP SND fail"));
+		_debugStream->print(F("\r\nELP SEND fail"));
 	}
 	#endif
 	_sequenceNumber++;
@@ -1213,7 +1213,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
-					_debugStream->print(F("\r\nm2mMesh OGM added this node to forwarding chain"));
+					_debugStream->print(m2mMeshOGMaddedthisnodetoforwardingchain);
 				}
 				#endif
 			}
@@ -1856,7 +1856,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 						//This device has never been seen, create a new originator
 						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 						{
-							_debugStream->print(F("\r\nm2mMesh NHS "));
+							_debugStream->print(m2mMeshNHS);
 						}
 						#endif
 						includedOriginatorId = _addOriginator(&packet.data[receivedPacketIndex],_currentChannel);

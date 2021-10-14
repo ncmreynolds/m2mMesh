@@ -88,6 +88,7 @@ const char m2mMeshOGMforwardingchain02x02x02x02x02x02x[] PROGMEM = "\r\nOGM forw
 const char m2mMeshOGMhoppenaltyappliedTQnow02x[] PROGMEM = "\r\nOGM hop penalty applied, TQ now %02x";
 const char m2mMeshOGM02x02x02x02x02x02xhasbecomereachable[] PROGMEM = "\r\nOGM O:%02x:%02x:%02x:%02x:%02x:%02x has become reachable";
 const char m2mMeshOGM02x02x02x02x02x02xhasbecomeunreachable[] PROGMEM = "\r\nOGM I:%02x:%02x:%02x:%02x:%02x:%02x has become unreachable";
+const char m2mMeshOGMaddedthisnodetoforwardingchain[] PROGMEM = "\r\nOGM added this node to forwarding chain"
 const char m2mMeshNHSSND[] PROGMEM = "\r\nNHS SEND";
 const char TTL02dFLG02xSEQ08xLENd[] PROGMEM = " TTL:%02d FLG:%02x SEQ:%x LEN:%u";
 const char ORGd[] PROGMEM = " ORG:%u";
@@ -110,6 +111,7 @@ const char m2mMeshNHSnodenamelendsadded[] PROGMEM = "\r\nNHS node name len=%u '%
 const char m2mMeshNHSnodenamelendsunchanged[] PROGMEM = "\r\nNHS node name len=%u '%s' unchanged";
 const char m2mMeshNHScontainsdoriginators[] PROGMEM = "\r\nNHS contains %u originators";
 const char m2mMeshNHSoriginatordata02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nNHS originator data %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
+const char m2mMeshNHS[] PROGMEM = "\r\nm2mMesh NHS ";
 const char m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nUSR R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u Length:%u";
 const char m2mMeshUSRpacketcontainsdfields[] PROGMEM =		"\r\nUSR packet contains %u fields";
 const char m2mMeshUSRdatafielddboolfalse[] PROGMEM =			"\r\nUSR data field %u bool false";
