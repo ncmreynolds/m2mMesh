@@ -1213,7 +1213,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
-					_debugStream->print(m2mMeshOGMaddedthisnodetoforwardingchain);
+					_debugStream->printf_P(m2mMeshOGMaddedthisnodetoforwardingchain, _localMacAddress[0], _localMacAddress[1], _localMacAddress[2], _localMacAddress[3], _localMacAddress[4], _localMacAddress[5]);
 				}
 				#endif
 			}

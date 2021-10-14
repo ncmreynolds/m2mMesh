@@ -85,10 +85,10 @@ const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xinferiorTQ04x[] PR
 const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xupdateTQ04x[] PROGMEM = "\r\nOGM R:%02x:%02x:%02x:%02x:%02x:%02x for O:%02x:%02x:%02x:%02x:%02x:%02x update TQ:%04x";
 const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xTQ04x[] PROGMEM = "\r\nOGM R:%02x:%02x:%02x:%02x:%02x:%02x for O:%02x:%02x:%02x:%02x:%02x:%02x TQ:%04x";
 const char m2mMeshOGMforwardingchain02x02x02x02x02x02x[] PROGMEM = "\r\nOGM forwarding chain %02x:%02x:%02x:%02x:%02x:%02x";
-const char m2mMeshOGMhoppenaltyappliedTQnow02x[] PROGMEM = "\r\nOGM hop penalty applied, TQ now %02x";
+const char m2mMeshOGMhoppenaltyappliedTQnow02x[] PROGMEM = "\r\nOGM Hop penalty applied, TQ now %02x";
 const char m2mMeshOGM02x02x02x02x02x02xhasbecomereachable[] PROGMEM = "\r\nOGM O:%02x:%02x:%02x:%02x:%02x:%02x has become reachable";
 const char m2mMeshOGM02x02x02x02x02x02xhasbecomeunreachable[] PROGMEM = "\r\nOGM I:%02x:%02x:%02x:%02x:%02x:%02x has become unreachable";
-const char m2mMeshOGMaddedthisnodetoforwardingchain[] PROGMEM = "\r\nOGM added this node to forwarding chain"
+const char m2mMeshOGMaddedthisnodetoforwardingchain[] PROGMEM = "\r\nOGM Added O:%02x:%02x:%02x:%02x:%02x:%02x to forwarding chain";
 const char m2mMeshNHSSND[] PROGMEM = "\r\nNHS SEND";
 const char TTL02dFLG02xSEQ08xLENd[] PROGMEM = " TTL:%02d FLG:%02x SEQ:%x LEN:%u";
 const char ORGd[] PROGMEM = " ORG:%u";
