@@ -308,10 +308,32 @@ void originatorView()
     }
     //OGMs received
     moveToXy(17,19);
-    Serial.printf("%04x",m2mMesh.ogmReceived(currentlyViewedOriginator));
+    Serial.printf("%04x ",m2mMesh.ogmReceived(currentlyViewedOriginator));
+    for(int8_t bit = 15; bit >= 0; bit--)
+    {
+      if(m2mMesh.ogmReceived(currentlyViewedOriginator) & uint16_t(pow(2,bit)))
+      {
+        Serial.print('1');
+      }
+      else
+      {
+        Serial.print('0');
+      }
+    }
     //OGMs echoes
-    moveToXy(15,20);
-    Serial.printf("%04x",m2mMesh.ogmEchoes(currentlyViewedOriginator));
+    moveToXy(17,20);
+    Serial.printf("%04x ",m2mMesh.ogmEchoes(currentlyViewedOriginator));
+    for(int8_t bit = 15; bit >= 0; bit--)
+    {
+      if(m2mMesh.ogmEchoes(currentlyViewedOriginator) & uint16_t(pow(2,bit)))
+      {
+        Serial.print('1');
+      }
+      else
+      {
+        Serial.print('0');
+      }
+    }
   }
   drawWholeUi = false;
 }

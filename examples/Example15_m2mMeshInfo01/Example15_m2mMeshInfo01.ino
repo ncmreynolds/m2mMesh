@@ -107,7 +107,8 @@ void ICACHE_FLASH_ATTR setup(){
   //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | 
   //  m2mMesh.MESH_UI_LOG_ELP_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_NHS_RECEIVED |  m2mMesh.MESH_UI_LOG_USR_RECEIVED);
   //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_NHS_RECEIVED |  m2mMesh.MESH_UI_LOG_USR_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_SEND | m2mMesh.MESH_UI_LOG_NHS_SEND | m2mMesh.MESH_UI_LOG_OGM_FORWARDING );
-  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_NHS_RECEIVED);
+  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_NHS_RECEIVED);
+  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_OGM_SEND | m2mMesh.MESH_UI_LOG_OGM_RECEIVED);
   loggingLevel = m2mMesh.loggingLevel();  
   //m2mMesh.begin(16,11);  //Begin the ESP-Now mesh with default arguments  
   m2mMesh.begin();  //Begin the ESP-Now mesh with default arguments  
