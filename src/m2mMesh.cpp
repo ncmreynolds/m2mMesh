@@ -106,16 +106,17 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 		_localMacAddress[5] = _localMacAddress[5] - 1;			//Decrement the last octet of the MAC address, it is incremented in AP mode
 	}
 	#endif
-	_currentInterval[ELP_PACKET_TYPE] = ELP_DEFAULT_INTERVAL;		//Packet sending intervals, per packet type which may be adjust later to reduce congestion
-	_currentInterval[OGM_PACKET_TYPE] = OGM_DEFAULT_INTERVAL;
-	_currentInterval[NHS_PACKET_TYPE] = NHS_DEFAULT_INTERVAL;
-	_currentInterval[USR_PACKET_TYPE] = USR_DEFAULT_INTERVAL;
-	_currentInterval[FSP_PACKET_TYPE] = FSP_DEFAULT_INTERVAL;
-	_lastSent[ELP_PACKET_TYPE] = 5000ul - ELP_DEFAULT_INTERVAL;		//Offset sending times slightly between the different protocols
-	_lastSent[OGM_PACKET_TYPE] = 10000ul - OGM_DEFAULT_INTERVAL;	//Send the first packets sooner than the default interval
-	_lastSent[NHS_PACKET_TYPE] = 30000ul - NHS_DEFAULT_INTERVAL;	//would cause
-	_lastSent[USR_PACKET_TYPE] = 70000ul - USR_DEFAULT_INTERVAL;
-	_lastSent[FSP_PACKET_TYPE] = 90000ul - FSP_DEFAULT_INTERVAL;
+	_forwardingDelay = _localMacAddress[5] * 4;					//Delay up to 1020ms to reduce flood collisions
+	_currentInterval[ELP_PACKET_TYPE] = ELP_FAST_INTERVAL;		//Packet sending intervals, per packet type which may be adjust later to reduce congestion
+	_currentInterval[OGM_PACKET_TYPE] = OGM_FAST_INTERVAL;
+	_currentInterval[NHS_PACKET_TYPE] = NHS_FAST_INTERVAL;
+	_currentInterval[USR_PACKET_TYPE] = USR_FAST_INTERVAL;
+	_currentInterval[FSP_PACKET_TYPE] = FSP_FAST_INTERVAL;
+	_lastSent[ELP_PACKET_TYPE] = 5000ul - _currentInterval[ELP_PACKET_TYPE];	//Offset sending times slightly between the different protocols
+	_lastSent[OGM_PACKET_TYPE] = 10000ul - _currentInterval[OGM_PACKET_TYPE];	//Send the first packets sooner than the default interval
+	_lastSent[NHS_PACKET_TYPE] = 30000ul - _currentInterval[NHS_PACKET_TYPE];	//would cause
+	_lastSent[USR_PACKET_TYPE] = 70000ul - _currentInterval[USR_PACKET_TYPE];
+	_lastSent[FSP_PACKET_TYPE] = 90000ul - _currentInterval[FSP_PACKET_TYPE];
 	_currentTtl[ELP_PACKET_TYPE] = ELP_DEFAULT_TTL;					//TTLs, per packet type which are unlikely to change
 	_currentTtl[OGM_PACKET_TYPE] = OGM_DEFAULT_TTL;
 	_currentTtl[NHS_PACKET_TYPE] = NHS_DEFAULT_TTL;
@@ -412,8 +413,35 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		_processBufferIndex = _processBufferIndex%M2MMESHRECEIVEBUFFERSIZE;	//Rollover the buffer index
 		_packetReceived = true;
 	}
-	if (_serviceFlags & PROTOCOL_ELP_SEND && millis() - (_lastSent[ELP_PACKET_TYPE] - random(ANTI_COLLISION_JITTER)) > _currentInterval[ELP_PACKET_TYPE]) 	//Apply some jitter to the send times
+	//Forward anything in the forwarding buffer before sending anything new
+	if((_fowardingBufferWriteIndex != _forwardingBufferReadIndex ||			//Some data in buffer
+		_forwardingBuffer[_forwardingBufferReadIndex].length > 0)			//Buffer is full
+		&& millis() - _forwardingBuffer[_forwardingBufferReadIndex].timestamp > _forwardingDelay)
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
+		if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
+		{
+			char packetTypeDescription[] = "UNK";
+			_packetTypeDescription(packetTypeDescription,(_forwardingBuffer[_forwardingBufferReadIndex].data[0] & 0x07));
+			_debugStream->printf_P(m2mMeshreadFWDbufferslotd,_forwardingBufferReadIndex, _forwardingBuffer[_forwardingBufferReadIndex].length, packetTypeDescription,_forwardingBuffer[_forwardingBufferReadIndex].macAddress[0],_forwardingBuffer[_forwardingBufferReadIndex].macAddress[1],_forwardingBuffer[_forwardingBufferReadIndex].macAddress[2],_forwardingBuffer[_forwardingBufferReadIndex].macAddress[3],_forwardingBuffer[_forwardingBufferReadIndex].macAddress[4],_forwardingBuffer[_forwardingBufferReadIndex].macAddress[5]);
+		}
+		#endif
+		if(_forwardPacket(_forwardingBuffer[_forwardingBufferReadIndex]) == true)	//Process the packet
+		{
+			_forwardingBuffer[_forwardingBufferReadIndex].length = 0;				//Mark as sent
+			_forwardingBufferReadIndex++;											//Advance the buffer index
+			_forwardingBufferReadIndex = _forwardingBufferReadIndex%M2MMESHFORWARDINGBUFFERSIZE;	//Rollover the buffer index
+			_packetSent = true;
+		}
+	}
+	//Now consider sending ELP
+	else if (_serviceFlags & PROTOCOL_ELP_SEND && millis() - (_lastSent[ELP_PACKET_TYPE] - _nextJitter) > _currentInterval[ELP_PACKET_TYPE]) 	//Apply some jitter to the send times
+	{
+		_nextJitter = random(ANTI_COLLISION_JITTER);
+		if(_stable == true && _currentInterval[ELP_PACKET_TYPE] != ELP_DEFAULT_INTERVAL)	//Transition from fast sending
+		{
+			_currentInterval[ELP_PACKET_TYPE] = ELP_DEFAULT_INTERVAL;
+		}
 		if(_sendElp(_sendBuffer))
 		{
 			_lastSent[ELP_PACKET_TYPE] = millis();
@@ -424,8 +452,14 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		}
 		_packetSent = true;
 	}
-	else if (_serviceFlags & PROTOCOL_OGM_SEND && millis() - (_lastSent[OGM_PACKET_TYPE] - random(ANTI_COLLISION_JITTER)) > _currentInterval[OGM_PACKET_TYPE])
+	//Conside sending OGM
+	else if (_serviceFlags & PROTOCOL_OGM_SEND && millis() - (_lastSent[OGM_PACKET_TYPE] - _nextJitter) > _currentInterval[OGM_PACKET_TYPE])
 	{
+		_nextJitter = random(ANTI_COLLISION_JITTER);
+		if(_stable == true && _currentInterval[OGM_PACKET_TYPE] != OGM_DEFAULT_INTERVAL)	//Transition from fast sending
+		{
+			_currentInterval[OGM_PACKET_TYPE] = OGM_DEFAULT_INTERVAL;
+		}
 		if(_sendOgm(_sendBuffer))
 		{
 			_lastSent[OGM_PACKET_TYPE] = millis();
@@ -436,7 +470,8 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		}
 		_packetSent = true;
 	}
-	else if (_serviceFlags & PROTOCOL_NHS_SEND && millis() - (_lastSent[NHS_PACKET_TYPE] - random(ANTI_COLLISION_JITTER)) > _currentInterval[NHS_PACKET_TYPE])
+	//Consider sending NHS
+	else if (_serviceFlags & PROTOCOL_NHS_SEND && millis() - (_lastSent[NHS_PACKET_TYPE] - _nextJitter) > _currentInterval[NHS_PACKET_TYPE])
 	{
 		//Check the availability of the time server
 		/*if(not(_actingAsTimeServer) && currentMeshTimeServer != MESH_ORIGINATOR_NOT_FOUND && not dataIsValid(currentMeshTimeServer,NHS_PACKET_TYPE))
@@ -444,6 +479,13 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 			//Choose a new time server if it's offline
 			chooseNewTimeServer();
 		}*/
+		_nextJitter = random(ANTI_COLLISION_JITTER);
+		if(_stable == true && _currentInterval[NHS_PACKET_TYPE] != NHS_DEFAULT_INTERVAL)	//Transition from fast sending
+		{
+			_currentInterval[NHS_PACKET_TYPE] = NHS_DEFAULT_INTERVAL;
+			_currentInterval[USR_PACKET_TYPE] = USR_DEFAULT_INTERVAL;
+			_currentInterval[FSP_PACKET_TYPE] = FSP_DEFAULT_INTERVAL;
+		}
 		if(_sendNhs(_sendBuffer))
 		{
 			_lastSent[NHS_PACKET_TYPE] = millis();
@@ -454,6 +496,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		}
 		_packetSent = true;
 	}
+	//Housekeep the tables after something happens
 	if(_packetReceived == true || _packetSent == true || millis() - _lastHousekeeping > _housekeepingInterval)	//Need to refresh the stats and routes
 	{
 		//Update the broad mesh statistics and fingerprint
@@ -731,86 +774,53 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 					packet.data[2]--;
 					bool doTheForward = false;
 					#ifdef m2mMeshIncludeDebugFeatures
-					bool logTheForward = false;
 					#endif
 					if(_packetType == ELP_PACKET_TYPE && _serviceFlags & PROTOCOL_ELP_FORWARD)		//This is an ELP packet
 					{
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ELP_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-						{
-							logTheForward = true;
-						}
-						#endif
 						doTheForward = true;
 					}
 					else if(_packetType == OGM_PACKET_TYPE && _serviceFlags & PROTOCOL_OGM_FORWARD)	//This is an OGM packet
 					{
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-						{
-							logTheForward = true;
-						}
-						#endif
 						doTheForward = true;
 					}
 					else if(_packetType == NHS_PACKET_TYPE && _serviceFlags & PROTOCOL_NHS_FORWARD)		//This is a NHS packet
 					{
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-						{
-							logTheForward = true;
-						}
-						#endif
 						doTheForward = true;
 					}
 					else if(_packetType == USR_PACKET_TYPE && _serviceFlags & PROTOCOL_USR_FORWARD)	//This is a USR packet
 					{
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
-						{
-							logTheForward = true;
-						}
-						#endif
 						doTheForward = true;
 					}
 					if(doTheForward == true)	//Forward is OK, we simply use the receive buffer and send from there to avoid copying data
 					{
-						if(packet.data[3] & SEND_TO_ALL_NODES)
+						if(_forwardingBuffer[_fowardingBufferWriteIndex].length == 0)
 						{
-							//This is a flood, send it to all neighbours
-							memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);
+							memcpy(_forwardingBuffer[_fowardingBufferWriteIndex].macAddress, packet.macAddress, 6);
+							_forwardingBuffer[_fowardingBufferWriteIndex].length = packet.length;
+							memcpy(_forwardingBuffer[_fowardingBufferWriteIndex].data, packet.data, packet.length);
+							_forwardingBuffer[_fowardingBufferWriteIndex].timestamp = packet.timestamp;
+							
+							#ifdef m2mMeshIncludeDebugFeatures
+							if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
+							{
+								char packetTypeDescription[] = "UNK";
+								_packetTypeDescription(packetTypeDescription,(packet.data[0] & 0x07));
+								_debugStream->printf_P(m2mMeshfillFWDbufferslotd,_applicationBufferWriteIndex,packet.length, packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5]);
+							}
+							#endif
+							_fowardingBufferWriteIndex++;																//Advance the buffer index
+							_fowardingBufferWriteIndex = _fowardingBufferWriteIndex%M2MMESHFORWARDINGBUFFERSIZE;	//Rollover buffer index
 						}
 						else
 						{
-							//This has a specific destination, send it to the best next hop, if known
-							if(_originator[destinationId].selectedRouter == MESH_ORIGINATOR_NOT_FOUND)
+							#ifdef m2mMeshIncludeDebugFeatures
+							if(_debugEnabled == true && ((_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT) || (_loggingLevel & MESH_UI_LOG_ERRORS)))
 							{
-								memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);	//Fall back to using a broadcast
+								_debugStream->print(m2mMeshFWDbufferfull);
 							}
-							else
-							{
-								memcpy(&packet.macAddress[0], &_originator[_originator[destinationId].selectedRouter].macAddress[0], 6);
-							}
+							#endif
+							_droppedFwdPackets++;
 						}
-						if(packet.data[3] & SEND_TO_ALL_NODES)
-						{
-							delay(_localMacAddress[5]*4);	//Delay up to 1024ms to reduce flood collisions
-						}
-						bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
-						#ifdef m2mMeshIncludeDebugFeatures
-						if(sendResult == true && logTheForward == true)
-						{
-							char packetTypeDescription[] = "UNK";
-							_packetTypeDescription(packetTypeDescription,_packetType);
-							_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd,packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2]);
-						}
-						else if(logTheForward == true)
-						{
-							char packetTypeDescription[] = "UNK";
-							_packetTypeDescription(packetTypeDescription,_packetType);
-							_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed,packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2]);
-						}
-						#endif
 					}
 				}
 			}
@@ -819,6 +829,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				//If it's a very old sequence number disable the protection window to allow the next packet to reset the sequence number
 				//this logic is here to handle a reboot, but ignore a single stray weird sequence number
 				_originator[originatorId].sequenceNumberProtectionWindowActive = false;
+				rollOutTheWelcomeWagon(); //Do some stuff to get a new node updated ASAP
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
@@ -829,6 +840,107 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 		}
 	}
 	packet.length = 0;	//Mark the buffer empty
+}
+bool ICACHE_FLASH_ATTR m2mMeshClass::_forwardPacket(m2mMeshPacketBuffer &packet)
+{
+	#ifdef m2mMeshIncludeDebugFeatures
+	uint8_t _packetType = packet.data[0] & 0x07;
+	uint8_t routerId = _originatorIdFromMac(packet.macAddress);
+	uint8_t originatorMacAddress[6];
+	memcpy(&originatorMacAddress[0], &packet.data[8], 6);
+	uint8_t originatorId = _originatorIdFromMac(originatorMacAddress);
+	uint8_t destinationId = MESH_ORIGINATOR_NOT_FOUND;
+	uint8_t destinationMacAddress[6];
+	if((packet.data[3] & SEND_TO_ALL_NODES) == 0x00)	//If there's a destination, grab it	
+	{
+		memcpy(&destinationMacAddress[0], &packet.data[14], 6);
+		destinationId = _originatorIdFromMac(destinationMacAddress);
+	}	
+	bool logTheForward = false;
+	if(_debugEnabled == true)
+	{
+		if(_packetType == ELP_PACKET_TYPE)		//This is an ELP packet
+		{
+			if(_loggingLevel & MESH_UI_LOG_ELP_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+			{
+				logTheForward = true;
+			}
+		}
+		else if(_packetType == OGM_PACKET_TYPE)	//This is an OGM packet
+		{
+			if(_loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+			{
+				logTheForward = true;
+			}
+		}
+		else if(_packetType == NHS_PACKET_TYPE)		//This is a NHS packet
+		{
+			if(_loggingLevel & MESH_UI_LOG_NHS_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+			{
+				logTheForward = true;
+			}
+		}
+		else if(_packetType == USR_PACKET_TYPE)	//This is a USR packet
+		{
+			if(_loggingLevel & MESH_UI_LOG_USR_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+			{
+				logTheForward = true;
+			}
+		}
+	}
+	#endif
+	if(packet.data[3] & SEND_TO_ALL_NODES)
+	{
+		//This is a flood, send it to all neighbours
+		memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);
+	}
+	else
+	{
+		//This has a specific destination, send it to the best next hop, if known
+		if(_originator[destinationId].selectedRouter == MESH_ORIGINATOR_NOT_FOUND)
+		{
+			memcpy(&packet.macAddress[0], &_broadcastMacAddress[0], 6);	//Fall back to using a broadcast
+		}
+		else
+		{
+			memcpy(&packet.macAddress[0], &_originator[_originator[destinationId].selectedRouter].macAddress[0], 6);
+		}
+	}
+	bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(sendResult == true && logTheForward == true)
+	{
+		char packetTypeDescription[] = "UNK";
+		_packetTypeDescription(packetTypeDescription,_packetType);
+		_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd,packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2]);
+	}
+	else if(logTheForward == true)
+	{
+		char packetTypeDescription[] = "UNK";
+		_packetTypeDescription(packetTypeDescription,_packetType);
+		_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed,packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2]);
+	}
+	#endif
+	return(sendResult);
+}
+void ICACHE_FLASH_ATTR m2mMeshClass::rollOutTheWelcomeWagon()
+{
+	//_currentInterval[ELP_PACKET_TYPE] = ELP_FAST_INTERVAL;
+	//_currentInterval[OGM_PACKET_TYPE] = OGM_FAST_INTERVAL;
+	//_currentInterval[NHS_PACKET_TYPE] = NHS_FAST_INTERVAL;
+	//_currentInterval[USR_PACKET_TYPE] = USR_FAST_INTERVAL;
+	//_currentInterval[FSP_PACKET_TYPE] = FSP_FAST_INTERVAL;
+	_lastSent[OGM_PACKET_TYPE] = millis() - (_currentInterval[OGM_PACKET_TYPE] - 5000);	//Send OGM in 5s
+	if(_actingAsTimeServer)
+	{
+		_lastSent[NHS_PACKET_TYPE] = millis() - (_currentInterval[NHS_PACKET_TYPE] - 10000);	//Send NHS in 10s
+	}
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
+	{
+		_debugStream->print(m2mMeshshorteningtimerstoinductnewnode);
+	}
+	#endif
 }
 
 /*
@@ -1104,15 +1216,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 				//This is a better indirect route than we already have
 				_originator[originatorId].selectedRouter = routerId;
 				_originator[originatorId].gtq = tq;
-				if(_stable == true)
-				{
-					_meshLastChanged = millis();
-					_stable = false;
-					if(eventCallback)
-					{
-						eventCallback(meshEvent::changing);
-					}
-				}
+				_meshHasBecomeUnstable();
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
@@ -1220,20 +1324,41 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(uint8_t routerId, uint8_t origi
 		}
 	}
 }
-
-void ICACHE_FLASH_ATTR m2mMeshClass::_originatorHasBecomeRoutable(const uint8_t originatorId)
+void ICACHE_FLASH_ATTR m2mMeshClass::_meshHasBecomeStable()
 {
-	//Originator has become reachable
-	_numberOfReachableOriginators++;
+	if(_stable == false)	//The number of nodes and checksum is consistent
+	{
+		_meshLastChanged = millis();
+		_stable = true;
+		if(eventCallback)
+		{
+			eventCallback(meshEvent::stable);
+		}
+	}
+}
+void ICACHE_FLASH_ATTR m2mMeshClass::_meshHasBecomeUnstable()
+{
 	if(_stable == true)
 	{
 		_meshLastChanged = millis();
 		_stable = false;
+		_currentInterval[ELP_PACKET_TYPE] = ELP_FAST_INTERVAL;
+		_currentInterval[OGM_PACKET_TYPE] = OGM_FAST_INTERVAL;
+		_currentInterval[NHS_PACKET_TYPE] = NHS_FAST_INTERVAL;
+		_currentInterval[USR_PACKET_TYPE] = USR_FAST_INTERVAL;
+		_currentInterval[FSP_PACKET_TYPE] = FSP_FAST_INTERVAL;
 		if(eventCallback)
 		{
 			eventCallback(meshEvent::changing);
 		}
 	}
+}
+
+void ICACHE_FLASH_ATTR m2mMeshClass::_originatorHasBecomeRoutable(const uint8_t originatorId)
+{
+	//Originator has become reachable
+	_numberOfReachableOriginators++;
+	_meshHasBecomeUnstable();
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
 	{
@@ -1251,15 +1376,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_originatorHasBecomeUnroutable(uint8_t orig
 	}
 	_originator[originatorId].gtq = 0;
 	_originator[originatorId].selectedRouter = MESH_ORIGINATOR_NOT_FOUND;
-	if(_stable == true)
-	{
-		_meshLastChanged = millis();
-		_stable = false;
-		if(eventCallback)
-		{
-			eventCallback(meshEvent::changing);
-		}
-	}
+	_meshHasBecomeUnstable();
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
 	{
@@ -1591,15 +1708,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 		//Check the consistency of the network
 		if(_originator[originatorId].numberOfOriginators != _numberOfOriginators)
 		{
-			if(_stable == true)
-			{
-				_meshLastChanged = millis();
-				_stable = false;
-				if(eventCallback)
-				{
-					eventCallback(meshEvent::changing);
-				}
-			}
+			_meshHasBecomeUnstable();
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
@@ -1609,15 +1718,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 		}
 		else if(packet.data[53] != _meshMacAddress[0] | packet.data[54] != _meshMacAddress[1] | packet.data[55] != _meshMacAddress[2] | packet.data[56] != _meshMacAddress[3] | packet.data[57] != _meshMacAddress[4] | packet.data[58] != _meshMacAddress[5])
 		{
-			if(_stable == true)
-			{
-				_meshLastChanged = millis();
-				_stable = false;
-				if(eventCallback)
-				{
-					eventCallback(meshEvent::changing);
-				}
-			}
+			_meshHasBecomeUnstable();
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
@@ -1625,14 +1726,9 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(uint8_t routerId, uint8_t origi
 			}
 			#endif
 		}
-		else if(_stable == false)	//The number of nodes and checksum is consistent
+		else
 		{
-			_meshLastChanged = millis();
-			_stable = true;
-			if(eventCallback)
-			{
-				eventCallback(meshEvent::stable);
-			}
+			_meshHasBecomeStable();
 		}
 		//Extract the Tx power
 		_originator[originatorId].currentTxPower = float(packet.data[59])/4;
@@ -2196,6 +2292,12 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processUsr(uint8_t routerId, uint8_t origi
 	}
 	else
 	{
+		#ifdef m2mMeshIncludeDebugFeatures
+		if(_debugEnabled == true && ((_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT) || (_loggingLevel & MESH_UI_LOG_ERRORS)))
+		{
+			_debugStream->print(m2mMeshreadAPPbufferfull);
+		}
+		#endif
 		_droppedAppPackets++;
 	}
 }
@@ -2477,15 +2579,8 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_addOriginator(uint8_t* mac, const uint8
 		}
 		#endif
 		_numberOfOriginators++;
-		if(_stable == true)
-		{
-			_meshLastChanged = millis();
-			_stable = false;
-			if(eventCallback)
-			{
-				eventCallback(meshEvent::changing);
-			}
-		}
+		_meshHasBecomeUnstable();
+		rollOutTheWelcomeWagon();			//Do stuff to welcome a new originator
 		return(_numberOfOriginators - 1);
 	}
 	#ifdef m2mMeshIncludeDebugFeatures
@@ -2495,15 +2590,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_addOriginator(uint8_t* mac, const uint8
 		_debugStream->printf_P(m2mMesh02x02x02x02x02x02xcouldnotbeadded,mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
 	}
 	#endif
-	if(_stable == true)
-	{
-		_meshLastChanged = millis();
-		_stable = false;
-		if(eventCallback)
-		{
-			eventCallback(meshEvent::changing);
-		}
-	}
+	_meshHasBecomeUnstable();
 	return(MESH_NO_MORE_ORIGINATORS_LEFT);
 }
 

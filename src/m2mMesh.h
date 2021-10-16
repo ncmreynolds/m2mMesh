@@ -40,9 +40,11 @@
 #if defined(ESP8266)
 #define M2MMESHRECEIVEBUFFERSIZE 6
 #define M2MMESHAPPLICATIONBUFFERSIZE 3
+#define M2MMESHFORWARDINGBUFFERSIZE 2
 #elif defined(ESP32)
 #define M2MMESHRECEIVEBUFFERSIZE 12
 #define M2MMESHAPPLICATIONBUFFERSIZE 6
+#define M2MMESHFORWARDINGBUFFERSIZE 3
 #endif
 
 #if defined(ESP8266) || defined(ESP32)
@@ -69,6 +71,7 @@ const char nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x[] PROGMEM = "\r\nWA
 const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u";
 const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u failed";
 const char m2mMesh02x02x02x02x02x02xsequencenumberprotectiondisabledpossiblereboot[] PROGMEM = "\r\nO:%02x:%02x:%02x:%02x:%02x:%02x sequence number protection disabled, possible reboot";
+const char m2mMeshshorteningtimerstoinductnewnode[] PROGMEM = "\r\nShortening timers to induct new node";
 const char TTL02dFLG02xSEQ08xLENdNBRd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%x LEN:%u NBR:%u";
 const char m2mMeshSent[] PROGMEM = "\r\nSent ";
 const char m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdNBRS02dLENd[] PROGMEM = "\r\nELP RECV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u NBRS:%02d LEN:%u";
@@ -205,9 +208,12 @@ const char m2mMeshTimeserverhasgoneofflinetakingovertimeserverrole[] PROGMEM = "
 const char m2mMeshfillRCVbufferslotd[] PROGMEM = 	"\r\nFill RECV buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadRCVbufferslotd[] PROGMEM =	"\r\nRead RECV buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadRCVbufferfull[] PROGMEM =	"\r\nRead RECV buffer full";
-const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nFill USER buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nFill APP buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadAPPbufferslotd[] PROGMEM =	"\r\nRead APP buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
-const char m2mMeshreadAPPbufferfull[] PROGMEM =	"\r\nRead APP buffer full";
+const char m2mMeshreadAPPbufferfull[] PROGMEM =	"\r\nAPP buffer full";
+const char m2mMeshfillFWDbufferslotd[] PROGMEM = 	"\r\nFill FWD buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshreadFWDbufferslotd[] PROGMEM =	"\r\nRead FWD buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshFWDbufferfull[] PROGMEM =	"\r\nFWD buffer full";
 const char m2mMeshchecksumValid[] PROGMEM =	"\r\nChecksum valid";
 const char m2mMeshchecksumInvalidreceived2xshouldbe2x[] PROGMEM =	"\r\nChecksum invalid, received %02x, should be %02x";
 //const char m2mMeshPacketsentto02x02x02x02x02x02x[] PROGMEM = "Packet sent to %02x:%02x:%02x:%02x:%02x:%02x";
@@ -698,7 +704,12 @@ class m2mMeshClass
 		uint8_t _applicationBufferWriteIndex = 0;								//Receive buffer index
 		uint8_t _applicationBufferReadIndex = 0;								//Receive buffer index
 
-		m2mMeshPacketBuffer _sendBuffer;								//Single send buffer
+		m2mMeshPacketBuffer _sendBuffer;										//Single send buffer for ELP/OGM/NHS
+		
+		m2mMeshPacketBuffer _forwardingBuffer[M2MMESHFORWARDINGBUFFERSIZE];		//Forwarding buffer
+		uint8_t _fowardingBufferWriteIndex = 0;									//Forwarding buffer index
+		uint8_t _forwardingBufferReadIndex = 0;									//Forwarding buffer index
+		uint32_t _forwardingDelay = 0;											//Forwarding delay, which can in principle change
 
 		//Separate buffer for the user packet
 		uint8_t _receivedUserPacketIndex = 0;						//Index during decode
@@ -727,7 +738,8 @@ class m2mMeshClass
 		//static const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
 		static const uint8_t NO_FLAGS = 0x00;						//No flags on packet
 		static const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
-		static const uint32_t ANTI_COLLISION_JITTER = 250ul;		//Jitter in milliseconds to try and avoid in-air collisions
+		static const uint32_t ANTI_COLLISION_JITTER = 250ul;		//Maximum jitter in milliseconds to try and avoid in-air collisions arising from repeated sending at regular intervals
+		uint32_t _nextJitter = 0;									//Next jitter is randomised after every send
 		static const uint8_t MESH_ORIGINATOR_NOT_FOUND = 255;		//Signifies that a node is unset or unknown
 		static const uint8_t MESH_NO_MORE_ORIGINATORS_LEFT = 254;	//Signifies the mesh is 'full' and no more members can join
 
@@ -738,6 +750,7 @@ class m2mMeshClass
 		static const uint8_t ELP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;	//Default ELP flags
 		static const uint8_t ELP_FLAGS_INCLUDES_PEERS = 0x01;		//Flag set when ELP includes peer information
 
+		static const uint32_t ELP_FAST_INTERVAL = 5000ul;			//How often to send ELP (default every 10s)
 		static const uint32_t ELP_DEFAULT_INTERVAL = 10000ul;		//How often to send ELP (default every 10s)
 		static const uint16_t LTQ_MAX_VALUE = 65535;				//Maximum value for Local Transmit Quality
 		static const uint16_t LTQ_STARTING_VALUE = 32768;			//Starting value for Local Transmit Quality given to a new peer
@@ -746,6 +759,7 @@ class m2mMeshClass
 		static const uint8_t OGM_PACKET_TYPE = 0x01;				//The first octet of every ESP-Now packet identifies what it is
 		static const uint8_t OGM_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
 		static const uint8_t OGM_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default OGM flags
+		static const uint32_t OGM_FAST_INTERVAL = 10000ul; 		//How often to send OGM (default every 60s)
 		static const uint32_t OGM_DEFAULT_INTERVAL = 60000ul; 		//How often to send OGM (default every 60s)
 		static const uint8_t OGM_HOP_PENALTY = 0x00ff;				//Drop the GTQ in OGM packets before forwarding
 		static const uint8_t SEQUENCE_NUMBER_MAX_AGE = 8;			//Used for detection of sequence number resets/rollover
@@ -758,6 +772,7 @@ class m2mMeshClass
 		static const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;			//Flag set when the NHS packet includes supply voltage
 		static const uint8_t PROCESSOR_ESP8266 = 0x20;				//
 		static const uint8_t PROCESSOR_ESP32 =   0x40;				//
+		static const uint32_t NHS_FAST_INTERVAL = 30000ul; 			//How often to send NHS (default every 5m)
 		static const uint32_t NHS_DEFAULT_INTERVAL = 300000ul; 		//How often to send NHS (default every 5m)
 
 		#if defined(ESP8266)
@@ -795,18 +810,21 @@ class m2mMeshClass
 		uint32_t _droppedRxPackets = 0;						//Monitor rcv buffer receive problems
 		uint32_t _droppedTxPackets = 0;						//Monitor rcv buffer send problems
 		uint32_t _droppedAppPackets = 0;					//Monitor app buffer receive problems
+		uint32_t _droppedFwdPackets = 0;					//Monitor forwarding buffer receive problems
 
 		//USR - User data packet flags and values
 		const uint8_t USR_PACKET_TYPE = 0x03;				//The first octet of every ESP-Now packet identifies what it is
 		const uint8_t USR_DEFAULT_TTL = 50;					//A TTL of >0 means it may be forwared.
 		const uint8_t USR_DEFAULT_FLAGS = SEND_TO_ALL_NODES;
 		const uint8_t USR_MAX_PACKET_SIZE = 250;			//Maximum packet size for user data
+		const uint32_t USR_FAST_INTERVAL = 1000;			//How often to send low priority user data
 		const uint32_t USR_DEFAULT_INTERVAL = 1000;			//How often to send low priority user data
 
 		//FSP - File Sync Protocol, for SDFat filesystem
 		const uint8_t FSP_PACKET_TYPE = 0x04;				//The first octet of every ESP-Now packet identifies what it is
 		const uint8_t FSP_DEFAULT_TTL = 50;					//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
 		const uint8_t FSP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Not yet implemented
+		const uint32_t FSP_FAST_INTERVAL = 1000;				//How often to send low priority file sync data
 		const uint32_t FSP_DEFAULT_INTERVAL = 1000;			//How often to send low priority file sync data
 
 		//Power management & sleep related variables
@@ -850,6 +868,7 @@ class m2mMeshClass
 		uint8_t _originatorIdFromMac(uint8_t *);			//Finds the ID of an originator from the MAC address or MESH_ORIGINATOR_NOT_FOUND if it isn't found
 		uint8_t _originatorIdFromMac(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 		uint8_t _addOriginator(uint8_t *,uint8_t);			//Adds an originator given the MAC address and channel
+		void rollOutTheWelcomeWagon();						//Change some timings when a new or restarted originator appears
 		void _calculateLtq(uint8_t);						//Calculates the LTQ for a node
 		bool _isLocalMacAddress(uint8_t *);					//Checks if a MAC address is the local one
 
@@ -869,10 +888,13 @@ class m2mMeshClass
 		
 		void _processUsr(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming USR payload
 
-		void _processPacket(m2mMeshPacketBuffer &);				//Process packet headers and handle forwarding
+		void _processPacket(m2mMeshPacketBuffer &);				//Process packet headers and buffer for forwarding if necessary
+		bool _forwardPacket(m2mMeshPacketBuffer &);				//Forward a buffered packet
 		bool _dataIsValid(uint8_t, uint8_t);				//Is a particular protocol up?
 		void _originatorHasBecomeRoutable(uint8_t);
 		void _originatorHasBecomeUnroutable(uint8_t);
+		void _meshHasBecomeUnstable();						//Do stuff when the mesh changes
+		void _meshHasBecomeStable();						//Do stuff when the mesh stabilises
 
 		//Status LED
 		const uint32_t STATUS_LED_BLINK_TIME = 25ul;		//How long the status LED is on
