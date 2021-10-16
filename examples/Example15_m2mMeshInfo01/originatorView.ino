@@ -32,9 +32,9 @@ void originatorView()
       printAtXy(3,12,F("OGM:"));
       printAtXy(3,13,F("OGM interval:"));
       printAtXy(3,14,F("OGM last seen:"));
-      printAtXy(3,16,F("OGM calculated LTQ:"));
-      printAtXy(3,17,F("OGM selected Router:"));
-      printAtXy(3,18,F("OGM selected Router GTQ:"));
+      printAtXy(3,16,F("OGM local transmission quality :"));
+      printAtXy(3,17,F("OGM global transmission quality:"));
+      printAtXy(3,18,F("OGM best router:"));
       printAtXy(3,19,F("OGMs received:"));
       printAtXy(3,20,F("OGMs echoes:"));
 
@@ -279,7 +279,7 @@ void originatorView()
       printAtXy(7,12,F("Down"));
     }
     //OGM GTQ
-    moveToXy(22,16);
+    moveToXy(35,16);
     Serial.printf("%04x",m2mMesh.localTransmissionQuality(currentlyViewedOriginator));
     //NHS up?
     if(m2mMesh.nhsIsValid(currentlyViewedOriginator))
@@ -291,20 +291,23 @@ void originatorView()
       printAtXy(47,3,F("Down"));
     }   
     //OGM selected router
-    moveToXy(23,17);
     if(m2mMesh.validRoute(currentlyViewedOriginator))
     {
-      Serial.printf("%02x     ",m2mMesh.selectedRouter(currentlyViewedOriginator));
       //OGM TQ
-      moveToXy(27,18);
-      Serial.printf("%04x   ",m2mMesh.globalTransmissionQuality(currentlyViewedOriginator));
+      moveToXy(35,17);
+      Serial.printf("%04x",m2mMesh.globalTransmissionQuality(currentlyViewedOriginator));
+      moveToXy(19,18);
+      uint8_t routerMac[6]; //temporary MAC address
+      m2mMesh.macAddress(m2mMesh.selectedRouter(currentlyViewedOriginator),routerMac); //retrieve MAC address
+      Serial.printf("%02x/%02x:%02x:%02x:%02x:%02x:%02x",m2mMesh.selectedRouter(currentlyViewedOriginator), routerMac[0], routerMac[1], routerMac[2], routerMac[3], routerMac[4], routerMac[5]);
     }
     else
     {
-      Serial.print(F("Unknown"));
+      moveToXy(35,17);
+      Serial.print(F("0000"));
       //OGM TQ
-      moveToXy(27,18);
-      Serial.print(F("Unknown"));
+      moveToXy(19,18);
+      Serial.print(F("None                "));
     }
     //OGMs received
     moveToXy(17,19);
