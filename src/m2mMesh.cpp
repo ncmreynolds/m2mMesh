@@ -431,6 +431,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 			_forwardingBuffer[_forwardingBufferReadIndex].length = 0;				//Mark as sent
 			_forwardingBufferReadIndex++;											//Advance the buffer index
 			_forwardingBufferReadIndex = _forwardingBufferReadIndex%M2MMESHFORWARDINGBUFFERSIZE;	//Rollover the buffer index
+			_fwdPackets++;
 			_packetSent = true;
 		}
 	}
@@ -1007,13 +1008,12 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(uint8_t elpTtl,m2mMeshPacketBuffer
 bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elpTtl,m2mMeshPacketBuffer &packet)
 {
 	packet.data[0] = ELP_PACKET_TYPE;					//Add the ELP packet type
-	//packet.data[1] = MESH_PROTOCOL_VERSION;				//Add the mesh protocol version
+	packet.data[1] = 0;									//Here goes the checksum
 	packet.data[2] = elpTtl;							//Add the TTL, usually 0 for ELP
 	packet.data[3] = ELP_DEFAULT_FLAGS;					//Add the default flags
 	if(includeNeighbours)								//Modify the flags if neighbours are included
 	{
-		//Set the includes peers flag
-		packet.data[3] = packet.data[3] | ELP_FLAGS_INCLUDES_PEERS;
+		packet.data[3] = packet.data[3] | ELP_FLAGS_INCLUDES_PEERS;	//Set the includes peers flag
 	}
 	uint32_t sequenceNumber;
 	memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number
@@ -1154,10 +1154,10 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processElp(uint8_t routerId, uint8_t origi
 bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 {
 	uint16_t tQ = 65535;
-	packet.data[0] = OGM_PACKET_TYPE;
-	//packet.data[1] = MESH_PROTOCOL_VERSION;
-	packet.data[2] = _currentTtl[OGM_PACKET_TYPE];
-	packet.data[3] = OGM_DEFAULT_FLAGS;
+	packet.data[0] = OGM_PACKET_TYPE;										//Add the OGM packet type
+	packet.data[1] = 0;														//Here goes the checksum
+	packet.data[2] = _currentTtl[OGM_PACKET_TYPE];							//Add the OGM TTL
+	packet.data[3] = OGM_DEFAULT_FLAGS;										//Add the OGM flags
 	memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));
 	packet.data[8] = _localMacAddress[0];
 	packet.data[9] = _localMacAddress[1];
@@ -1329,6 +1329,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_meshHasBecomeStable()
 	if(_stable == false)	//The number of nodes and checksum is consistent
 	{
 		_meshLastChanged = millis();
+		_forwardingDelay = _localMacAddress[5] * 4;	//Delay up to 1020ms to reduce flood collisions and prioritise reliability
 		_stable = true;
 		if(eventCallback)
 		{
@@ -1341,6 +1342,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_meshHasBecomeUnstable()
 	if(_stable == true)
 	{
 		_meshLastChanged = millis();
+		_forwardingDelay = _localMacAddress[5];	//Reduce forwarding delay to stop buffer filling and prioritise fast discover
 		_stable = false;
 		_currentInterval[ELP_PACKET_TYPE] = ELP_FAST_INTERVAL;
 		_currentInterval[OGM_PACKET_TYPE] = OGM_FAST_INTERVAL;
@@ -1416,14 +1418,10 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_originatorHasBecomeUnroutable(uint8_t orig
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 {
-	/*if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_SEND)
-	{
-		_debugStream->print(F("\r\nm2mMesh building NHS packet "));
-	}*/	
-	packet.data[0] = NHS_PACKET_TYPE;
-	//packet.data[1] = MESH_PROTOCOL_VERSION;
-	packet.data[2] = _currentTtl[NHS_PACKET_TYPE];
-	packet.data[3] = NHS_DEFAULT_FLAGS;
+	packet.data[0] = NHS_PACKET_TYPE;										//Add the NHS packet type
+	packet.data[1] = 0;														//Here goes the checksum
+	packet.data[2] = _currentTtl[NHS_PACKET_TYPE];							//Add the NHS TTL
+	packet.data[3] = NHS_DEFAULT_FLAGS;										//Add the flags
 	memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));
 	//Origin address
 	packet.data[8] = _localMacAddress[0];
@@ -1433,20 +1431,10 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	packet.data[12] = _localMacAddress[4];
 	packet.data[13] = _localMacAddress[5];
 	memcpy(&packet.data[14], &_currentInterval[NHS_PACKET_TYPE], sizeof(_currentInterval[NHS_PACKET_TYPE]));
-	uint32_t now = millis();							//Add the current millis() for 'uptime'
-	memcpy(&packet.data[18], &now, sizeof(now));
-	/*temp.value = uint32_t(ESP.getFreeHeap());			//Add the current free heap
-	packet.data[22] = temp.b[0];
-	packet.data[23] = temp.b[1];
-	packet.data[24] = temp.b[2];
-	packet.data[25] = temp.b[3];*/
-	uint32_t freeHeap = uint32_t(ESP.getFreeHeap());	//Add the current free heap
+	uint32_t now = millis();
+	memcpy(&packet.data[18], &now, sizeof(now));							//Add the current millis() for 'uptime'
+	uint32_t freeHeap = uint32_t(ESP.getFreeHeap());						//Add the current free heap
 	memcpy(&packet.data[22], &freeHeap, sizeof(freeHeap));
-	/*temp.value = _initialFreeHeap;						//Add the initial free heap
-	packet.data[26] = temp.b[0];
-	packet.data[27] = temp.b[1];
-	packet.data[28] = temp.b[2];
-	packet.data[29] = temp.b[3];*/
 	memcpy(&packet.data[26], &_initialFreeHeap, sizeof(_initialFreeHeap));	//Add the initial free heap
 	#if defined(ESP8266)
 	//temp.value = uint32_t(ESP.getMaxFreeBlockSize());	//Add the max block size
@@ -1455,40 +1443,18 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	//temp.value = 0;
 	uint32_t maxFreeBlockSize = 0;
 	#endif
-	/*packet.data[30] = temp.b[0];
-	packet.data[31] = temp.b[1];
-	packet.data[32] = temp.b[2];
-	packet.data[33] = temp.b[3];*/
 	memcpy(&packet.data[30], &maxFreeBlockSize, sizeof(maxFreeBlockSize));
 	#if defined(ESP8266)
 	packet.data[34] = ESP.getHeapFragmentation();		//Add the heap fragmentation
 	#elif defined(ESP32)
 	packet.data[34] = 0;
 	#endif
-	/*temp.value = _rxPackets;							//Add the RX packets
-	packet.data[35] = temp.b[0];
-	packet.data[36] = temp.b[1];
-	packet.data[37] = temp.b[2];
-	packet.data[38] = temp.b[3];*/
 	memcpy(&packet.data[35], &_rxPackets, sizeof(_rxPackets)); //Add the RX packets
-	/*temp.value = _droppedRxPackets;						//Add the dropped RX packets
-	packet.data[39] = temp.b[0];
-	packet.data[40] = temp.b[1];
-	packet.data[41] = temp.b[2];
-	packet.data[42] = temp.b[3];*/
 	memcpy(&packet.data[39], &_droppedRxPackets, sizeof(_droppedRxPackets));	//Add the dropped RX packets
-	/*temp.value = _txPackets;							//Add the TX packets
-	packet.data[43] = temp.b[0];
-	packet.data[44] = temp.b[1];
-	packet.data[45] = temp.b[2];
-	packet.data[46] = temp.b[3];*/
 	memcpy(&packet.data[43], &_txPackets, sizeof(_txPackets));	//Add the TX packets
-	/*temp.value = _droppedTxPackets;						//Add the dropped TX packets
-	packet.data[47] = temp.b[0];
-	packet.data[48] = temp.b[1];
-	packet.data[49] = temp.b[2];
-	packet.data[50] = temp.b[3];*/
 	memcpy(&packet.data[47], &_droppedTxPackets, sizeof(_droppedTxPackets));//Add the dropped TX packets
+	//memcpy(&packet.data[51], &__fwdPackets, sizeof(_fwdPackets));//Add the forwarded packets
+	//memcpy(&packet.data[55], &_droppedFwdPackets, sizeof(_droppedFwdPackets));//Add the dropped forwarding packets
 	packet.data[51] = _numberOfActiveNeighbours;		//Add the number of activeNeighbours
 	packet.data[52] = _numberOfOriginators;				//Add the number of originators
 	packet.data[53] = _meshMacAddress[0];				//Add the mesh MAC address

@@ -807,6 +807,8 @@ class m2mMeshClass
 		uint32_t _currentFreeHeap = _initialFreeHeap;		//Monitor free heap
 		uint32_t _rxPackets = 0;							//Monitor received packets
 		uint32_t _txPackets = 0;							//Monitor sent packets
+		uint32_t _appPackets = 0;							//Monitor forwarded packets
+		uint32_t _fwdPackets = 0;							//Monitor forwarded packets
 		uint32_t _droppedRxPackets = 0;						//Monitor rcv buffer receive problems
 		uint32_t _droppedTxPackets = 0;						//Monitor rcv buffer send problems
 		uint32_t _droppedAppPackets = 0;					//Monitor app buffer receive problems
