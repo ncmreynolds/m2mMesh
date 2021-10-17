@@ -766,7 +766,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				#ifdef m2mMeshIncludeDebugFeatures
 				else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 				{
-					_debugStream->print("\r\nPacket is for another node");
+					_debugStream->printf_P(m2mMeshFloodedpacketunexpectedlyhasdestination02x02x02x02x02x02x,destinationMacAddress[0],destinationMacAddress[1],destinationMacAddress[2],destinationMacAddress[3],destinationMacAddress[4],destinationMacAddress[5]);
 				}
 				#endif
 				//Consider a packet for forwarding, it may already have been changed in earlier processing
