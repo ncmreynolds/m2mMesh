@@ -53,6 +53,13 @@ retrieveDataLength	KEYWORD2
 retrieveStr	KEYWORD2
 skipRetrieve	KEYWORD2
 
+//Pinging nodes
+ping	KEYWORD2
+pingResponse	KEYWORD2
+pingTime	KEYWORD2
+pingHops	KEYWORD2
+markPingRead	KEYWORD2
+
 maxNumberOfOriginators	KEYWORD2
 numberOfNodes	KEYWORD2
 numberOfReachableNodes	KEYWORD2

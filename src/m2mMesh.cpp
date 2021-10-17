@@ -110,18 +110,15 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 	_currentInterval[ELP_PACKET_TYPE] = ELP_FAST_INTERVAL;		//Packet sending intervals, per packet type which may be adjust later to reduce congestion
 	_currentInterval[OGM_PACKET_TYPE] = OGM_FAST_INTERVAL;
 	_currentInterval[NHS_PACKET_TYPE] = NHS_FAST_INTERVAL;
-	_currentInterval[USR_PACKET_TYPE] = USR_FAST_INTERVAL;
-	_currentInterval[FSP_PACKET_TYPE] = FSP_FAST_INTERVAL;
 	_lastSent[ELP_PACKET_TYPE] = 5000ul - _currentInterval[ELP_PACKET_TYPE];	//Offset sending times slightly between the different protocols
 	_lastSent[OGM_PACKET_TYPE] = 10000ul - _currentInterval[OGM_PACKET_TYPE];	//Send the first packets sooner than the default interval
 	_lastSent[NHS_PACKET_TYPE] = 30000ul - _currentInterval[NHS_PACKET_TYPE];	//would cause
-	_lastSent[USR_PACKET_TYPE] = 70000ul - _currentInterval[USR_PACKET_TYPE];
-	_lastSent[FSP_PACKET_TYPE] = 90000ul - _currentInterval[FSP_PACKET_TYPE];
 	_currentTtl[ELP_PACKET_TYPE] = ELP_DEFAULT_TTL;					//TTLs, per packet type which are unlikely to change
 	_currentTtl[OGM_PACKET_TYPE] = OGM_DEFAULT_TTL;
 	_currentTtl[NHS_PACKET_TYPE] = NHS_DEFAULT_TTL;
 	_currentTtl[USR_PACKET_TYPE] = USR_DEFAULT_TTL;
 	_currentTtl[FSP_PACKET_TYPE] = FSP_DEFAULT_TTL;
+	_currentTtl[PING_PACKET_TYPE] = PING_DEFAULT_TTL;
 	return(_initESPNow());											//Initialise ESP-NOW, the function handles the API differences between ESP8266/ESP8285 and ESP32
 }
 
@@ -185,7 +182,7 @@ bool m2mMeshClass::_initESPNow()
 		#endif
 	}
 	#ifdef m2mMeshIncludeDebugFeatures
-	else
+	else if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
 		_debugStream->print(m2mMeshWiFiStatus);
 		_debugStream->print(WiFi.status());
@@ -484,8 +481,6 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		if(_stable == true && _currentInterval[NHS_PACKET_TYPE] != NHS_DEFAULT_INTERVAL)	//Transition from fast sending
 		{
 			_currentInterval[NHS_PACKET_TYPE] = NHS_DEFAULT_INTERVAL;
-			_currentInterval[USR_PACKET_TYPE] = USR_DEFAULT_INTERVAL;
-			_currentInterval[FSP_PACKET_TYPE] = FSP_DEFAULT_INTERVAL;
 		}
 		if(_sendNhs(_sendBuffer))
 		{
@@ -710,7 +705,10 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				//Update the sequence number
 				_originator[originatorId].lastSequenceNumber = packetSequenceNumber;
 				//Refresh first/last seen data
-				_originator[originatorId].lastSeen[_packetType] = millis();
+				if(_packetType < 3)
+				{
+					_originator[originatorId].lastSeen[_packetType] = millis();
+				}
 				//Update the OGM receipt window if it's OGM
 				if(_packetType == OGM_PACKET_TYPE && originatorId == routerId)								//This is an OGM direct from a node
 				{
@@ -723,7 +721,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				uint32_t packetInterval;
 				memcpy(&packetInterval,&packet.data[packetIndex],sizeof(packetInterval));
 				packetIndex+=sizeof(packetInterval);
-				if(packetInterval != _originator[originatorId].interval[_packetType])
+				if(_packetType < 3 && packetInterval != _originator[originatorId].interval[_packetType])
 				{
 					#ifdef m2mMeshIncludeDebugFeatures
 					if(_debugEnabled == true && _originator[originatorId].interval[_packetType] > 0 && _loggingLevel & MESH_UI_LOG_INFORMATION && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
@@ -754,6 +752,10 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 					{
 						_processUsr(routerId, originatorId, packet);	//Process the contents of the USR packet
 					}
+					else if(_packetType == PING_PACKET_TYPE)	//This is a ping packet
+					{
+						_processPing(routerId, originatorId, packet);	//Process the contents of the ping packet
+					}
 					#ifdef m2mMeshIncludeDebugFeatures
 					else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 					{
@@ -769,7 +771,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				#endif
 				//Consider a packet for forwarding, it may already have been changed in earlier processing
 				//The TTL must be >0 and either a flood or NOT have this node at its source or destination
-				if(packet.data[2] > 0 && (bool(packet.data[3] & SEND_TO_ALL_NODES) || (not _isLocalMacAddress(destinationMacAddress))))
+				if(packet.data[2] > 0 && (bool(packet.data[3] & SEND_TO_ALL_NODES) || (not _isLocalMacAddress(destinationMacAddress)) || (_packetType == PING_PACKET_TYPE &&_isLocalMacAddress(destinationMacAddress) == true)))
 				{
 					//Reduce the TTL, regardless whether we end up forwarding or not
 					packet.data[2]--;
@@ -789,6 +791,10 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 						doTheForward = true;
 					}
 					else if(_packetType == USR_PACKET_TYPE && _serviceFlags & PROTOCOL_USR_FORWARD)	//This is a USR packet
+					{
+						doTheForward = true;
+					}
+					else if(_packetType == PING_PACKET_TYPE && _serviceFlags & PROTOCOL_USR_FORWARD)	//This is a ping packet
 					{
 						doTheForward = true;
 					}
@@ -881,7 +887,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_forwardPacket(m2mMeshPacketBuffer &packet)
 				logTheForward = true;
 			}
 		}
-		else if(_packetType == USR_PACKET_TYPE)	//This is a USR packet
+		else if(_packetType == USR_PACKET_TYPE || _packetType == PING_PACKET_TYPE)	//This is a USR packet
 		{
 			if(_loggingLevel & MESH_UI_LOG_USR_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 			{
@@ -926,11 +932,6 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_forwardPacket(m2mMeshPacketBuffer &packet)
 }
 void ICACHE_FLASH_ATTR m2mMeshClass::rollOutTheWelcomeWagon()
 {
-	//_currentInterval[ELP_PACKET_TYPE] = ELP_FAST_INTERVAL;
-	//_currentInterval[OGM_PACKET_TYPE] = OGM_FAST_INTERVAL;
-	//_currentInterval[NHS_PACKET_TYPE] = NHS_FAST_INTERVAL;
-	//_currentInterval[USR_PACKET_TYPE] = USR_FAST_INTERVAL;
-	//_currentInterval[FSP_PACKET_TYPE] = FSP_FAST_INTERVAL;
 	_lastSent[OGM_PACKET_TYPE] = millis() - (_currentInterval[OGM_PACKET_TYPE] - 5000);	//Send OGM in 5s
 	if(_actingAsTimeServer)
 	{
@@ -1347,8 +1348,6 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_meshHasBecomeUnstable()
 		_currentInterval[ELP_PACKET_TYPE] = ELP_FAST_INTERVAL;
 		_currentInterval[OGM_PACKET_TYPE] = OGM_FAST_INTERVAL;
 		_currentInterval[NHS_PACKET_TYPE] = NHS_FAST_INTERVAL;
-		_currentInterval[USR_PACKET_TYPE] = USR_FAST_INTERVAL;
-		_currentInterval[FSP_PACKET_TYPE] = FSP_FAST_INTERVAL;
 		if(eventCallback)
 		{
 			eventCallback(meshEvent::changing);
@@ -2746,6 +2745,165 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::setNodeName(String newName)
 	return(setNodeName(tempArray));
 }
 
+/*
+ *	Methods related to pinging nodes
+ *
+ *
+ */
+
+bool ICACHE_FLASH_ATTR m2mMeshClass::ping(uint8_t destId)
+{
+	if(destId != MESH_ORIGINATOR_NOT_FOUND && destId < _numberOfOriginators)
+	{
+		m2mMeshPacketBuffer pingPacket;
+		pingPacket.data[0] = PING_PACKET_TYPE;				//Packet type
+		pingPacket.data[1] = 0;								//The CRC goes here
+		pingPacket.data[2] = _currentTtl[PING_PACKET_TYPE];	//TTL
+		pingPacket.data[3] = PING_DEFAULT_FLAGS;			//Default flags
+		memcpy(&pingPacket.data[4], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number
+		pingPacket.data[8] = _localMacAddress[0];			//Origin address
+		pingPacket.data[9] = _localMacAddress[1];
+		pingPacket.data[10] = _localMacAddress[2];
+		pingPacket.data[11] = _localMacAddress[3];
+		pingPacket.data[12] = _localMacAddress[4];
+		pingPacket.data[13] = _localMacAddress[5];
+		pingPacket.data[14] = _originator[destId].macAddress[0];
+		pingPacket.data[15] = _originator[destId].macAddress[1];
+		pingPacket.data[16] = _originator[destId].macAddress[2];
+		pingPacket.data[17] = _originator[destId].macAddress[3];
+		pingPacket.data[18] = _originator[destId].macAddress[4];
+		pingPacket.data[19] = _originator[destId].macAddress[5];
+		uint32_t now = millis();
+		memcpy(&pingPacket.data[20], &now, sizeof(now));	//Add the sending time
+		pingPacket.data[24] = 0; //Log the number of hops
+		pingPacket.length = 25;
+		if(_routePacket(pingPacket))
+		{
+			_sequenceNumber++;
+			return(_sendPacket(pingPacket));
+		}
+	}
+	return(false);
+}
+
+void ICACHE_FLASH_ATTR m2mMeshClass::_processPing(uint8_t routerId, uint8_t originatorId, m2mMeshPacketBuffer &packet)
+{
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
+	{
+		_debugStream->printf_P(m2mMeshPINGreceivedR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5],packet.data[2],packet.length);
+	}
+	#endif
+	if(packet.data[3] & PING_FLAGS_RESPONSE)	//This is a ping response for a ping this node sent
+	{
+		if(_applicationBuffer[_applicationBufferWriteIndex].length == 0) //There's a free slot in the app buffer
+		{
+			memcpy(_applicationBuffer[_applicationBufferWriteIndex].macAddress, packet.macAddress, 6);
+			_applicationBuffer[_applicationBufferWriteIndex].length = packet.length;
+			memcpy(_applicationBuffer[_applicationBufferWriteIndex].data, packet.data, packet.length);
+			_applicationBuffer[_applicationBufferWriteIndex].timestamp = packet.timestamp;
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
+			{
+				char packetTypeDescription[] = "UNK";
+				_packetTypeDescription(packetTypeDescription,(packet.data[0] & 0x07));
+				_debugStream->printf_P(m2mMeshfillAPPbufferslotd,_applicationBufferWriteIndex,packet.length, packetTypeDescription,packet.macAddress[0],packet.macAddress[1],packet.macAddress[2],packet.macAddress[3],packet.macAddress[4],packet.macAddress[5],_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5]);
+			}
+			#endif
+			_applicationBufferWriteIndex++;																//Advance the buffer index
+			_applicationBufferWriteIndex = _applicationBufferWriteIndex%M2MMESHAPPLICATIONBUFFERSIZE;	//Rollover buffer index
+			if(eventCallback)
+			{
+				eventCallback(meshEvent::ping);
+			}
+
+		}
+		else
+		{
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && ((_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT) || (_loggingLevel & MESH_UI_LOG_ERRORS)))
+			{
+				_debugStream->print(m2mMeshreadAPPbufferfull);
+			}
+			#endif
+			_droppedAppPackets++;
+		}
+		packet.data[2] = 0;	//Smash the TTL to 0 to stop an endless forwarding loop
+	}
+	else //This node is the target of the ping, turn the packet around and forward it back
+	{
+		packet.data[3] = packet.data[3] | PING_FLAGS_RESPONSE;				//Mark it as a response
+		memcpy(&packet.data[14], &packet.data[8], 6);						//Set the destination from the source
+		memcpy(&packet.data[8], &_localMacAddress, 6);						//Set source as this node
+		packet.data[2] = _currentTtl[PING_PACKET_TYPE];						//Reset the TTL
+		memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number for this node
+		_sequenceNumber++;	//Increment this node's sequence number
+		if(packet.length < ESP_NOW_MAX_PACKET_SIZE - 6)
+		{
+			memcpy(&packet.data[packet.length], &_localMacAddress, 6);		//Copy in this node's address
+			packet.length += 6;
+			packet.data[24]++;	//Increase the logged hop count
+		}
+	}
+}
+
+bool ICACHE_FLASH_ATTR m2mMeshClass::pingResponse()
+{
+	for(uint8_t i = 0 ; i < M2MMESHAPPLICATIONBUFFERSIZE ; i++)
+	{
+		if(_applicationBuffer[_applicationBufferReadIndex].length > 0 && _applicationBuffer[_applicationBufferReadIndex].data[0] == PING_PACKET_TYPE)
+		{
+			//Non-zero length implies data in the buffer
+			return(true);
+		}
+		_applicationBufferReadIndex++;									//Advance the buffer index
+		_applicationBufferReadIndex = 
+			_applicationBufferReadIndex%M2MMESHAPPLICATIONBUFFERSIZE;	//Rollover buffer index
+	}
+	return(false);
+}
+
+uint32_t ICACHE_FLASH_ATTR m2mMeshClass::pingTime()
+{
+	if(_applicationBuffer[_applicationBufferReadIndex].data[0] == PING_PACKET_TYPE)
+	{
+		uint32_t sendTime;
+		memcpy(&sendTime, &_applicationBuffer[_applicationBufferReadIndex].data[20], sizeof(sendTime));
+		return(millis() - sendTime);
+	}
+	return(0xFFFFFFFF);	//False return time
+}
+
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::pingHops()
+{
+	if(_applicationBuffer[_applicationBufferReadIndex].data[0] == PING_PACKET_TYPE)
+	{
+		return(_applicationBuffer[_applicationBufferReadIndex].data[24]);
+	}
+	return(0xff);
+}
+
+void ICACHE_FLASH_ATTR m2mMeshClass::markPingRead()
+{
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
+	{
+		char packetTypeDescription[] = "UNK";
+		_packetTypeDescription(packetTypeDescription,(_applicationBuffer[_applicationBufferReadIndex].data[0] & 0x07));
+		_debugStream->printf_P(m2mMeshreadAPPbufferslotd,_applicationBufferReadIndex, _applicationBuffer[_applicationBufferReadIndex].length, packetTypeDescription, _applicationBuffer[_applicationBufferReadIndex].macAddress[0], _applicationBuffer[_applicationBufferReadIndex].macAddress[1], _applicationBuffer[_applicationBufferReadIndex].macAddress[2], _applicationBuffer[_applicationBufferReadIndex].macAddress[3], _applicationBuffer[_applicationBufferReadIndex].macAddress[4], _applicationBuffer[_applicationBufferReadIndex].macAddress[5]);
+	}
+	#endif
+	if(_applicationBuffer[_applicationBufferReadIndex].length > 0)
+	{
+		_applicationBuffer[_applicationBufferReadIndex].length = 0;								//Mark buffer slot empty
+		_applicationBufferReadIndex++;															//Advance the buffer index
+		_applicationBufferReadIndex = _applicationBufferReadIndex%M2MMESHAPPLICATIONBUFFERSIZE;	//Rollover buffer index
+	}
+	_receivedUserPacketIndex = ESP_NOW_MAX_PACKET_SIZE;
+	_receivedUserPacketFieldCounter = 0;
+}
+
+
 //Functions for adding data to a packet before sending. These are overloaded for each type you can send
 //They are all similar, using a union to encode data, a single byte to say which type the data is and incrementing an index as they go
 /*
@@ -2826,7 +2984,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader(const uint8_t mac0, 
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::payloadLeft()
 {
 	_buildUserPacketHeader();
-	return(USR_MAX_PACKET_SIZE - _userPacketBuffer.length);
+	return(ESP_NOW_MAX_PACKET_SIZE - _userPacketBuffer.length);
 }
 
 //Functions for setting destination on a packet before sending. These are overloaded to make it easier to set a destination.
@@ -2865,11 +3023,11 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 		_userPacketBuffer.data[_userPacketFieldCounterIndex] = _userPacketBuffer.data[_userPacketFieldCounterIndex] + 1;	//Increment the field counter
 		return(true);
 	}
-	else if(_userPacketBuffer.length + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+	else if(_userPacketBuffer.length + numberOfElements + 1 < ESP_NOW_MAX_PACKET_SIZE)
 	{
 		if(numberOfElements < 15)
 		{
-			if(_userPacketBuffer.length + numberOfElements < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements < ESP_NOW_MAX_PACKET_SIZE)
 			{
 				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STRING | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
 			}
@@ -2880,7 +3038,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 		}
 		else
 		{
-			if(_userPacketBuffer.length + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements + 1 < ESP_NOW_MAX_PACKET_SIZE)
 			{
 				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STRING | 0xf0;	//Mark that this field has 15 members or more
 				_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
@@ -2906,7 +3064,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(dataToAdd == nullptr && _userPacketBuffer.length + 2 < USR_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
+	if(dataToAdd == nullptr && _userPacketBuffer.length + 2 < ESP_NOW_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
 	{
 		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR;
 		_userPacketBuffer.data[_userPacketBuffer.length++] = 0;
@@ -2919,7 +3077,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 		uint16_t numberOfElements = strlen(dataToAdd);
 		if(numberOfElements < 15)
 		{
-			if(_userPacketBuffer.length + numberOfElements < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements < ESP_NOW_MAX_PACKET_SIZE)
 			{
 				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
 			}
@@ -2930,7 +3088,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 		}
 		else
 		{
-			if(_userPacketBuffer.length + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements + 1 < ESP_NOW_MAX_PACKET_SIZE)
 			{
 				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR | 0xf0;	//Mark that this field has 15 members or more
 				_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
@@ -2950,7 +3108,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
 {
 	_buildUserPacketHeader();
-	if(dataToAdd == nullptr && _userPacketBuffer.length + 2 < USR_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
+	if(dataToAdd == nullptr && _userPacketBuffer.length + 2 < ESP_NOW_MAX_PACKET_SIZE)// || strlen(dataToAdd) == 0)	//Handle the edge case of being passed an empty string
 	{
 		_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR;
 		_userPacketBuffer.data[_userPacketBuffer.length++] = 0;
@@ -2963,7 +3121,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
 		uint16_t numberOfElements = strlen(dataToAdd);
 		if(numberOfElements < 15)
 		{
-			if(_userPacketBuffer.length + numberOfElements < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements < ESP_NOW_MAX_PACKET_SIZE)
 			{
 				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
 			}
@@ -2974,7 +3132,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
 		}
 		else
 		{
-			if(_userPacketBuffer.length + numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+			if(_userPacketBuffer.length + numberOfElements + 1 < ESP_NOW_MAX_PACKET_SIZE)
 			{
 				_userPacketBuffer.data[_userPacketBuffer.length++] = USR_DATA_STR | 0xf0;	//Mark that this field has 15 members or more
 				_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
@@ -4169,6 +4327,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_packetTypeDescription(char *desc, uint8_t 
 			desc[0] = 'F';
 			desc[1] = 'S';
 			desc[2] = 'P';
+		break;
+		case 0x05:
+			desc[0] = 'P';
+			desc[1] = 'N';
+			desc[2] = 'G';
 		break;
 	}
 }

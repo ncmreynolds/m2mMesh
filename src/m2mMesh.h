@@ -52,7 +52,7 @@
 #define M2MMESH_CALLBACK std::function<void(meshEvent)> eventCallback
 #endif
 
-enum class meshEvent : uint8_t {joined, left, stable, changing, complete, synced, message};
+enum class meshEvent : uint8_t {joined, left, stable, changing, complete, synced, message, ping};
 
 //Error messages if debug enabled
 #ifdef m2mMeshIncludeDebugFeatures
@@ -163,6 +163,7 @@ const char m2mMeshNHStimeoffsetnegdms[] PROGMEM = "\r\nNHS time offset -%ums";
 const char m2mMeshNHStimeoffsetposdms[] PROGMEM = "\r\nNHS time offset +%ums";
 const char m2mMeshNHSmeshtimesettos[] PROGMEM = "\r\nNHS mesh time set to %s";
 const char m2mMesh02x02x02x02x02x02xdbytesm2mMeshType[] PROGMEM = "%02x:%02x:%02x:%02x:%02x:%02x %u bytes\r\nType:";
+const char m2mMeshPINGreceivedR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nPING received R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u Length:%u";
 const char m2mMeshChecksumx[] PROGMEM = " Checksum:%02x";
 const char m2mMeshTTLd[] PROGMEM = " TTL:%u";
 const char m2mMeshFlags2x[] PROGMEM = " Flags:%02x";
@@ -236,8 +237,8 @@ struct m2mMeshOriginatorInfo							//A structure for storing information about o
 	//Routing info
 	uint32_t lastSequenceNumber = 0;					//The last sequence number from this originator
 	bool sequenceNumberProtectionWindowActive = true;	//Used to handle rollover and out of sequence packets
-	uint32_t lastSeen[5] = {0, 0, 0, 0, 0};				//The last time each protocol ELP/OGM/NHS/USR/FSP was seen
-	uint32_t interval[5] = {0, 0, 0, 0, 0};				//The expected interval for each protocol ELP/OGM/NHS/USR/FSP
+	uint32_t lastSeen[3] = {0, 0, 0};					//The last time each protocol ELP/OGM/NHS was seen
+	uint32_t interval[3] = {0, 0, 0};					//The expected interval for ELP/OGM/NHS ELP/OGM/NHS/USR/FSP
 	uint16_t ogmReceived = 0;							//The number of OGMs received
 	uint32_t ogmReceiptLastConfirmed = 0;				//Last time an incoming OGM was checked for
 	uint16_t ogmEchoes = 0;								//The number of OGM ecoes received
@@ -381,6 +382,14 @@ class m2mMeshClass
 		//void retrieveUint8_tArray(uint8_t *);	//Retrieve int8_t array from a message
 		//void retrieveUint16_tArray(uint16_t *);	//Retrieve int16_t array from a message
 		void skipRetrieve();					//Skip retrieving this field
+		
+		//Ping methods
+		bool ping(uint8_t);						//Send a ping
+		bool pingResponse();					//A ping response has been received
+		uint32_t pingTime();					//Round trip time of the ping
+		uint8_t pingHops();						//Number of hops the ping has traversed
+		void markPingRead();					//Mark the ping as read
+
 
 		//Generic templated retrieve function (which must be in the class definition)
 		template<typename typeToRetrieve>
@@ -417,7 +426,7 @@ class m2mMeshClass
 			uint8_t dataType = determineType(dataToAdd);
 			if(dataType == USR_DATA_BOOL)	//Bool is a special case for packing
 			{
-				if(_userPacketBuffer.length + sizeof(dataToAdd) < USR_MAX_PACKET_SIZE)
+				if(_userPacketBuffer.length + sizeof(dataToAdd) < ESP_NOW_MAX_PACKET_SIZE)
 				{
 					if(dataToAdd == true)
 					{
@@ -437,7 +446,7 @@ class m2mMeshClass
 			}
 			else
 			{
-				if(_userPacketBuffer.length + sizeof(dataToAdd) + 1 < USR_MAX_PACKET_SIZE)
+				if(_userPacketBuffer.length + sizeof(dataToAdd) + 1 < ESP_NOW_MAX_PACKET_SIZE)
 				{
 					_userPacketBuffer.data[_userPacketBuffer.length++] = dataType;
 					memcpy(&_userPacketBuffer.data[_userPacketBuffer.length],&dataToAdd,sizeof(dataToAdd));						//Copy in the data
@@ -457,7 +466,7 @@ class m2mMeshClass
 			_buildUserPacketHeader();
 			if(numberOfElements < 15)
 			{
-				if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements < USR_MAX_PACKET_SIZE)
+				if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements < ESP_NOW_MAX_PACKET_SIZE)
 				{
 					_userPacketBuffer.data[_userPacketBuffer.length++] = determinePointerType(dataToAdd) | (numberOfElements<<4);	//Mark that this field has 15 members or fewer
 				}
@@ -468,7 +477,7 @@ class m2mMeshClass
 			}
 			else
 			{
-				if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements + 1 < USR_MAX_PACKET_SIZE)
+				if(_userPacketBuffer.length + sizeof(dataToAdd[0]) * numberOfElements + 1 < ESP_NOW_MAX_PACKET_SIZE)
 				{
 					_userPacketBuffer.data[_userPacketBuffer.length++] = determinePointerType(dataToAdd) | 0xf0;	//Mark that this field has 15 members or more
 					_userPacketBuffer.data[_userPacketBuffer.length++] = numberOfElements;
@@ -682,9 +691,9 @@ class m2mMeshClass
 		uint16_t _serviceFlags = 0xffff ^					//Controls which protocols and services this node offers, which may vary as the mesh changes
 			(PROTOCOL_NHS_SUPPLY_VOLTAGE |
 			PROTOCOL_ELP_FORWARD);
-		uint32_t _currentInterval[5];						//Packet sending intervals, per packet type
-		uint32_t _lastSent[5];								//Internal timers, per packet type
-		uint32_t _currentTtl[5];							//TTLs, per packet type
+		uint32_t _currentInterval[3];						//Packet sending intervals, per packet type
+		uint32_t _lastSent[6];								//Internal timers, per packet type
+		uint32_t _currentTtl[6];							//TTLs, per packet type
 		uint32_t _meshLastChanged = 0;
 		bool _stable = false;								//Is the mesh stable?
 		uint32_t _lastHousekeeping = 0;
@@ -818,16 +827,16 @@ class m2mMeshClass
 		const uint8_t USR_PACKET_TYPE = 0x03;				//The first octet of every ESP-Now packet identifies what it is
 		const uint8_t USR_DEFAULT_TTL = 50;					//A TTL of >0 means it may be forwared.
 		const uint8_t USR_DEFAULT_FLAGS = SEND_TO_ALL_NODES;
-		const uint8_t USR_MAX_PACKET_SIZE = 250;			//Maximum packet size for user data
-		const uint32_t USR_FAST_INTERVAL = 1000;			//How often to send low priority user data
-		const uint32_t USR_DEFAULT_INTERVAL = 1000;			//How often to send low priority user data
 
 		//FSP - File Sync Protocol, for SDFat filesystem
 		const uint8_t FSP_PACKET_TYPE = 0x04;				//The first octet of every ESP-Now packet identifies what it is
 		const uint8_t FSP_DEFAULT_TTL = 50;					//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
 		const uint8_t FSP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Not yet implemented
-		const uint32_t FSP_FAST_INTERVAL = 1000;				//How often to send low priority file sync data
-		const uint32_t FSP_DEFAULT_INTERVAL = 1000;			//How often to send low priority file sync data
+
+		const uint8_t PING_PACKET_TYPE = 0x05;				//The first octet of every ESP-Now packet identifies what it is
+		const uint8_t PING_DEFAULT_TTL = 50;				//A TTL of >0 means it may be forwared.
+		const uint8_t PING_DEFAULT_FLAGS = 0x00;			//No flags for ping by defualt
+		static const uint8_t PING_FLAGS_RESPONSE = 0x01;	//Flag set this is a response
 
 		//Power management & sleep related variables
 		const uint32_t POWER_MANAGEMENT_INTERVAL = 10000;	//How often to adjust the Wi-Fi Tx power
@@ -889,6 +898,7 @@ class m2mMeshClass
 		void _processNhs(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming NHS payload
 		
 		void _processUsr(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming USR payload
+		void _processPing(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming USR payload
 
 		void _processPacket(m2mMeshPacketBuffer &);				//Process packet headers and buffer for forwarding if necessary
 		bool _forwardPacket(m2mMeshPacketBuffer &);				//Forward a buffered packet
