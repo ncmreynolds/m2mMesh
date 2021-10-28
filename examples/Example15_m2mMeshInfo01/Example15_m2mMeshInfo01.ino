@@ -51,7 +51,7 @@ bool currentChannelChanged = false;
 uint32_t channelLastChanged = 0;
 uint8_t currentChannel = 1;
 
-bool supplyVoltageChanged = false;
+//bool supplyVoltageChanged = false;
 uint32_t uiRedrawTimer;
 bool currentTxPowerChanged = false;
 uint8_t currentlyViewedOriginator = 0;
@@ -104,13 +104,13 @@ void ICACHE_FLASH_ATTR setup(){
   drawUi();
   Serial.write(17); //Send an XON to unlock an XOFFed terminal
   //m2mMesh.enableDebugging(Serial);
-  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | 
+  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT);
   //m2mMesh.MESH_UI_LOG_ELP_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_NHS_RECEIVED |  m2mMesh.MESH_UI_LOG_USR_RECEIVED);
   //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_NHS_RECEIVED |  m2mMesh.MESH_UI_LOG_USR_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_SEND | m2mMesh.MESH_UI_LOG_NHS_SEND | m2mMesh.MESH_UI_LOG_OGM_FORWARDING );
   //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_NHS_RECEIVED);
   //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_OGM_SEND | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_FORWARDING);
   //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_OGM_SEND | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_FORWARDING);
-  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_ELP_FORWARDING | m2mMesh.MESH_UI_LOG_OGM_FORWARDING | m2mMesh.MESH_UI_LOG_NHS_FORWARDING | m2mMesh.MESH_UI_LOG_USR_FORWARDING);
+  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_ELP_FORWARDING | m2mMesh.MESH_UI_LOG_OGM_FORWARDING | m2mMesh.MESH_UI_LOG_NHS_FORWARDING | m2mMesh.MESH_UI_LOG_USR_FORWARDING);
   //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_BUFFER_MANAGEMENT);
   loggingLevel = m2mMesh.loggingLevel();  
   //m2mMesh.begin(16,11);  //Begin the ESP-Now mesh with default arguments  
@@ -122,6 +122,7 @@ void ICACHE_FLASH_ATTR setup(){
 }
 
 void loop() {
+  m2mMesh.housekeeping();  //This needs to run regularly otherwise the mesh will fail
   if(millis() - lastRedraw > redrawInterval) {
     if(numberOfActiveNeighbours != m2mMesh.numberOfActiveNeighbours())
     {
@@ -156,16 +157,26 @@ void loop() {
     inputHandling();
     drawUi();
     lastRedraw = millis();
-  }
-  m2mMesh.housekeeping();  //This needs to run regularly otherwise the mesh will fail
-  if(m2mMesh.messageWaiting())
-  {
-    m2mMesh.markMessageRead();  //Simply trash any inbound application messages
-  }
-  if(channelLastChanged - millis() > 5000)
-  {
-    changeChannel();
-    currentChannelChanged = false;
+    if(m2mMesh.messageWaiting())
+    {
+      if(currentUiView == UI_STATUS || currentUiView == UI_LOGS)
+      {
+        uint8_t sourceId = m2mMesh.sourceId();
+        if(logAllNodes || sourceId == nodeToLog)
+        {
+          uint8_t macaddress[6];
+          m2mMesh.macAddress(sourceId,macaddress);
+          moveToXy(1,23);
+          Serial.printf("\r\nIncoming message from %02x:%02x:%02x:%02x:%02x:%02x",macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5]);
+          displayMessage();
+        }
+      }
+      m2mMesh.markMessageRead();  //Simply trash any inbound application messages
+    }
+    if(currentChannelChanged == true && channelLastChanged - millis() > 5000) //Allow several presses of 'c' before committing to the new channel
+    {
+      changeChannel();
+    }
   }
 }
 
@@ -180,6 +191,7 @@ void ICACHE_FLASH_ATTR friendlyUptime(uint32_t uptime, char * formattedUptime)
 
 void ICACHE_FLASH_ATTR drawUi()
 {
+  refreshTopLine();
   if(currentUiView == UI_PROTOCOLS)
   {
     protocolsView();
