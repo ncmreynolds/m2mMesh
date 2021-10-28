@@ -1,11 +1,5 @@
-void statusView()
+void drawTopLine()
 {
-  if(drawWholeUi)
-  {
-    moveToXy(80,24);
-    eraseScreen();
-    hideCursor();
-
     moveToXy(1,1);
     if(m2mMesh.nodeNameIsSet())
     {
@@ -25,8 +19,8 @@ void statusView()
     Serial.print(F("Tx:"));
     moveToXy(65,1);
     Serial.print(F("Fl:"));
-    moveToXy(73,1);
-    Serial.print(F("Vcc:"));
+    //moveToXy(73,1);
+    //Serial.print(F("Vcc:"));
 
     moveToXy(1,2);
     Serial.print(F("Neighbours:--- Mesh:---/---"));
@@ -36,7 +30,116 @@ void statusView()
     Serial.print(F("Err:"));
     moveToXy(60,2);
     Serial.print(F("Heap:"));
-
+    refreshTopLine();
+}
+void refreshTopLine()
+{
+  //Uptime
+  {
+    printUptimeAtXy(22,1,millis());
+  }
+  //Mesh time
+  printUptimeAtXy(38,1,m2mMesh.syncedMillis());
+  if(m2mMesh.actingAsTimeServer())
+  {
+    Serial.print('*');
+  }
+    else if(abs(m2mMesh.meshTimeDrift()) > 1000)
+  {
+    Serial.print('D');
+  }
+  else
+  {
+    Serial.print(' ');
+  }
+  moveToXy(12,2);
+  Serial.printf("%03d",numberOfActiveNeighbours);
+  //Reachable Originators
+  if(numberOfReachableNodesChanged || drawWholeUi)
+  {
+    moveToXy(21,2);
+    Serial.printf("%03d",m2mMesh.numberOfReachableNodes());
+    numberOfReachableNodesChanged = false;
+  }
+  //Sequence number
+  if(sequenceNumberChanged  || drawWholeUi)
+  {
+    moveToXy(34,2);
+    Serial.printf("%08x",sequenceNumber);
+    sequenceNumberChanged = false;
+  }
+  //RX/TX errors
+  moveToXy(47,2);
+  if(m2mMesh.rxPackets() + m2mMesh.droppedRxPackets() > 0)
+  {
+    Serial.printf("%02d%%Rx",(m2mMesh.droppedRxPackets()*100)/(m2mMesh.rxPackets() + m2mMesh.droppedRxPackets()));
+  }
+  else
+  {
+    Serial.print(F("00%Rx"));
+  }
+  Serial.print('/');
+  if(m2mMesh.txPackets() + m2mMesh.droppedTxPackets() > 0)
+  {
+    Serial.printf("%02d%%Tx",(m2mMesh.droppedTxPackets()*100)/(m2mMesh.txPackets() + m2mMesh.droppedTxPackets()));
+  }
+  else
+  {
+    Serial.print(F("00%Tx"));
+  }
+  //Free Heap
+  {
+    moveToXy(65,2);
+    Serial.printf("%05d/%05d(%02d%%)",ESP.getFreeHeap(),initialFreeHeap,(100ul*ESP.getFreeHeap()/initialFreeHeap));
+  }
+  //Originators
+  if(numberOfNodesChanged || drawWholeUi)
+  {
+    moveToXy(25,2);
+    Serial.printf("%03d",m2mMesh.numberOfNodes());
+    numberOfNodesChanged = false;
+  }
+  //Mesh stability
+  if(stableChanged ||  drawWholeUi)
+  {
+    moveToXy(28,2);
+    if(m2mMesh.stable())
+    {
+      Serial.print('S');
+    }
+    else
+    {
+      Serial.print('U');
+    }
+    stableChanged = false;
+  }
+  if(currentChannelChanged || drawWholeUi)
+  {
+    moveToXy(54,1);
+    Serial.printf("%02d",currentChannel);
+    currentChannelChanged = false;
+  }
+  //Tx power
+  if(currentTxPowerChanged || drawWholeUi)
+  {
+    moveToXy(60,1);
+    Serial.printf("%02.1f",m2mMesh.currentTxPower()*4);
+    //Tx Power floor
+    moveToXy(68,1);
+    Serial.printf("%02.1f",m2mMesh.txPowerFloor()*4);
+    currentTxPowerChanged = false;
+  }
+  moveToXy(1,23);
+}
+void statusView()
+{
+  if(drawWholeUi)
+  {
+    moveToXy(80,24);
+    eraseScreen();
+    hideCursor();
+    drawTopLine();
+    //Originator table
     moveToXy(1,3);
     Serial.print(F("ID"));
     moveToXy(9,3);
@@ -88,87 +191,10 @@ void statusView()
     Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew | "));
     Serial.print(F("Switch "));inverseOn();Serial.print('C');inverseOff();Serial.print(F("hannel"));
   }
-  //Uptime
-  {
-    printUptimeAtXy(22,1,millis());
-  }
-  //Mesh time
-  printUptimeAtXy(38,1,m2mMesh.syncedMillis());
-  if(m2mMesh.actingAsTimeServer())
-  {
-    Serial.print('*');
-  }
-  else if(abs(m2mMesh.meshTimeDrift()) > 1000)
-  {
-    Serial.print('D');
-  }
-  else
-  {
-    Serial.print(' ');
-  }
-  //Reachable Originators
-  if(numberOfReachableNodesChanged || drawWholeUi)
-  {
-    moveToXy(21,2);
-    Serial.printf("%03d",m2mMesh.numberOfReachableNodes());
-    numberOfReachableNodesChanged = false;
-  }
-  //Originators
-  if(numberOfNodesChanged || drawWholeUi)
-  {
-    moveToXy(25,2);
-    Serial.printf("%03d",m2mMesh.numberOfNodes());
-    numberOfNodesChanged = false;
-  }
-  //Mesh stability
-  if(stableChanged ||  drawWholeUi)
-  {
-    moveToXy(28,2);
-    if(m2mMesh.stable())
-    {
-      Serial.print('S');
-    }
-    else
-    {
-      Serial.print('U');
-    }
-  }
-  //Sequence number
-  if(sequenceNumberChanged  || drawWholeUi)
-  {
-    moveToXy(34,2);
-    Serial.printf("%08x",sequenceNumber);
-    sequenceNumberChanged = false;
-  }
-  //RX/TX errors
-  moveToXy(47,2);
-  if(m2mMesh.rxPackets() + m2mMesh.droppedRxPackets() > 0)
-  {
-    Serial.printf("%02d%%Rx",(m2mMesh.droppedRxPackets()*100)/(m2mMesh.rxPackets() + m2mMesh.droppedRxPackets()));
-  }
-  else
-  {
-    Serial.print(F("00%Rx"));
-  }
-  Serial.print('/');
-  if(m2mMesh.txPackets() + m2mMesh.droppedTxPackets() > 0)
-  {
-    Serial.printf("%02d%%Tx",(m2mMesh.droppedTxPackets()*100)/(m2mMesh.txPackets() + m2mMesh.droppedTxPackets()));
-  }
-  else
-  {
-    Serial.print(F("00%Tx"));
-  }
-  //Free Heap
-  {
-    moveToXy(65,2);
-    Serial.printf("%05d/%05d(%02d%%)",ESP.getFreeHeap(),initialFreeHeap,(100ul*ESP.getFreeHeap()/initialFreeHeap));
-  }
+  refreshTopLine();
   //Neighbour table
   if(numberOfActiveNeighboursChanged || drawWholeUi)
   {
-    moveToXy(12,2);
-    Serial.printf("%03d",numberOfActiveNeighbours);
     numberOfActiveNeighboursChanged = false;
     {
       uint8_t neighbour = 0;
@@ -319,26 +345,11 @@ void statusView()
     }
   }
   //Input Vcc
-  if(supplyVoltageChanged || drawWholeUi)
+  /*if(supplyVoltageChanged || drawWholeUi)
   {
     moveToXy(77,0);
     Serial.printf("%01.1fv",m2mMesh.supplyVoltage());
-  }
-  if(currentChannelChanged || drawWholeUi)
-  {
-    moveToXy(54,0);
-    Serial.printf("%02d",currentChannel);
-    currentChannelChanged = false;
-  }
-  //Tx power
-  if(currentTxPowerChanged || drawWholeUi)
-  {
-    moveToXy(60,1);
-    Serial.printf("%02.1f",m2mMesh.currentTxPower()*4);
-    //Tx Power floor
-    moveToXy(68,1);
-    Serial.printf("%02.1f",m2mMesh.txPowerFloor()*4);
-  }
+  }*/
   setScrollWindow(15, 23);  //Set the logging scroll window
   moveToXy(1,23);           //Put the logging point at the bottom of the scroll window
   if(drawWholeUi)

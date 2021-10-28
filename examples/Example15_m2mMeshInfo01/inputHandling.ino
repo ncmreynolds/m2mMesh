@@ -205,19 +205,19 @@ void inputHandling()
   case 'g':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_SCANNING);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_ESP_NOW_EVENTS);
     loggingLevelChanged = true;
   }
   break;
   case 'f':
   if(currentUiView == UI_LOG_CONFIG)
   {
-    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT);
+    m2mMesh.setLoggingLevel(m2mMesh.loggingLevel() ^ m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT);
     loggingLevelChanged = true;
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_USR_FORWARD);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_PING_RESPONDER);
     servicesChanged = true;
   }
   break;
@@ -229,7 +229,7 @@ void inputHandling()
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_USR_RECEIVE);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_USR_FORWARD);
     servicesChanged = true;
   }
   break;
@@ -241,7 +241,7 @@ void inputHandling()
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_USR_SEND);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_USR_RECEIVE);
     servicesChanged = true;
   }
   break;
@@ -253,7 +253,7 @@ void inputHandling()
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_NHS_SUPPLY_VOLTAGE);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_USR_SEND);
     servicesChanged = true;
   }
   else if(currentUiView == UI_STATUS || currentUiView == UI_LOGS)

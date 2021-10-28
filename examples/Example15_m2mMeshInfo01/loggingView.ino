@@ -4,10 +4,10 @@ void loggingView()
     {
       moveToXy(80,24);
       eraseScreen();
-      //moveToXy(36,1);
+      drawTopLine();
       if(logAllNodes)
       {
-        drawTitle(F("Logging - all nodes"));
+        printAtXy(30,3,F("Logging - all nodes"));
       }
       else
       {
@@ -15,7 +15,7 @@ void loggingView()
         m2mMesh.macAddress(nodeToLog,originatorMac);
         char titleString[] = "Logging node 000/00:00:00:00:00:00 only";
         sprintf(titleString,"Logging node %03d/%02x:%02x:%02x:%02x:%02x:%02x only",nodeToLog,originatorMac[0],originatorMac[1],originatorMac[2],originatorMac[3],originatorMac[4],originatorMac[5]);
-        drawTitle(titleString);
+        printAtXy(20,3,titleString);
       }
       moveToXy(1,24);
       inverseOn();Serial.print('P');inverseOff();Serial.print(F("ause logging | "));
@@ -31,7 +31,7 @@ void loggingView()
       }
       Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew | "));
       Serial.print(F("Change "));inverseOn();Serial.print('C');inverseOff();Serial.print(F("hannel"));
-      setScrollWindow(2, 23);
+      setScrollWindow(4, 23);
       drawWholeUi = false;
     }
 }

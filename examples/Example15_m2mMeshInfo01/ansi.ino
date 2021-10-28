@@ -63,11 +63,30 @@ void ICACHE_FLASH_ATTR printUptimeAtXy(uint8_t x, uint8_t y, uint32_t uptime)
   }
   else if(minutes>0)
   {
-    Serial.printf("%02dm%02ds",minutes,seconds);
+    Serial.printf("%02dm%02ds   ",minutes,seconds);
   }
   else
   {
-    Serial.printf("%02ds",seconds);
+    Serial.printf("%02ds      ",seconds);
+  }
+}
+void ICACHE_FLASH_ATTR printElapsedTimeAtXy(uint8_t x, uint8_t y, uint32_t uptime)
+{
+  uint8_t seconds = (uptime/   1000ul)%60;
+  uint8_t minutes = (uptime/  60000ul)%60;
+  uint8_t hours =   (uptime/3600000ul);
+  moveToXy(x,y);
+  if(hours>0)
+  {
+    Serial.printf("%02dh%02dm%02ds ago",hours,minutes,seconds);
+  }
+  else if(minutes>0)
+  {
+    Serial.printf("%02dm%02ds ago   ",minutes,seconds);
+  }
+  else
+  {
+    Serial.printf("%02ds ago      ",seconds);
   }
 }
 
