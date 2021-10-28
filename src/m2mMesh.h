@@ -40,11 +40,11 @@
 #if defined(ESP8266)
 #define M2MMESHRECEIVEBUFFERSIZE 6
 #define M2MMESHAPPLICATIONBUFFERSIZE 3
-#define M2MMESHFORWARDINGBUFFERSIZE 2
+#define M2MMESHFORWARDINGBUFFERSIZE 3
 #elif defined(ESP32)
 #define M2MMESHRECEIVEBUFFERSIZE 12
 #define M2MMESHAPPLICATIONBUFFERSIZE 6
-#define M2MMESHFORWARDINGBUFFERSIZE 3
+#define M2MMESHFORWARDINGBUFFERSIZE 6
 #endif
 
 #if defined(ESP8266) || defined(ESP32)
@@ -68,8 +68,8 @@ const char m2mMeshOGMFROMO02x02x02x02x02x02xmissed[] PROGMEM = "\r\nOGM FROM O:%
 const char m2mMesh02x02x02x02x02x02xsequencenumberprotectionenabled[] PROGMEM = "\r\n%02x:%02x:%02x:%02x:%02x:%02x sequence number protection enabled";
 const char m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod[] PROGMEM = "\r\n%s originator %02x:%02x:%02x:%02x:%02x:%02x changed interval from %u to %u";
 const char nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x[] PROGMEM = "\r\nWARNING: unknown type %u from %02x:%02x:%02x:%02x:%02x:%02x";
-const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u";
-const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed[] PROGMEM = "\r\n%s FWD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u failed";
+const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd[] PROGMEM = "\r\n%s FWRD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u";
+const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed[] PROGMEM = "\r\n%s FWRD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u failed";
 const char m2mMesh02x02x02x02x02x02xsequencenumberprotectiondisabledpossiblereboot[] PROGMEM = "\r\nO:%02x:%02x:%02x:%02x:%02x:%02x sequence number protection disabled, possible reboot";
 const char m2mMeshshorteningtimerstoinductnewnode[] PROGMEM = "\r\nShortening timers to induct new node";
 const char TTL02dFLG02xSEQ08xLENdNBRd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%x LEN:%u NBR:%u";
@@ -79,8 +79,9 @@ const char m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLENd[] PROGMEM
 const char m2mMeshELPneighbour02x02x02x02x02x02xthisnode[] PROGMEM = "\r\nELP neighbour %02x:%02x:%02x:%02x:%02x:%02x - this node";
 const char m2mMeshELPneighbour02x02x02x02x02x02xnewnode[] PROGMEM = "\r\nELP neighbour %02x:%02x:%02x:%02x:%02x:%02x - new node";
 const char m2mMeshELPneighbour02x02x02x02x02x02x[] PROGMEM = "\r\nELP neighbour %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshELPneighbour02x02x02x02x02x02xunknown[] PROGMEM = "\r\nELP neighbour %02x:%02x:%02x:%02x:%02x:%02x unknown";
 const char m2mMeshELP[] PROGMEM =  "\r\nELP ";
-const char m2mMeshOGMSENDTTL02dFLG02xSEQ08xLENd[] PROGMEM = "\r\nOGM SEND TTL:%02d FLG:%02x SEQ:%x LEN:%u";
+const char m2mMeshOGMSENDR02x02x02x02x02x02xO02x02x02x02x02x02xTTL02dFLG02xSEQ08xLENd[] PROGMEM = "\r\nOGM SEND R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%02d FLG:%02x SEQ:%x LEN:%u";
 const char m2mMeshOGMSENDfailedTTL02dFlags02xSeq08xLENd[] PROGMEM = "\r\nOGM SEND failed TTL:%02d Flags:%02x SEQ:%x LEN:%u";
 const char m2mMeshOGMRECVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLENd[] PROGMEM = "\r\nOGM RECV R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u HOP:%u LEN:%u";
 const char m2mMeshOGMR02x02x02x02x02x02xselectedforO02x02x02x02x02x02xTQ04x[] PROGMEM = "\r\nOGM R:%02x:%02x:%02x:%02x:%02x:%02x selected for O:%02x:%02x:%02x:%02x:%02x:%02x TQ:%04x";
@@ -88,10 +89,10 @@ const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xinferiorTQ04x[] PR
 const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xupdateTQ04x[] PROGMEM = "\r\nOGM R:%02x:%02x:%02x:%02x:%02x:%02x for O:%02x:%02x:%02x:%02x:%02x:%02x update TQ:%04x";
 const char m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xTQ04x[] PROGMEM = "\r\nOGM R:%02x:%02x:%02x:%02x:%02x:%02x for O:%02x:%02x:%02x:%02x:%02x:%02x TQ:%04x";
 const char m2mMeshOGMforwardingchain02x02x02x02x02x02x[] PROGMEM = "\r\nOGM forwarding chain %02x:%02x:%02x:%02x:%02x:%02x";
-const char m2mMeshOGMhoppenaltyappliedTQnow02x[] PROGMEM = "\r\nOGM Hop penalty applied, TQ now %02x";
+const char m2mMesh_hoppenaltyappliedTQnow02x[] PROGMEM = " hop penalty applied, TQ now %02x";
 const char m2mMeshOGM02x02x02x02x02x02xhasbecomereachable[] PROGMEM = "\r\nOGM O:%02x:%02x:%02x:%02x:%02x:%02x has become reachable";
 const char m2mMeshOGM02x02x02x02x02x02xhasbecomeunreachable[] PROGMEM = "\r\nOGM I:%02x:%02x:%02x:%02x:%02x:%02x has become unreachable";
-const char m2mMeshOGMaddedthisnodetoforwardingchain[] PROGMEM = "\r\nOGM Added O:%02x:%02x:%02x:%02x:%02x:%02x to forwarding chain";
+const char m2mMesh_addedthisnodetoforwardingchain[] PROGMEM = " added O:%02x:%02x:%02x:%02x:%02x:%02x to forwarding chain";
 const char m2mMeshNHSSND[] PROGMEM = "\r\nNHS SEND";
 const char TTL02dFLG02xSEQ08xLENd[] PROGMEM = " TTL:%02d FLG:%02x SEQ:%x LEN:%u";
 const char ORGd[] PROGMEM = " ORG:%u";
@@ -102,10 +103,10 @@ const char m2mMeshNHSR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM
 const char m2mMeshNHSUptimedms[] PROGMEM = "\r\nNHS Uptime %ums";
 const char m2mMeshNHSCurrentFreeHeapdd[] PROGMEM = "\r\nNHS Current Free Heap %u/%u";
 const char m2mMeshNHSdroppedpacketsddRXddTX[] PROGMEM = "\r\nNHS dropped packets %u/%uRX %u/%uTX";
-const char m2mMeshNHSActiveneighboursddMAC02x02x02x02x02x02x[] PROGMEM = "\r\nNHS Active neighbours %u/%u MAC:%02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshNHSActiveneighboursddmeshMAC02x02x02x02x02x02x[] PROGMEM = "\r\nNHS Active neighbours %u/%u mesh MAC:%02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshdiffers[] PROGMEM = " - differs ";
 const char m2mMeshNHSCurrentTXpowerf[] PROGMEM = "\r\nNHS Current TX power %f";
-const char m2mMeshNHSSupplyvoltagefV[] PROGMEM = "\r\nNHS Supply voltage %fV";
+//const char m2mMeshNHSSupplyvoltagefV[] PROGMEM = "\r\nNHS Supply voltage %fV";
 const char m2mMeshNHSMeshtimedms[] PROGMEM = "\r\nNHS Mesh time %ums";
 const char m2mMeshNHSRTCtimeds[] PROGMEM = "\r\nNHS RTC time %u \"%s\"";
 const char m2mMeshNHSRTCtimezonesset[] PROGMEM = "\r\nNHS RTC timezone \"%s\" set";
@@ -114,7 +115,7 @@ const char m2mMeshNHSnodenamelendsadded[] PROGMEM = "\r\nNHS node name len=%u '%
 const char m2mMeshNHSnodenamelendsunchanged[] PROGMEM = "\r\nNHS node name len=%u '%s' unchanged";
 const char m2mMeshNHScontainsdoriginators[] PROGMEM = "\r\nNHS contains %u originators";
 const char m2mMeshNHSoriginatordata02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nNHS originator data %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
-const char m2mMeshNHS[] PROGMEM = "\r\nm2mMesh NHS ";
+const char m2mMeshNHS[] PROGMEM = "\r\nNHS ";
 const char m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nUSR R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u Length:%u";
 const char m2mMeshUSRpacketcontainsdfields[] PROGMEM =		"\r\nUSR packet contains %u fields";
 const char m2mMeshUSRdatafielddboolfalse[] PROGMEM =			"\r\nUSR data field %u bool false";
@@ -162,12 +163,13 @@ const char m2mMeshNHS02x02x02x02x02x02xisnowthetimeserver[] PROGMEM = "\r\nNHS %
 const char m2mMeshNHStimeoffsetnegdms[] PROGMEM = "\r\nNHS time offset -%ums";
 const char m2mMeshNHStimeoffsetposdms[] PROGMEM = "\r\nNHS time offset +%ums";
 const char m2mMeshNHSmeshtimesettos[] PROGMEM = "\r\nNHS mesh time set to %s";
-const char m2mMesh02x02x02x02x02x02xdbytesm2mMeshType[] PROGMEM = "%02x:%02x:%02x:%02x:%02x:%02x %u bytes\r\nType:";
+const char m2mMeshR02x02x02x02x02x02xdbytesm2mMeshType[] PROGMEM = "R:%02x:%02x:%02x:%02x:%02x:%02x %u bytes\r\nType:";
 const char m2mMeshPINGreceivedR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nPING received R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u Length:%u";
+const char m2mMeshPINGsentR02x02x02x02x02x02xD02x02x02x02x02x02xTTLdLengthd[] PROGMEM = "\r\nPING sent R:%02x:%02x:%02x:%02x:%02x:%02x D:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u Length:%u";
 const char m2mMeshChecksumx[] PROGMEM = " Checksum:%02x";
-const char m2mMeshTTLd[] PROGMEM = " TTL:%u";
-const char m2mMeshFlags2x[] PROGMEM = " Flags:%02x";
-const char m2mMeshSequencenumberd[] PROGMEM = " Sequence number:%u\r\n";
+const char m2mMesh_TTLd[] PROGMEM = " TTL:%u";
+const char m2mMesh_Flags2x[] PROGMEM = " Flags:%02x";
+const char m2mMesh_Sequencenumberd[] PROGMEM = " Sequence number:%u\r\n";
 const char m2mMeshSrc02x02x02x02x02x02x[] PROGMEM = "Src:%02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshDst02x02x02x02x02x02x[] PROGMEM = " Dst:%02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshData02x02x02x02x02x02x02x02x[] PROGMEM =	"\r\nData:%02x %02x %02x %02x %02x %02x %02x %02x";
@@ -178,10 +180,10 @@ const char m2mMeshData02x02x02x02x[] PROGMEM =				"\r\nData:%02x %02x %02x %02x 
 const char m2mMeshData02x02x02x[] PROGMEM =					"\r\nData:%02x %02x %02x --";
 const char m2mMeshData02x02x[] PROGMEM =					"\r\nData:%02x %02x --";
 const char m2mMeshData02x[] PROGMEM =						"\r\nData:%02x --";
-const char m2mMesh02x02x02x02x02x02xaddedidd[] PROGMEM = 		"%02x:%02x:%02x:%02x:%02x:%02x added id=%u";
-const char m2mMesh02x02x02x02x02x02xcouldnotbeadded[] PROGMEM = "%02x:%02x:%02x:%02x:%02x:%02x could not be added";
+const char m2mMesh02x02x02x02x02x02xaddedidd[] PROGMEM = 		"originator %02x:%02x:%02x:%02x:%02x:%02x added id=%u";
+const char m2mMesh02x02x02x02x02x02xcouldnotbeadded[] PROGMEM = "originator %02x:%02x:%02x:%02x:%02x:%02x could not be added";
 const char m2mMeshNodenamesettos[] PROGMEM = "\r\nNode name set to '%s'";
-const char m2mMeshSendingpackettype02xversion02x[] PROGMEM = "\r\nSending packet type %02x version %02x";
+const char m2mMeshSendingpackettype02x[] PROGMEM = "\r\nSending packet type %02x";
 const char m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x[] PROGMEM = "\r\nUSR SEND O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%02d Flags:%02x";
 const char m2mMeshstartedwithautomaticallocationofmemoryStabilitymaybeimpacted[] PROGMEM = "\r\nstarted with automatic allocation of memory. Stability may be impacted.";
 const char m2mMeshTTL02dFLG02xSEQ08xLENd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%x LEN:%u";
@@ -196,6 +198,7 @@ const char m2mMeshinitialisingESPNOW[] PROGMEM = "\r\nMesh initialising ESP-NOW 
 const char m2mMeshWiFiStatus[] PROGMEM = "\r\nWiFi status:";
 const char m2mMeshaddingbroadcastMACaddressasapeertoenablemeshdiscovery[] PROGMEM = "Adding broadcast MAC address as a 'peer' to enable mesh discovery ";
 const char m2mMeshaddedpeerxxxxxxchannelu[] PROGMEM = "\r\nAdded ESP-Now peer %02x:%02x:%02x:%02x:%02x:%02x channel:%u %u/%u";
+const char m2mMeshfailedtoaddpeerxxxxxxchannelu[] PROGMEM = "\r\nFailed to add ESP-Now peer %02x:%02x:%02x:%02x:%02x:%02x channel:%u %u/%u";
 const char m2mMeshremovedpeerxxxxxx[] PROGMEM = "\r\nRemoved ESP-Now peer %02x:%02x:%02x:%02x:%02x:%02x %u/%u";
 const char m2mMeshReceivedfrom[] PROGMEM = "Received from ";
 const char m2mMeshRTR[] PROGMEM = "\r\nRTR ";
@@ -212,16 +215,47 @@ const char m2mMeshreadRCVbufferfull[] PROGMEM =	"\r\nRead RECV buffer full";
 const char m2mMeshfillAPPbufferslotd[] PROGMEM = 	"\r\nFill APP buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadAPPbufferslotd[] PROGMEM =	"\r\nRead APP buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadAPPbufferfull[] PROGMEM =	"\r\nAPP buffer full";
-const char m2mMeshfillFWDbufferslotd[] PROGMEM = 	"\r\nFill FWD buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
-const char m2mMeshreadFWDbufferslotd[] PROGMEM =	"\r\nRead FWD buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
-const char m2mMeshFWDbufferfull[] PROGMEM =	"\r\nFWD buffer full";
+const char m2mMeshfillFWDbufferslotd[] PROGMEM = 	"\r\nFill FWRD buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshreadFWDbufferslotd[] PROGMEM =	"\r\nRead FWRD buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshFWDbufferfull[] PROGMEM =	"\r\nFWRD buffer full";
 const char m2mMeshchecksumValid[] PROGMEM =	"\r\nChecksum valid";
+const char m2mMesh_valid[] PROGMEM =	" valid";
 const char m2mMeshchecksumInvalidreceived2xshouldbe2x[] PROGMEM = "\r\nChecksum invalid, received %02x, should be %02x";
-const char m2mMeshFloodedpacketunexpectedlyhasdestination02x02x02x02x02x02x[] PROGMEM = "\r\nFlooded packet unexpectedly has destination %02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshrtrr02x02x02x02x02x02xd02x02x02x02x02x02xunexpectedflood[] PROGMEM = "\r\nRTR R:%02x:%02x:%02x:%02x:%02x:%02x D:%02x:%02x:%02x:%02x:%02x:%02x unexpected flood";
+const char m2mMesh_expired[] PROGMEM = " expired";
+const char m2mMesh_peer[] PROGMEM = " peer";
+const char m2mMeshPeering_request_from[] PROGMEM = "\r\nPeering request from R:%02x:%02x:%02x:%02x:%02x:%02x";
+const char m2mMeshPeering_expired_with[] PROGMEM = "\r\nPeering expired with R:%02x:%02x:%02x:%02x:%02x:%02x";
 //const char m2mMeshPacketsentto02x02x02x02x02x02x[] PROGMEM = "Packet sent to %02x:%02x:%02x:%02x:%02x:%02x";
 //const char m2mMeshNHSincluded02x02x02x02x02x02xTQ02x[] PROGMEM = "\r\nNHS included %02x:%02x:%02x:%02x:%02x:%02x TQ:%02x";
 //const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nNHS included %u originators";
 #endif
+
+#define m2mMesh_Fail	0
+#define m2mMesh_Success	1
+#define m2mMesh_NoRoute	2
+#define m2mMesh_CannotSend	3
+#define m2mMesh_PeerAckTimeout	4
+#define m2mMesh_UnknownNode	5
+#define m2mMesh_UnableToPeer	6
+
+const char errorDescription0[] PROGMEM = "Generic failure";
+const char errorDescription1[] PROGMEM = "Success, no failure";
+const char errorDescription2[] PROGMEM = "No route to node";
+const char errorDescription3[] PROGMEM = "Cannot send";
+const char errorDescription4[] PROGMEM = "Acknowledgment from peer timed out";
+const char errorDescription5[] PROGMEM = "Unknown node";
+const char errorDescription6[] PROGMEM = "Unable to peer with next hop";
+
+constexpr const char *errorDescriptionTable[7] PROGMEM = {
+  errorDescription0,
+  errorDescription1,
+  errorDescription2,
+  errorDescription3,
+  errorDescription4,
+  errorDescription5,
+  errorDescription6
+  };
 
 struct m2mMeshOriginatorInfo							//A structure for storing information about originators (nodes)
 {
@@ -231,7 +265,11 @@ struct m2mMeshOriginatorInfo							//A structure for storing information about o
 	uint8_t flags = 0;									//Defaults to no flags
 	//ESP-Now peer management
 	bool isCurrentlyPeer = false;						//Is it an ESP-Now peer
+	bool hasUsAsPeer = false;							//Does it have this node as peer
+	bool peeringExpired = false;						//Has the peering expired
 	uint32_t peerNeeded = 0;							//Last time the peer was needed
+	uint8_t numberOfPeers = 0;
+	uint8_t numberOfExpiredPeers = 0;
 	//Mesh info
 	uint8_t numberOfOriginators = 0;					//Number of originators this node asserts is in the mesh
 	uint8_t numberOfActiveNeighbours = 0;				//Number of active neighbours this node sees traffic from
@@ -249,7 +287,7 @@ struct m2mMeshOriginatorInfo							//A structure for storing information about o
 	uint8_t selectedRouter = 255;						//Best global router for this node, which starts as unknown
 	//Health info
 	uint32_t uptime = 0;								//The time the device has been up
-	float supplyVoltage = 0;							//Supply voltage as measured by the ESP, whether it is the Vcc or battery voltage up to you
+	//float supplyVoltage = 0;							//Supply voltage as measured by the ESP, whether it is the Vcc or battery voltage up to you
 	float currentTxPower = 0;							//Radio transmission power, if managing transmit power
 	uint32_t currentFreeHeap = 0;						//Current free heap
 	uint32_t initialFreeHeap = 0;						//Initial free heap
@@ -263,8 +301,10 @@ struct m2mMeshOriginatorInfo							//A structure for storing information about o
 
 struct m2mMeshPacketBuffer								//A structure for storing ESP-Now packets
 {
-	uint8_t macAddress[6] = {0, 0, 0, 0, 0, 0};			//Source or destination MAC address
+	uint8_t routerMacAddress[6] = {0, 0, 0, 0, 0, 0};	//Source or destination MAC address
 	uint8_t routerId = 255;								//ID of next hop
+	uint8_t originatorId = 255;							//ID of sender
+	uint8_t destinationId = 255;						//ID of destination
 	uint8_t length;										//Amount of data in the packet
 	uint8_t data[250];									//Size the data for the largest possible packet
 	uint32_t timestamp = 0;								//Time when the packet went into the buffer
@@ -315,7 +355,7 @@ class m2mMeshClass
 		//Status functions
 		bool joined();										//Has this node joined the mesh
 		bool stable();										//Has the mesh membership changed recently
-		float supplyVoltage();								//Returns the supply voltage once the resistor ladder value is set
+		//float supplyVoltage();								//Returns the supply voltage once the resistor ladder value is set
 		bool synced();										//Returns true if 'mesh time' is synced
 		bool amSyncServer();								//Returns true if this node is the 'mesh time' server
 		uint8_t syncServer();								//Returns ID of the 'mesh time' server
@@ -323,6 +363,9 @@ class m2mMeshClass
 		uint8_t numberOfNodes();							//Returns the total number of originators in the mesh
 		uint8_t numberOfReachableNodes();				//Returns the number of originators reachable from this node
 		uint32_t expectedUptime(uint8_t);					//Uptime of a node, assuming it has continued running
+		uint8_t lastError();								//Last error code
+		void clearLastError();								//Clear last error code
+		const char* lastErrorDescription();					//Pointer to last error description, as a C string in PROGMEM
 
 		//Sending data
 		bool destination(uint8_t);			//Add a destination ID to a message. Without a destination it is flooded to the whole mesh.
@@ -385,10 +428,11 @@ class m2mMeshClass
 		void skipRetrieve();					//Skip retrieving this field
 		
 		//Ping methods
-		bool ping(uint8_t);						//Send a ping
+		bool ping(uint8_t destId, bool wait = true);	//Send a ping, optional wait for ack
 		bool pingResponse();					//A ping response has been received
 		uint32_t pingTime();					//Round trip time of the ping
 		uint8_t pingHops();						//Number of hops the ping has traversed
+		bool retrievePingHop(uint8_t, uint8_t*);//Retrieve ping hop for application
 		void markPingRead();					//Mark the ping as read
 
 
@@ -553,6 +597,10 @@ class m2mMeshClass
 		uint8_t nodeId(uint8_t *);							//Finds the ID of an originator from the MAC address or MESH_ORIGINATOR_NOT_FOUND if it isn't found
 		bool nodeIsReachable(uint8_t);						//Is a node valid
 		void macAddress(uint8_t,uint8_t *);					//Supplies the MAC address of an originator when passed an array
+		uint8_t espnowPeer(uint8_t);						//Is this node a peer, returns 0,1,2,3
+		uint32_t espnowPeeringLastUsed(uint8_t);			//When was the peering last used
+		uint8_t numberOfPeers(uint8_t);						//How many peers this node has
+		uint8_t numberOfExpiredPeers(uint8_t);				//How many expired peers this node has
 		uint8_t flags(uint8_t id);							//Flags set by the originator
 		bool elpIsValid(uint8_t);							//Is ELP up?
 		bool ogmIsValid(uint8_t);							//Is OGM up?
@@ -574,7 +622,7 @@ class m2mMeshClass
 		uint8_t heapFragmentation(uint8_t);					//Heap fragmentation of a node
 		uint32_t sequenceNumber();							//Last sequence for this node
 		uint32_t lastSequenceNumber(uint8_t);				//Last sequence number seen from a node
-		float supplyVoltage(uint8_t);						//Supply or battery voltage for another node
+		//float supplyVoltage(uint8_t);						//Supply or battery voltage for another node
 		uint32_t localTransmissionQuality(uint8_t);			//Local Transmission quality to a node
 		uint32_t globalTransmissionQuality(uint8_t);		//Global Transmission quality to a node
 		uint8_t selectedRouter(uint8_t);					//Selected router for a destination
@@ -610,8 +658,8 @@ class m2mMeshClass
 		static const uint32_t MESH_UI_LOG_ALL_RECEIVED_PACKETS = 524288ul;
 		static const uint32_t MESH_UI_LOG_WIFI_POWER_MANAGEMENT = 262144ul;
 		static const uint32_t MESH_UI_LOG_BUFFER_MANAGEMENT = 131072ul;
-		static const uint32_t MESH_UI_LOG_SCANNING = 65536ul;
-		static const uint32_t MESH_UI_LOG_PEER_MANAGEMENT = 32768ul;
+		static const uint32_t MESH_UI_LOG_ESP_NOW_EVENTS = 65536ul;
+		static const uint32_t MESH_UI_LOG_NODE_MANAGEMENT = 32768ul;
 		static const uint32_t MESH_UI_LOG_USR_SEND = 16384ul;
 		static const uint32_t MESH_UI_LOG_USR_RECEIVED = 8192ul;
 		static const uint32_t MESH_UI_LOG_USR_FORWARDING = 4096ul;
@@ -629,23 +677,23 @@ class m2mMeshClass
 		static const uint32_t MESH_UI_LOG_ERRORS = 1ul;
 		#endif
 
-		static const uint16_t PROTOCOL_USR_FORWARD = 32768;			//Node will forward user data - node will forward user application, essential for a relay but perhaps undesirable on end nodes
-		static const uint16_t PROTOCOL_USR_RECEIVE = 16384;			//Node will process user data - node will process user application data, not necessary on some devices
-		static const uint16_t PROTOCOL_USR_SEND = 8192;				//Node will send user data - node sends user application data, not necessary on some devices
-		static const uint16_t PROTOCOL_NHS_SUPPLY_VOLTAGE = 4096;	//Node will share its power information - useful to check the battery on devices, not essential
-		static const uint16_t PROTOCOL_NHS_TIME_SERVER = 2048;		//Node will share its time information	- this maintains a central timestamp across the nodes to help synchronise events
+		static const uint16_t PROTOCOL_PING_RESPONDER =		0x8000;			//Node will share its power information - useful to check the battery on devices, not essential
+		static const uint16_t PROTOCOL_USR_FORWARD =		0x4000;			//Node will forward user data - node will forward user application, essential for a relay but perhaps undesirable on end nodes
+		static const uint16_t PROTOCOL_USR_RECEIVE =		0x2000;			//Node will process user data - node will process user application data, not necessary on some devices
+		static const uint16_t PROTOCOL_USR_SEND =			0x1000;				//Node will send user data - node sends user application data, not necessary on some devices
+		static const uint16_t PROTOCOL_NHS_TIME_SERVER =	0x0800;		//Node will share its time information	- this maintains a central timestamp across the nodes to help synchronise events
 		static const uint16_t PROTOCOL_NHS_INCLUDE_ORIGINATORS		//Node will share originator information - it will forward a list of ALL nodes, speeding global mesh discovery
-			= 1024;
-		static const uint16_t PROTOCOL_NHS_FORWARD = 512;			//Node will forward NHS data - it will forward information about other nodes, useful for remote troubleshooting
-		static const uint16_t PROTOCOL_NHS_RECEIVE = 256;			//Node will process NHS data - it will process information about the health of other nodes, not typically essential
-		static const uint16_t PROTOCOL_NHS_SEND = 128;				//Node will send NHS data - it will shares 'health' information about itself
-		static const uint16_t PROTOCOL_OGM_FORWARD = 64;			//Node will forward OGM data - it will forward information about how to reach non-local nodes, essential for a functioning mesh
-		static const uint16_t PROTOCOL_OGM_RECEIVE = 32;			//Node will process OGM data - it will read information about how to reach non-local nodes
-		static const uint16_t PROTOCOL_OGM_SEND = 16;				//Node will send OGM data - it will share routing information about itself with non-local nodes
-		static const uint16_t PROTOCOL_ELP_INCLUDE_PEERS = 8;		//Node will share neighbour information - it will share information about its nearby neighbours, speeding local mesh discovery
-		static const uint16_t PROTOCOL_ELP_FORWARD = 4;				//Node will forward forward ELP packets - it will forward ELP packets from neighbours, typically this is disabled
-		static const uint16_t PROTOCOL_ELP_RECEIVE = 2;				//Node will process ELP packets - it listens for nearby neighbours
-		static const uint16_t PROTOCOL_ELP_SEND = 1;				//Node will send ELP packets - it will announce itself to nearby neighbours
+			= 0x0400;
+		static const uint16_t PROTOCOL_NHS_FORWARD =		0x0200;			//Node will forward NHS data - it will forward information about other nodes, useful for remote troubleshooting
+		static const uint16_t PROTOCOL_NHS_RECEIVE =		0x0100;			//Node will process NHS data - it will process information about the health of other nodes, not typically essential
+		static const uint16_t PROTOCOL_NHS_SEND =			0x0080;				//Node will send NHS data - it will shares 'health' information about itself
+		static const uint16_t PROTOCOL_OGM_FORWARD =		0x0040;			//Node will forward OGM data - it will forward information about how to reach non-local nodes, essential for a functioning mesh
+		static const uint16_t PROTOCOL_OGM_RECEIVE =		0x0020;			//Node will process OGM data - it will read information about how to reach non-local nodes
+		static const uint16_t PROTOCOL_OGM_SEND =			0x0010;				//Node will send OGM data - it will share routing information about itself with non-local nodes
+		static const uint16_t PROTOCOL_ELP_INCLUDE_PEERS =	0x0008;		//Node will share neighbour information - it will share information about its nearby neighbours, speeding local mesh discovery
+		static const uint16_t PROTOCOL_ELP_FORWARD =		0x0004;				//Node will forward forward ELP packets - it will forward ELP packets from neighbours, typically this is disabled
+		static const uint16_t PROTOCOL_ELP_RECEIVE =		0x0002;				//Node will process ELP packets - it listens for nearby neighbours
+		static const uint16_t PROTOCOL_ELP_SEND =			0x0001;				//Node will send ELP packets - it will announce itself to nearby neighbours
 		//These should be converted to be compatible with msgpack really but msgpack uses a much more complicated scheme
 		static const uint8_t USR_DATA_UNAVAILABLE =    0xff;			//Used to denote no more data left, this is never packed in a packet, but can be returned to the application
 		static const uint8_t USR_DATA_BOOL =           0x00;			//Used to denote boolean, it also implies the boolean is false
@@ -689,9 +737,7 @@ class m2mMeshClass
 		bool _joinedMesh = false;							//Is this node part of an active mesh
 		uint32_t _sequenceNumber = 1;						//Sequence number added to every packet
 		uint32_t _lastOGMSequenceNumber = 1;				//Used for echo quality calculation
-		uint16_t _serviceFlags = 0xffff ^					//Controls which protocols and services this node offers, which may vary as the mesh changes
-			(PROTOCOL_NHS_SUPPLY_VOLTAGE |
-			PROTOCOL_ELP_FORWARD);
+		uint16_t _serviceFlags = 0xfbfb;					//Controls which protocols and services this node offers, which may vary as the mesh changes
 		uint32_t _currentInterval[3];						//Packet sending intervals, per packet type
 		uint32_t _lastSent[6];								//Internal timers, per packet type
 		uint32_t _currentTtl[6];							//TTLs, per packet type
@@ -701,8 +747,9 @@ class m2mMeshClass
 		const uint32_t _housekeepingInterval = 1000ul;
 		bool _waitingForSend = false;						//Are we waiting for a synchronous send?
 		bool _sendSuccess = false;							//Store the result of the sending callback
+		uint8_t _lastError = m2mMesh_Success;				//Store the last error code
 		uint8_t _sendtimer = 0;								//Used in timing out synchronous sends
-		uint8_t _sendTimeout = 100;							//Send timeout in ~ms, actually number of loops it waits
+		uint8_t _sendTimeout = 500;							//Send timeout in ~ms when waiting for ack
 		M2MMESH_CALLBACK;									//Function pointer for the callback function
 
 		//Packet buffers
@@ -736,7 +783,7 @@ class m2mMeshClass
 		uint8_t _maxNumberOfOriginators = 16;				//The default number of maximum originators. This can be changed at begin(). Set to 0 for automatic allocation of resource, which may cause heap fragmentation and affect stability.
 		uint8_t _numberOfOriginators = 0;					//The current number of originators
 		static const uint8_t _maxNumberOfPeers = 20;		//The maximum number of ESP-Now peers
-		uint32_t _peerLifetime = 60000;						//How long a peering lasts without use, default 60s
+		uint32_t _peerLifetime = 60000;						//How long a peering lasts without use, default 5m
 		uint8_t _numberOfPeers = 0;							//The current number of ESP-Now peers
 		uint8_t _numberOfReachableOriginators = 0;			//The current number of reachable originators
 		uint8_t _numberOfActiveNeighbours = 0;				//The current number of nearby active neighbours
@@ -748,17 +795,21 @@ class m2mMeshClass
 		//static const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
 		static const uint8_t NO_FLAGS = 0x00;						//No flags on packet
 		static const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
+		static const uint8_t PEERING_REQUEST = 0x40;				//If in the packet it flags the sender is trying to establish a peer relationship
+		static const uint8_t CONFIRM_SEND = 0x20;					//If in the packet it flags the sender should confirm send/forward
+		static const uint8_t RESPONSE = 0x10;						//Flag set this is a response/ack
 		static const uint32_t ANTI_COLLISION_JITTER = 250ul;		//Maximum jitter in milliseconds to try and avoid in-air collisions arising from repeated sending at regular intervals
 		uint32_t _nextJitter = 0;									//Next jitter is randomised after every send
 		static const uint8_t MESH_ORIGINATOR_NOT_FOUND = 255;		//Signifies that a node is unset or unknown
 		static const uint8_t MESH_NO_MORE_ORIGINATORS_LEFT = 254;	//Signifies the mesh is 'full' and no more members can join
+		static const uint8_t MESH_THIS_ORIGINATOR = 253;			//Signifies this node
+		static const uint8_t MESH_ALL_ORIGINATORS = 252;			//Signifies all nodes
 
 
 		//ELP - Echo Location Protocol packet flags & values
 		static const uint8_t ELP_PACKET_TYPE = 0x00;				//The first octet of every ESP-Now packet identifies what it is
 		static const uint8_t ELP_DEFAULT_TTL = 0;					//A TTL of >0 means it may be forwarded
 		static const uint8_t ELP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;	//Default ELP flags
-		static const uint8_t ELP_FLAGS_INCLUDES_PEERS = 0x01;		//Flag set when ELP includes peer information
 
 		static const uint32_t ELP_FAST_INTERVAL = 5000ul;			//How often to send ELP (default every 10s)
 		static const uint32_t ELP_DEFAULT_INTERVAL = 10000ul;		//How often to send ELP (default every 10s)
@@ -777,11 +828,20 @@ class m2mMeshClass
 		//NHS - Node Health/Status packet flags & values
 		static const uint8_t NHS_PACKET_TYPE = 0x02;          		//The first octet of every ESP-Now packet identifies what it is
 		static const uint8_t NHS_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwarded.
-		static const uint8_t NHS_FLAGS_NODE_NAME_SET = 0x4;			//Flag set when the NHS packet includes a friendly name
-		static const uint8_t NHS_FLAGS_INCLUDES_ORIGINATORS = 0x08;	//Flag set when the NHS packet includes peer information
-		static const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;			//Flag set when the NHS packet includes supply voltage
-		static const uint8_t PROCESSOR_ESP8266 = 0x20;				//
-		static const uint8_t PROCESSOR_ESP32 =   0x40;				//
+		static const uint8_t NHS_FLAGS_TIMESERVER =				0x01;  	//Flag set when acting as a time server
+		#if defined (m2mMeshIncludeRTCFeatures)
+		static const uint8_t NHS_FLAGS_RTCSERVER =				0x02;	//Flag set when have a source of real time clock
+		#endif
+		static const uint8_t NHS_FLAGS_NODE_NAME_SET =			0x04;	//Flag set when the NHS packet includes a friendly name
+		static const uint8_t NHS_FLAGS_INCLUDES_ORIGINATORS =	0x08;	//Flag set when the NHS packet includes peer information
+		//static const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;			//Flag set when the NHS packet includes supply voltage
+		static const uint8_t PROCESSOR_ESP8266 =				0x10;	//Processor is ESP8266
+		static const uint8_t PROCESSOR_ESP32 =					0x20;	//Processor is ESP32
+		static const uint8_t PROCESSOR_ESP8285 =				0x30;	//Processor is ESP32
+		static const uint8_t PROCESSOR_ESP32S1 =				0x40;	//Processor is ESP32S1
+		static const uint8_t PROCESSOR_ESP32S2 =				0x50;	//Processor is ESP32S2
+		static const uint8_t PROCESSOR_ESP32C3 =				0x60;	//Processor is ESP32C3
+		static const uint8_t PROCESSOR_ESP32S3 =				0x70;	//Processor is ESP32S3
 		static const uint32_t NHS_FAST_INTERVAL = 30000ul; 			//How often to send NHS (default every 5m)
 		static const uint32_t NHS_DEFAULT_INTERVAL = 300000ul; 		//How often to send NHS (default every 5m)
 
@@ -789,10 +849,6 @@ class m2mMeshClass
 		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES | PROCESSOR_ESP8266;	//Default NHS flags
 		#elif defined(ESP32)
 		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES | PROCESSOR_ESP32;	//Default NHS flags
-		#endif
-		static const uint8_t NHS_FLAGS_TIMESERVER = 0x01;        	//Flag set when acting as a time server
-		#if defined (m2mMeshIncludeRTCFeatures)
-		static const uint8_t NHS_FLAGS_RTCSERVER = 0x02;	        	//Flag set when have a source of real time clock
 		#endif
 
 
@@ -836,8 +892,7 @@ class m2mMeshClass
 
 		const uint8_t PING_PACKET_TYPE = 0x05;				//The first octet of every ESP-Now packet identifies what it is
 		const uint8_t PING_DEFAULT_TTL = 50;				//A TTL of >0 means it may be forwared.
-		const uint8_t PING_DEFAULT_FLAGS = 0x00;			//No flags for ping by defualt
-		static const uint8_t PING_FLAGS_RESPONSE = 0x01;	//Flag set this is a response
+		const uint8_t PING_DEFAULT_FLAGS = NO_FLAGS;		//Ping has 'confirm send' set for reliability
 
 		//Power management & sleep related variables
 		const uint32_t POWER_MANAGEMENT_INTERVAL = 10000;	//How often to adjust the Wi-Fi Tx power
@@ -866,16 +921,10 @@ class m2mMeshClass
 		void _addChecksum(m2mMeshPacketBuffer &);					//Adds the checksum to packet
 		bool _checksumCorrect(m2mMeshPacketBuffer &);				//Checks the checksum
 		bool _routePacket(m2mMeshPacketBuffer &);					//Route a packet (not send)
-		bool _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
+		bool _sendPacket(m2mMeshPacketBuffer &);					//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
 		bool _addPeer(uint8_t* mac, uint8_t peerChannel);			//Add a peer
 		bool _removePeer(uint8_t originatorId);						//Remove peer
-		/*
-		#if defined(ESP8266)
-		uint8_t _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
-		#elif defined(ESP32)
-		esp_err_t _sendPacket(m2mMeshPacketBuffer &, bool wait = true);	//Sends ESP-NOW from a packet buffer, optional wait parameter is whether to wait for confirmation or not
-		#endif
-		*/
+
 		//Originator management functions
 		uint8_t _originatorIdFromMac(uint8_t *);			//Finds the ID of an originator from the MAC address or MESH_ORIGINATOR_NOT_FOUND if it isn't found
 		uint8_t _originatorIdFromMac(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
@@ -885,24 +934,24 @@ class m2mMeshClass
 		bool _isLocalMacAddress(uint8_t *);					//Checks if a MAC address is the local one
 
 		//Routing protocol functions
-		bool _sendElp(m2mMeshPacketBuffer &);						//Send ELP with default settings
-		bool _sendElp(bool, m2mMeshPacketBuffer &);				//Send ELP with or without peers
-		bool _sendElp(uint8_t, m2mMeshPacketBuffer &);				//Send ELP with specific TTL
-		bool _sendElp(bool,uint8_t, m2mMeshPacketBuffer &);		//Send ELP with or without peers and specific TTL
-		void _processElp(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming ELP payload
+		bool _sendElp(m2mMeshPacketBuffer &);				//Send ELP with default settings
+		bool _sendElp(bool, m2mMeshPacketBuffer &);			//Send ELP with or without peers
+		bool _sendElp(uint8_t, m2mMeshPacketBuffer &);		//Send ELP with specific TTL
+		bool _sendElp(bool,uint8_t, m2mMeshPacketBuffer &);	//Send ELP with or without peers and specific TTL
+		void _processElp(m2mMeshPacketBuffer &);			//Process incoming ELP payload
 
 
-		bool _sendOgm(m2mMeshPacketBuffer &);						//Send OGM with default settings
-		void _processOgm(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming OGM payload
+		bool _sendOgm(m2mMeshPacketBuffer &);				//Send OGM with default settings
+		void _processOgm(m2mMeshPacketBuffer &);			//Process incoming OGM payload
 
-		bool _sendNhs(m2mMeshPacketBuffer &);						//Send NHS with default settings, using the supplied buffer to build the packet
-		void _processNhs(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming NHS payload
+		bool _sendNhs(m2mMeshPacketBuffer &);				//Send NHS with default settings, using the supplied buffer to build the packet
+		void _processNhs(m2mMeshPacketBuffer &);			//Process incoming NHS payload
 		
-		void _processUsr(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming USR payload
-		void _processPing(uint8_t, uint8_t, m2mMeshPacketBuffer &);	//Process incoming USR payload
+		void _processUsr(m2mMeshPacketBuffer &);			//Process incoming USR payload
+		void _processPing(m2mMeshPacketBuffer &);					//Process incoming PING payload
 
-		void _processPacket(m2mMeshPacketBuffer &);				//Process packet headers and buffer for forwarding if necessary
-		bool _forwardPacket(m2mMeshPacketBuffer &);				//Forward a buffered packet
+		void _processPacket(m2mMeshPacketBuffer &);			//Process packet headers and buffer for forwarding if necessary
+		bool _forwardPacket(m2mMeshPacketBuffer &);			//Forward a buffered packet
 		bool _dataIsValid(uint8_t, uint8_t);				//Is a particular protocol up?
 		void _originatorHasBecomeRoutable(uint8_t);
 		void _originatorHasBecomeUnroutable(uint8_t);
@@ -944,7 +993,7 @@ class m2mMeshClass
 		
 		//Debugging related functions
 		#ifdef m2mMeshIncludeDebugFeatures
-		uint32_t _loggingLevel = MESH_UI_LOG_INFORMATION | MESH_UI_LOG_WARNINGS | MESH_UI_LOG_ERRORS | MESH_UI_LOG_PEER_MANAGEMENT;
+		uint32_t _loggingLevel = MESH_UI_LOG_INFORMATION | MESH_UI_LOG_WARNINGS | MESH_UI_LOG_ERRORS | MESH_UI_LOG_NODE_MANAGEMENT;
 		uint8_t _nodeToLog = MESH_ORIGINATOR_NOT_FOUND;
 		#if defined(ESP8266)
 		void _errorDescription(uint8_t);					//Prints an error description
