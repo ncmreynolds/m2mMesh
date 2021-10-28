@@ -52,9 +52,9 @@ void loop()
       meshJoined = true;
       Serial.println("Joined mesh");
     }
-    if(numberOfNodes != m2mMesh.numberOfReachableOriginators())
+    if(numberOfNodes != m2mMesh.numberOfReachableNodes())
     {
-      numberOfNodes = m2mMesh.numberOfReachableOriginators();
+      numberOfNodes = m2mMesh.numberOfReachableNodes();
       timeOfLastNodeList = millis();
       listNodes();
     }
