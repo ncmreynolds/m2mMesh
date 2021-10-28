@@ -20,8 +20,10 @@ uint8_t numberOfReachableNodes = 0;
 void setup()
 {
   Serial.begin(115200);
-  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_USR_RECEIVED);
-  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT);
+  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_USR_RECEIVED);
+  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT);
+  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_ALL_RECEIVED_PACKETS);
+  m2mMesh.enableDebugging(Serial, m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT);
   if(m2mMesh.begin())
   {
     Serial.print("\n\nMesh started on channel:");
@@ -62,11 +64,11 @@ void loop()
     m2mMesh.macAddress(sourceId,macaddress);
     if(m2mMesh.nodeNameIsSet(sourceId))
     {
-      Serial.printf("New message from node:%02u MAC address:%02x%02x%02x%02x%02x%02x Node name:%s with %u items of data\r\n",sourceId,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5],m2mMesh.getNodeName(sourceId),m2mMesh.dataAvailable());
+      Serial.printf("New message from node:%02u MAC address:%02x:%02x:%02x:%02x:%02x:%02x Node name:%s with %u items of data\r\n",sourceId,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5],m2mMesh.getNodeName(sourceId),m2mMesh.dataAvailable());
     }
     else
     {
-      Serial.printf("New message from node:%02u MAC address:%02x%02x%02x%02x%02x%02x Node name:<Unknown> with %u items of data\r\n",sourceId,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5],m2mMesh.dataAvailable());
+      Serial.printf("New message from node:%02u MAC address:%02x:%02x:%02x:%02x:%02x:%02x Node name:<Unknown> with %u items of data\r\n",sourceId,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5],m2mMesh.dataAvailable());
     }
     while(m2mMesh.dataAvailable() > 0)
     {
