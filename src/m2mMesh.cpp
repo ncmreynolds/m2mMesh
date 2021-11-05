@@ -282,12 +282,12 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 		checksum+=data[index] & 0x0f;
 	}
 	checksum = checksum ^ _meshId;
-	if(data[1] != checksum)
+	if(data[m2mMeshPacketChecksumIndex] != checksum)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & m2mMesh.MESH_UI_LOG_ERRORS)
 		{
-			_debugStream->printf_P(m2mMeshchecksumInvalidreceived2xshouldbe2x, data[1], checksum);
+			_debugStream->printf_P(m2mMeshchecksumInvalidreceived2xshouldbe2x, data[m2mMeshPacketChecksumIndex], checksum);
 		}
 		#endif
 		return;
@@ -306,7 +306,7 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 		routerId = _addOriginator(macAddress,_currentChannel);
 	}
 	//Extract originator ID
-	uint8_t originatorId = _originatorIdFromMac(&data[8]);
+	uint8_t originatorId = _originatorIdFromMac(&data[m2mMeshPacketOriginatorIndex]);
 	if(originatorId == MESH_ORIGINATOR_NOT_FOUND)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
@@ -315,11 +315,11 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 			_debugStream->print(F("\r\nSRC "));
 		}
 		#endif
-		originatorId = _addOriginator(&data[8],_currentChannel);
+		originatorId = _addOriginator(&data[m2mMeshPacketOriginatorIndex],_currentChannel);
 	}
-	uint8_t _packetType = data[0] & 0x07;
+	uint8_t _packetType = data[m2mMeshPacketTypeIndex] & 0x07;
 	uint32_t packetSequenceNumber;
-	memcpy(&packetSequenceNumber, &data[4],sizeof(packetSequenceNumber));
+	memcpy(&packetSequenceNumber, &data[m2mMeshPacketSNIndex],sizeof(packetSequenceNumber));
 	//The originator may be a completely new device, so look for it but ignore any echoes of this node's traffic
 	if(originatorId == MESH_THIS_ORIGINATOR)	//Process 'echoes' where this node is the source
 	{
@@ -341,14 +341,14 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 					macAddress[3],
 					macAddress[4],
 					macAddress[5],
-					data[8],
+					data[m2mMeshPacketOriginatorIndex],
 					data[9],
 					data[10],
 					data[11],
 					data[12],
 					data[13],
 					packetSequenceNumber,
-					data[2],
+					data[m2mMeshPacketTTLIndex],
 					data[20],
 					length);
 				}
@@ -364,7 +364,7 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 				macAddress[3],
 				macAddress[4],
 				macAddress[5],
-				data[8],
+				data[m2mMeshPacketOriginatorIndex],
 				data[9],
 				data[10],
 				data[11],
@@ -382,7 +382,7 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 		if(originatorId < _numberOfOriginators)	//It's an originator we know about
 		{
 			uint32_t packetSequenceNumber;
-			memcpy(&packetSequenceNumber, &data[4],sizeof(packetSequenceNumber));
+			memcpy(&packetSequenceNumber, &data[m2mMeshPacketSNIndex],sizeof(packetSequenceNumber));
 			if(packetSequenceNumber > _originator[originatorId].lastSequenceNumber || _originator[originatorId].sequenceNumberProtectionWindowActive == false)
 			{
 				//The sequence number was valid, or old enough to prompt a reset of the protection window, continue processing but enable protection window again
@@ -394,7 +394,7 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 					if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 					{
 						_debugStream->printf_P(m2mMesh02x02x02x02x02x02xsequencenumberprotectionenabled,
-						data[8],
+						data[m2mMeshPacketOriginatorIndex],
 						data[9],
 						data[10],
 						data[11],
@@ -417,7 +417,7 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || routerId == _nodeToLog || originatorId == _nodeToLog))
 				{
 					_debugStream->printf_P(m2mMesh02x02x02x02x02x02xsequencenumberprotectiondisabledpossiblereboot,
-						data[8],
+						data[m2mMeshPacketOriginatorIndex],
 						data[9],
 						data[10],
 						data[11],
@@ -453,13 +453,13 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 			_calculateLtq(originatorId);																//Recalculate Local Transmission Quality
 		}
 		uint8_t destinationId;
-		if(data[0] & SEND_TO_ALL_NODES)
+		if(data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES)
 		{
 			destinationId = MESH_ALL_ORIGINATORS;
 		}
 		else					//If there's a destination, identify it
 		{
-			destinationId = _originatorIdFromMac(&data[14]);
+			destinationId = _originatorIdFromMac(&data[m2mMeshPacketDestinationIndex]);
 			if(destinationId == MESH_ORIGINATOR_NOT_FOUND)
 			{
 				#ifdef m2mMeshIncludeDebugFeatures
@@ -468,13 +468,13 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 					_debugStream->print(F("\r\nDST "));
 				}
 				#endif
-				destinationId = _addOriginator(&data[14],_currentChannel);
+				destinationId = _addOriginator(&data[m2mMeshPacketDestinationIndex],_currentChannel);
 			}
 		}
 		if(_packetType < 3)	//Retrieve the interval
 		{
 			uint32_t packetInterval;
-			memcpy(&packetInterval, &data[14], sizeof(packetInterval));
+			memcpy(&packetInterval, &data[m2mMeshPacketIntervalIndex], sizeof(packetInterval));
 			if(packetInterval != _originator[originatorId].interval[_packetType])
 			{
 				#ifdef m2mMeshIncludeDebugFeatures
@@ -484,7 +484,7 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 					_packetTypeDescription(packetTypeDescription,_packetType);
 					_debugStream->printf_P(m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod,
 					packetTypeDescription,
-					data[8],
+					data[m2mMeshPacketOriginatorIndex],
 					data[9],
 					data[10],
 					data[11],
@@ -515,7 +515,7 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddre
 			if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
 			{
 				char packetTypeDescription[] = "UNK";
-				_packetTypeDescription(packetTypeDescription,(data[0] & 0x07));
+				_packetTypeDescription(packetTypeDescription,(data[m2mMeshPacketTypeIndex] & 0x07));
 				_debugStream->printf_P(m2mMeshfillRCVbufferslotd,_receiveBufferIndex, length,packetTypeDescription,macAddress[0],macAddress[1],macAddress[2],macAddress[3],macAddress[4],macAddress[5]);
 			}
 			#endif
@@ -559,20 +559,20 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_calculateChecksum(m2mMeshPacketBuffer &
 
 void ICACHE_FLASH_ATTR m2mMeshClass::_addChecksum(m2mMeshPacketBuffer &packet)
 {
-	packet.data[1] = _calculateChecksum(packet);
+	packet.data[m2mMeshPacketChecksumIndex] = _calculateChecksum(packet);
 }
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::_checksumCorrect(m2mMeshPacketBuffer &packet)
 {
 	uint8_t checksum = _calculateChecksum(packet);
-	if(checksum == packet.data[1])
+	if(checksum == packet.data[m2mMeshPacketChecksumIndex])
 	{
 		return(true);
 	}
 	#ifdef m2mMeshIncludeDebugFeatures
 	else if(_debugEnabled == true && _loggingLevel & m2mMesh.MESH_UI_LOG_ERRORS)
 	{
-		_debugStream->printf_P(m2mMeshchecksumInvalidreceived2xshouldbe2x, packet.data[1], checksum);
+		_debugStream->printf_P(m2mMeshchecksumInvalidreceived2xshouldbe2x, packet.data[m2mMeshPacketChecksumIndex], checksum);
 	}
 	#endif
 	return(false);
@@ -590,7 +590,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
 		{
 			char packetTypeDescription[] = "UNK";
-			_packetTypeDescription(packetTypeDescription,(_receiveBuffer[_processBufferIndex].data[0] & 0x07));
+			_packetTypeDescription(packetTypeDescription,(_receiveBuffer[_processBufferIndex].data[m2mMeshPacketTypeIndex] & 0x07));
 			_debugStream->printf_P(m2mMeshreadRCVbufferslotd,_processBufferIndex, _receiveBuffer[_processBufferIndex].length, packetTypeDescription,_receiveBuffer[_processBufferIndex].routerMacAddress[0],_receiveBuffer[_processBufferIndex].routerMacAddress[1],_receiveBuffer[_processBufferIndex].routerMacAddress[2],_receiveBuffer[_processBufferIndex].routerMacAddress[3],_receiveBuffer[_processBufferIndex].routerMacAddress[4],_receiveBuffer[_processBufferIndex].routerMacAddress[5]);
 		}
 		#endif
@@ -608,7 +608,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
 		{
 			char packetTypeDescription[] = "UNK";
-			_packetTypeDescription(packetTypeDescription,(_forwardingBuffer[_forwardingBufferReadIndex].data[0] & 0x07));
+			_packetTypeDescription(packetTypeDescription,(_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketTypeIndex] & 0x07));
 			_debugStream->printf_P(m2mMeshreadFWDbufferslotd,_forwardingBufferReadIndex, _forwardingBuffer[_forwardingBufferReadIndex].length, packetTypeDescription,_forwardingBuffer[_forwardingBufferReadIndex].routerMacAddress[0],_forwardingBuffer[_forwardingBufferReadIndex].routerMacAddress[1],_forwardingBuffer[_forwardingBufferReadIndex].routerMacAddress[2],_forwardingBuffer[_forwardingBufferReadIndex].routerMacAddress[3],_forwardingBuffer[_forwardingBufferReadIndex].routerMacAddress[4],_forwardingBuffer[_forwardingBufferReadIndex].routerMacAddress[5]);
 		}
 		#endif
@@ -623,11 +623,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true)
 			{
-				if(_forwardingBuffer[_forwardingBufferReadIndex].data[0] & SEND_TO_ALL_NODES)
+				if(_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES)
 				{
 					Serial.printf("\r\nFWD O:%02u/%02x:%02x:%02x:%02x:%02x:%02x D:%02u/ff:ff:ff:ff:ff:ff R:%02u/%02x:%02x:%02x:%02x:%02x:%02x %s",
 					_forwardingBuffer[_forwardingBufferReadIndex].originatorId,
-					_forwardingBuffer[_forwardingBufferReadIndex].data[8],
+					_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketOriginatorIndex],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[9],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[10],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[11],
@@ -647,14 +647,14 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 				{
 					Serial.printf("\r\nFWD O:%02u/%02x:%02x:%02x:%02x:%02x:%02x D:%02u/%02x:%02x:%02x:%02x:%02x:%02x R:%02u/%02x:%02x:%02x:%02x:%02x:%02x %s",
 					_forwardingBuffer[_forwardingBufferReadIndex].originatorId,
-					_forwardingBuffer[_forwardingBufferReadIndex].data[8],
+					_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketOriginatorIndex],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[9],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[10],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[11],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[12],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[13],
 					_forwardingBuffer[_forwardingBufferReadIndex].destinationId,
-					_forwardingBuffer[_forwardingBufferReadIndex].data[14],
+					_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketDestinationIndex],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[15],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[16],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[17],
@@ -859,16 +859,16 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 	}
 	#endif
 	//Start processing the packet
-	uint8_t _packetType = packet.data[0] & 0x07;
+	uint8_t _packetType = packet.data[m2mMeshPacketTypeIndex] & 0x07;
 	uint32_t packetSequenceNumber;
-	memcpy(&packetSequenceNumber, &packet.data[4],sizeof(packetSequenceNumber));
+	memcpy(&packetSequenceNumber, &packet.data[m2mMeshPacketSNIndex],sizeof(packetSequenceNumber));
 	//Handle the incoming MAC address. The ESP8266 and ESP32 both vary their MAC address differently depending on whether in STA or AP mode
 	if((packet.routerMacAddress[0] & B00000010) == B00000010 && packet.routerMacAddress[1] == packet.data[9] && packet.routerMacAddress[2] == packet.data[10] && packet.routerMacAddress[3] == packet.data[11] && packet.routerMacAddress[4] == packet.data[12] && packet.routerMacAddress[5] == packet.data[13])
 	{
 		//This is an ESP8266 in AP mode
 		packet.routerMacAddress[0] = packet.routerMacAddress[0] & B11111101;	//Remove the variable bit for ESP8266/ESP8285
 	}
-	else if(packet.routerMacAddress[0] == packet.data[8] && packet.routerMacAddress[1] == packet.data[9] && packet.routerMacAddress[2] == packet.data[10] && packet.routerMacAddress[3] == packet.data[11] && packet.routerMacAddress[4] == packet.data[12] && packet.routerMacAddress[5] == packet.data[13] + 1)
+	else if(packet.routerMacAddress[0] == packet.data[m2mMeshPacketOriginatorIndex] && packet.routerMacAddress[1] == packet.data[9] && packet.routerMacAddress[2] == packet.data[10] && packet.routerMacAddress[3] == packet.data[11] && packet.routerMacAddress[4] == packet.data[12] && packet.routerMacAddress[5] == packet.data[13] + 1)
 	{
 		//This is an ESP32 in AP mode
 		packet.routerMacAddress[5] = packet.routerMacAddress[5] - 1;			//Decrement the last octet for ESP32
@@ -876,7 +876,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 	if(packet.routerId != MESH_ORIGINATOR_NOT_FOUND)
 	{
 		if(_originator[packet.routerId].isCurrentlyPeer == false
-			&&	(packet.data[0] & PEERING_REQUEST))	//This is a peering request
+			&&	(packet.data[m2mMeshPacketTypeIndex] & PEERING_REQUEST))	//This is a peering request
 		{
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NODE_MANAGEMENT)
@@ -890,20 +890,20 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				_originator[packet.routerId].isCurrentlyPeer = true;
 			}
 		}
-		if((packet.data[0] & SEND_TO_ALL_NODES) == 0x00)
+		if((packet.data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES) == 0x00)
 		{
 			_originator[packet.routerId].peerNeeded = millis();	//This peering is likely needed
 		}
 	}
 	uint8_t packetIndex = 18;
-	if(_packetType > 2 && (packet.data[0] & SEND_TO_ALL_NODES) == 0x00)
+	if(_packetType > 2 && (packet.data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES) == 0x00)
 	{
 		packetIndex+=6;
 	}
 	//At this point we know the router, originator and destination and can check for echoes, which are never processed further
 	//Consider the packet for processing so check the destination. Either it is has to be a flood or have this node as the destination
-	if((packet.data[0] & SEND_TO_ALL_NODES) ||
-		(((packet.data[0] & SEND_TO_ALL_NODES) == 0x00) && _isLocalMacAddress(&packet.data[14]))
+	if((packet.data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES) ||
+		(((packet.data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES) == 0x00) && _isLocalMacAddress(&packet.data[m2mMeshPacketDestinationIndex]))
 		)
 	{
 		if(_packetType == ELP_PACKET_TYPE && (_serviceFlags & PROTOCOL_ELP_RECEIVE))			//This is an ELP packet
@@ -934,29 +934,36 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 		#endif
 	}
 	#ifdef m2mMeshIncludeDebugFeatures
-	else if((packet.data[0] & PEERING_REQUEST) == 0x00 && _debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
+	else if((packet.data[m2mMeshPacketTypeIndex] & PEERING_REQUEST) == 0x00 && _debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 	{
 		_debugStream->printf_P(m2mMeshrtrr02x02x02x02x02x02xd02x02x02x02x02x02xunexpectedflood,
+		packet.data[m2mMeshPacketOriginatorIndex],
+		packet.data[9],
+		packet.data[10],
+		packet.data[11],
+		packet.data[12],
+		packet.data[13],
+		packet.data[m2mMeshPacketDestinationIndex],
+		packet.data[15],
+		packet.data[16],
+		packet.data[17],
+		packet.data[18],
+		packet.data[19],
 		packet.routerMacAddress[0],
 		packet.routerMacAddress[1],
 		packet.routerMacAddress[2],
 		packet.routerMacAddress[3],
 		packet.routerMacAddress[4],
-		packet.routerMacAddress[5],
-		packet.data[14],
-		packet.data[15],
-		packet.data[16],
-		packet.data[17],
-		packet.data[18],
-		packet.data[19]);
+		packet.routerMacAddress[5]
+		);
 	}
 	#endif
 	//Consider a packet for forwarding, it may already have been changed in earlier processing
 	//The TTL must be >0 and either a flood or NOT have this node at its source or destination
-	if(packet.data[2] > 0 &&
-		(bool(packet.data[0] & SEND_TO_ALL_NODES) ||
-		(not _isLocalMacAddress(&packet.data[14])) ||
-		(_packetType == PING_PACKET_TYPE && _isLocalMacAddress(&packet.data[14]) == true))
+	if(packet.data[m2mMeshPacketTTLIndex] > 0 &&
+		(bool(packet.data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES) ||
+		(not _isLocalMacAddress(&packet.data[m2mMeshPacketDestinationIndex])) ||
+		(_packetType == PING_PACKET_TYPE && _isLocalMacAddress(&packet.data[m2mMeshPacketDestinationIndex]) == true))
 		)
 	{
 		bool doTheForward = false;
@@ -982,8 +989,8 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 		}
 		if(doTheForward == true)
 		{
-			packet.data[2]--;	//Reduce the TTL
-			packet.data[0] = packet.data[0] & ~PEERING_REQUEST;	//Remove the peering request flag so it cannot be forwarded
+			packet.data[m2mMeshPacketTTLIndex]--;	//Reduce the TTL
+			packet.data[m2mMeshPacketTypeIndex] = packet.data[m2mMeshPacketTypeIndex] & ~PEERING_REQUEST;	//Remove the peering request flag so it cannot be forwarded
 			if(_forwardingBuffer[_fowardingBufferWriteIndex].length == 0)
 			{
 				_forwardingBuffer[_fowardingBufferWriteIndex].originatorId = packet.originatorId;
@@ -997,7 +1004,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 				if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
 				{
 					char packetTypeDescription[] = "UNK";
-					_packetTypeDescription(packetTypeDescription,(packet.data[0] & 0x07));
+					_packetTypeDescription(packetTypeDescription,(packet.data[m2mMeshPacketTypeIndex] & 0x07));
 					_debugStream->printf_P(m2mMeshfillFWDbufferslotd,_applicationBufferWriteIndex,packet.length, packetTypeDescription,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5]);
 				}
 				#endif
@@ -1021,7 +1028,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPacket(m2mMeshPacketBuffer &packet)
 bool ICACHE_FLASH_ATTR m2mMeshClass::_forwardPacket(m2mMeshPacketBuffer &packet)
 {
 	#ifdef m2mMeshIncludeDebugFeatures
-	uint8_t _packetType = packet.data[0] & 0x07;
+	uint8_t _packetType = packet.data[m2mMeshPacketTypeIndex] & 0x07;
 	bool logTheForward = false;
 	#endif
 	if(_routePacket(packet))
@@ -1065,13 +1072,13 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_forwardPacket(m2mMeshPacketBuffer &packet)
 		{
 			char packetTypeDescription[] = "UNK";
 			_packetTypeDescription(packetTypeDescription,_packetType);
-			_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd,packetTypeDescription,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[2]);
+			_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd,packetTypeDescription,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[m2mMeshPacketTTLIndex]);
 		}
 		else if(logTheForward == true)
 		{
 			char packetTypeDescription[] = "UNK";
 			_packetTypeDescription(packetTypeDescription,_packetType);
-			_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed,packetTypeDescription,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[2]);
+			_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed,packetTypeDescription,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[m2mMeshPacketTTLIndex]);
 		}
 		#endif
 		return(sendResult);
@@ -1083,7 +1090,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_forwardPacket(m2mMeshPacketBuffer &packet)
 		{
 			char packetTypeDescription[] = "UNK";
 			_packetTypeDescription(packetTypeDescription,_packetType);
-			_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed,packetTypeDescription,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[2]);
+			_debugStream->printf_P(m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdfailed,packetTypeDescription,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[m2mMeshPacketTTLIndex]);
 		}
 		#endif
 		return(false);
@@ -1134,7 +1141,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::rollOutTheWelcomeWagon()
 //Overloaded functions for variant calls
 
 
-bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(m2mMeshPacketBuffer &packet)
+/*bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(m2mMeshPacketBuffer &packet)
 {
 	if(_serviceFlags & PROTOCOL_ELP_INCLUDE_PEERS)
 	{
@@ -1144,15 +1151,15 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(m2mMeshPacketBuffer &packet)
 	{
 		return(_sendElp(false,_currentTtl[ELP_PACKET_TYPE], packet));
 	}
-}
+}*/
 
 
-bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,m2mMeshPacketBuffer &packet)
+/*bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,m2mMeshPacketBuffer &packet)
 {
 	return(_sendElp(includeNeighbours,_currentTtl[ELP_PACKET_TYPE], packet));
-}
+}*/
 
-bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(uint8_t elpTtl,m2mMeshPacketBuffer &packet)
+/*bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(uint8_t elpTtl,m2mMeshPacketBuffer &packet)
 {
 	if(_serviceFlags & PROTOCOL_ELP_INCLUDE_PEERS)
 	{
@@ -1162,21 +1169,23 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(uint8_t elpTtl,m2mMeshPacketBuffer
 	{
 		return(_sendElp(false, elpTtl, packet));
 	}
-}
+}*/
 
 
-bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elpTtl,m2mMeshPacketBuffer &packet)
+//bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elpTtl,m2mMeshPacketBuffer &packet)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(m2mMeshPacketBuffer &packet)
 {
-	packet.data[0] = ELP_PACKET_TYPE | ELP_DEFAULT_FLAGS;//Add the ELP packet type
-	packet.data[1] = 0;									//Here goes the checksum
-	packet.data[2] = elpTtl;							//Add the TTL, usually 0 for ELP
+	packet.data[m2mMeshPacketTypeIndex] = ELP_PACKET_TYPE | ELP_DEFAULT_FLAGS;//Add the ELP packet type
+	packet.data[m2mMeshPacketChecksumIndex] = 0;									//Here goes the checksum
+	packet.data[m2mMeshPacketTTLIndex] = _currentTtl[ELP_PACKET_TYPE];				//Add the TTL, usually 0 for ELP
 	uint32_t sequenceNumber;
-	memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number
-	memcpy(&packet.data[8], &_localMacAddress[0], 6);					//Add the source address
-	memcpy(&packet.data[14], &_currentInterval[ELP_PACKET_TYPE], sizeof(_currentInterval[ELP_PACKET_TYPE]));	//Add the interval
+	memcpy(&packet.data[m2mMeshPacketSNIndex], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number
+	memcpy(&packet.data[m2mMeshPacketOriginatorIndex], &_localMacAddress[0], 6);					//Add the source address
+	memcpy(&packet.data[m2mMeshPacketIntervalIndex], &_currentInterval[ELP_PACKET_TYPE], sizeof(_currentInterval[ELP_PACKET_TYPE]));	//Add the interval
 	packet.length = 18;								//This will iterate through filling in the data if necessary
 	packet.data[packet.length++] = 0;				//Start with zero neighbours
-	if(includeNeighbours)							//If adding neighbours, iterate through adding them
+	if(_serviceFlags & PROTOCOL_ELP_INCLUDE_PEERS)	//If adding neighbours, iterate through adding them
+	//if(includeNeighbours)							//If adding neighbours, iterate through adding them
 	{
 		//Only add active peers, but we need to iterate the whole list
 		for(uint8_t originator = 0; originator < _numberOfOriginators; originator++)
@@ -1213,13 +1222,14 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(bool includeNeighbours,uint8_t elp
 		if(_loggingLevel & MESH_UI_LOG_ELP_SEND)
 		{
 			_debugStream->print(F("\r\nELP SEND "));
-			if(includeNeighbours)
+			//if(includeNeighbours)
+			if(_serviceFlags & PROTOCOL_ELP_INCLUDE_PEERS)
 			{
-				_debugStream->printf_P(TTL02dFLG02xSEQ08xLENdNBRd,packet.data[2],packet.data[0] & 0x8f,sequenceNumber,packet.length,_numberOfActiveNeighbours);
+				_debugStream->printf_P(TTL02dFLG02xSEQ08xLENdNBRd,packet.data[m2mMeshPacketTTLIndex],packet.data[m2mMeshPacketTypeIndex] & 0x8f,sequenceNumber,packet.length,_numberOfActiveNeighbours);
 			}
 			else
 			{
-				_debugStream->printf_P(m2mMeshTTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[0] & 0x8f,sequenceNumber,packet.length);
+				_debugStream->printf_P(m2mMeshTTL02dFLG02xSEQ08xLENd,packet.data[m2mMeshPacketTTLIndex],packet.data[m2mMeshPacketTypeIndex] & 0x8f,sequenceNumber,packet.length);
 			}
 		}
 		if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
@@ -1244,11 +1254,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processElp(m2mMeshPacketBuffer &packet)
 	{
 		if(packet.data[18]>0)
 		{
-			_debugStream->printf_P(m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdNBRS02dLENd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[2],packet.data[18],packet.length);
+			_debugStream->printf_P(m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdNBRS02dLENd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[m2mMeshPacketTTLIndex],packet.data[18],packet.length);
 		}
 		else
 		{
-			_debugStream->printf_P(m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLENd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[2],packet.length);
+			_debugStream->printf_P(m2mMeshELPRCVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLENd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[m2mMeshPacketTTLIndex],packet.length);
 		}
 	}
 	#endif
@@ -1370,17 +1380,17 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processElp(m2mMeshPacketBuffer &packet)
 bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 {
 	uint16_t tQ = 65535;
-	packet.data[0] = OGM_PACKET_TYPE | OGM_DEFAULT_FLAGS;					//Add the OGM packet type
-	packet.data[1] = 0;														//Here goes the checksum
-	packet.data[2] = _currentTtl[OGM_PACKET_TYPE];							//Add the OGM TTL
-	memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));
-	packet.data[8] = _localMacAddress[0];
+	packet.data[m2mMeshPacketTypeIndex] = OGM_PACKET_TYPE | OGM_DEFAULT_FLAGS;					//Add the OGM packet type
+	packet.data[m2mMeshPacketChecksumIndex] = 0;														//Here goes the checksum
+	packet.data[m2mMeshPacketTTLIndex] = _currentTtl[OGM_PACKET_TYPE];							//Add the OGM TTL
+	memcpy(&packet.data[m2mMeshPacketSNIndex], &_sequenceNumber, sizeof(_sequenceNumber));
+	packet.data[m2mMeshPacketOriginatorIndex] = _localMacAddress[0];
 	packet.data[9] = _localMacAddress[1];
 	packet.data[10] = _localMacAddress[2];
 	packet.data[11] = _localMacAddress[3];
 	packet.data[12] = _localMacAddress[4];
 	packet.data[13] = _localMacAddress[5];
-	memcpy(&packet.data[14], &_currentInterval[OGM_PACKET_TYPE], sizeof(_currentInterval[OGM_PACKET_TYPE]));
+	memcpy(&packet.data[m2mMeshPacketIntervalIndex], &_currentInterval[OGM_PACKET_TYPE], sizeof(_currentInterval[OGM_PACKET_TYPE]));
 	memcpy(&packet.data[18], &tQ, sizeof(tQ));
 	packet.data[20] = 0;
 	packet.length = 21;
@@ -1391,7 +1401,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 	{
 		if(_loggingLevel & MESH_UI_LOG_OGM_SEND)
 		{
-			_debugStream->printf_P(m2mMeshOGMSENDR02x02x02x02x02x02xO02x02x02x02x02x02xTTL02dFLG02xSEQ08xLENd, packet.routerMacAddress[0], packet.routerMacAddress[1], packet.routerMacAddress[2], packet.routerMacAddress[3], packet.routerMacAddress[4], packet.routerMacAddress[5], _localMacAddress[0], _localMacAddress[1], _localMacAddress[2], _localMacAddress[3], _localMacAddress[4], _localMacAddress[5],packet.data[2],packet.data[0] & 0x8f,_sequenceNumber,packet.length);
+			_debugStream->printf_P(m2mMeshOGMSENDR02x02x02x02x02x02xO02x02x02x02x02x02xTTL02dFLG02xSEQ08xLENd, packet.routerMacAddress[0], packet.routerMacAddress[1], packet.routerMacAddress[2], packet.routerMacAddress[3], packet.routerMacAddress[4], packet.routerMacAddress[5], _localMacAddress[0], _localMacAddress[1], _localMacAddress[2], _localMacAddress[3], _localMacAddress[4], _localMacAddress[5],packet.data[m2mMeshPacketTTLIndex],packet.data[m2mMeshPacketTypeIndex] & 0x8f,_sequenceNumber,packet.length);
 		}
 		if(_loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 		{
@@ -1402,7 +1412,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 	}
 	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_SEND)
 	{
-		_debugStream->printf_P(m2mMeshOGMSENDfailedTTL02dFlags02xSeq08xLENd,packet.data[2],packet.data[0] & 0x8f,_sequenceNumber,packet.length);
+		_debugStream->printf_P(m2mMeshOGMSENDfailedTTL02dFlags02xSeq08xLENd,packet.data[m2mMeshPacketTTLIndex],packet.data[m2mMeshPacketTypeIndex] & 0x8f,_sequenceNumber,packet.length);
 	}
 	#endif
 	_lastOGMSequenceNumber = _sequenceNumber;	//Used to check for incoming echoes
@@ -1415,7 +1425,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(m2mMeshPacketBuffer &packet)
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
 	{
-		_debugStream->printf_P(m2mMeshOGMRECVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLENd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[2],packet.data[20],packet.length);
+		_debugStream->printf_P(m2mMeshOGMRECVR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLENd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[m2mMeshPacketTTLIndex],packet.data[20],packet.length);
 	}
 	#endif
 	uint16_t tq;
@@ -1435,7 +1445,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(m2mMeshPacketBuffer &packet)
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xselectedforO02x02x02x02x02x02xTQ04x,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
+					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xselectedforO02x02x02x02x02x02xTQ04x,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[m2mMeshPacketOriginatorIndex],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
 				}
 				#endif
 			}
@@ -1445,7 +1455,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(m2mMeshPacketBuffer &packet)
 				//This does not change the routing
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xinferiorTQ04x,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
+					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xinferiorTQ04x,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[m2mMeshPacketOriginatorIndex],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
 				}
 			}
 			#endif
@@ -1460,7 +1470,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(m2mMeshPacketBuffer &packet)
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xupdateTQ04x,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
+					_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xupdateTQ04x,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[m2mMeshPacketOriginatorIndex],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
 				}
 				#endif
 			}
@@ -1468,7 +1478,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(m2mMeshPacketBuffer &packet)
 			//This does not change the routing
 			else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
 			{
-				_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xTQ04x,packet.data[2],packet.data[0] & 0x8f,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
+				_debugStream->printf_P(m2mMeshOGMR02x02x02x02x02x02xforO02x02x02x02x02x02xTQ04x,packet.data[m2mMeshPacketTTLIndex],packet.data[m2mMeshPacketTypeIndex] & 0x8f,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[m2mMeshPacketOriginatorIndex],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13],tq);
 			}
 			#endif
 		}
@@ -1492,7 +1502,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(m2mMeshPacketBuffer &packet)
 	}
 	#endif
 	//Consider the packet for forwarding, whether or not it was selected as router or not
-	if(packet.data[2] > 0)
+	if(packet.data[m2mMeshPacketTTLIndex] > 0)
 	{
 		//If our route back to the originator is worse than the GTQ in the packet, reduce GTQ to the LTQ value
 		if(_originator[packet.routerId].ltq < tq)
@@ -1511,9 +1521,9 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(m2mMeshPacketBuffer &packet)
 		{
 			//Reduce TTL to 0 on low TQ packets so they are NOT forwarded beyond first hop
 			//First hop MUST be allowed so TQ can be calculated from zero
-			packet.data[2] = 0;
+			packet.data[m2mMeshPacketTTLIndex] = 0;
 		}
-		if(packet.data[2] > 0)	//Packet will be forwarded despite penalties
+		if(packet.data[m2mMeshPacketTTLIndex] > 0)	//Packet will be forwarded despite penalties
 		{
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_FORWARDING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
@@ -1632,17 +1642,17 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_originatorHasBecomeUnroutable(uint8_t orig
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 {
-	packet.data[0] = NHS_PACKET_TYPE | NHS_DEFAULT_FLAGS;					//Add the NHS packet type
-	packet.data[1] = 0;														//Here goes the checksum
-	packet.data[2] = _currentTtl[NHS_PACKET_TYPE];							//Add the NHS TTL
-	memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));
-	packet.data[8] = _localMacAddress[0];									//Origin address
+	packet.data[m2mMeshPacketTypeIndex] = NHS_PACKET_TYPE | NHS_DEFAULT_FLAGS;					//Add the NHS packet type
+	packet.data[m2mMeshPacketChecksumIndex] = 0;														//Here goes the checksum
+	packet.data[m2mMeshPacketTTLIndex] = _currentTtl[NHS_PACKET_TYPE];							//Add the NHS TTL
+	memcpy(&packet.data[m2mMeshPacketSNIndex], &_sequenceNumber, sizeof(_sequenceNumber));
+	packet.data[m2mMeshPacketOriginatorIndex] = _localMacAddress[0];									//Origin address
 	packet.data[9] = _localMacAddress[1];
 	packet.data[10] = _localMacAddress[2];
 	packet.data[11] = _localMacAddress[3];
 	packet.data[12] = _localMacAddress[4];
 	packet.data[13] = _localMacAddress[5];
-	memcpy(&packet.data[14], &_currentInterval[NHS_PACKET_TYPE], sizeof(_currentInterval[NHS_PACKET_TYPE]));
+	memcpy(&packet.data[m2mMeshPacketIntervalIndex], &_currentInterval[NHS_PACKET_TYPE], sizeof(_currentInterval[NHS_PACKET_TYPE]));
 	uint32_t now = millis();
 	memcpy(&packet.data[18], &now, sizeof(now));							//Add the current millis() for 'uptime'
 	uint32_t freeHeap = uint32_t(ESP.getFreeHeap());						//Add the current free heap
@@ -1678,7 +1688,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	packet.length = 60;									//Use this to build the rest of the packet
 	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) && _actingAsTimeServer && _stable)	//Add the mesh time
 	{
-		packet.data[3] = packet.data[3] | NHS_FLAGS_TIMESERVER;
+		packet.data[m2mMeshPacketFlagsIndex] = packet.data[m2mMeshPacketFlagsIndex] | NHS_FLAGS_TIMESERVER;
 		uint32_t temp = syncedMillis();
 		memcpy(&packet.data[packet.length], &temp, sizeof(temp));
 		packet.length+=sizeof(temp);
@@ -1686,7 +1696,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	#if defined (m2mMeshIncludeRTCFeatures)
 	if((_serviceFlags & PROTOCOL_NHS_TIME_SERVER) == PROTOCOL_NHS_TIME_SERVER && rtc == true && timezone != nullptr && _meshTimeNegotiated==true && rtcValid())				//Add the RTC info, if valid
 	{
-		packet.data[3] = packet.data[3] | NHS_FLAGS_RTCSERVER;
+		packet.data[m2mMeshPacketFlagsIndex] = packet.data[m2mMeshPacketFlagsIndex] | NHS_FLAGS_RTCSERVER;
 		//Timezone
 		packet.data[packet.length++] = strlen(timezone);
 		memcpy(&packet.data[packet.length], &timezone, strlen(timezone));		//Copy in the timezone
@@ -1701,7 +1711,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	#endif
 	if(_nodeName != nullptr)													//Insert the node name, if set
 	{
-		packet.data[3] = packet.data[3] | NHS_FLAGS_NODE_NAME_SET;				//Mark this in the flags
+		packet.data[m2mMeshPacketFlagsIndex] = packet.data[m2mMeshPacketFlagsIndex] | NHS_FLAGS_NODE_NAME_SET;				//Mark this in the flags
 		packet.data[packet.length++] = strlen(_nodeName);						//Include the length
 		memcpy(&packet.data[packet.length], _nodeName, strlen(_nodeName));		//Copy in the node name
 		packet.length += strlen(_nodeName);										//Advance the index
@@ -1709,7 +1719,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	uint8_t originatorCountIndex = packet.length++;									//Store the count of included originators here
 	if((_serviceFlags & PROTOCOL_NHS_INCLUDE_ORIGINATORS) && _numberOfOriginators>0)	//This packet will include all the nodes in the mesh
 	{
-		packet.data[3] = packet.data[3] | NHS_FLAGS_INCLUDES_ORIGINATORS;
+		packet.data[m2mMeshPacketFlagsIndex] = packet.data[m2mMeshPacketFlagsIndex] | NHS_FLAGS_INCLUDES_ORIGINATORS;
 		packet.data[originatorCountIndex] = 0;
 		uint8_t randomOffset = random(_numberOfOriginators);							//Add a random offset so it's not always the same originators in the same order
 		for(uint8_t originatorId = 0; originatorId<_numberOfOriginators && packet.length + 8 < ESP_NOW_MAX_PACKET_SIZE; originatorId++)
@@ -1749,7 +1759,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 	{
 		if(_loggingLevel & MESH_UI_LOG_NHS_SEND)
 		{
-			_debugStream->printf_P(TTL02dFLG02xSEQ08xLENd,packet.data[2],packet.data[0] & 0x8f,_sequenceNumber, packet.length);
+			_debugStream->printf_P(TTL02dFLG02xSEQ08xLENd,packet.data[m2mMeshPacketTTLIndex],packet.data[m2mMeshPacketTypeIndex] & 0x8f,_sequenceNumber, packet.length);
 			if(_actingAsTimeServer)
 			{
 				char uptime[10];
@@ -1781,13 +1791,13 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(m2mMeshPacketBuffer &packet)
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NHS_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
 	{
-		_debugStream->printf_P(m2mMeshNHSR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[2],packet.length);
+		_debugStream->printf_P(m2mMeshNHSR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[m2mMeshPacketTTLIndex],packet.length);
 	}
 	#endif
 	if(packet.originatorId != MESH_ORIGINATOR_NOT_FOUND)	//Update details about the originator
 	{
 		//Extract the flags
-		_originator[packet.originatorId].flags = packet.data[3];
+		_originator[packet.originatorId].flags = packet.data[m2mMeshPacketFlagsIndex];
 		//Extract the uptime
 		memcpy(&_originator[packet.originatorId].uptime, &packet.data[18], sizeof(_originator[packet.originatorId].uptime));
 		#ifdef m2mMeshIncludeDebugFeatures
@@ -1860,7 +1870,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(m2mMeshPacketBuffer &packet)
 		}
 		#endif
 		uint8_t receivedPacketIndex = 60;				//Use this to index through the packet
-		if(packet.data[3] & NHS_FLAGS_TIMESERVER)		//Check for included time
+		if(packet.data[m2mMeshPacketFlagsIndex] & NHS_FLAGS_TIMESERVER)		//Check for included time
 		{
 			//The NHS packet is flagged as being from an active time server, which sends mesh time separately from uptime
 			//To help with accuracy only updates with the least number of hops are accepted
@@ -1883,7 +1893,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(m2mMeshPacketBuffer &packet)
 			_chooseNewTimeServer(); //Choose a new time server now
 		}
 		#if defined (m2mMeshIncludeRTCFeatures)
-		if(packet.data[3] & NHS_FLAGS_RTCSERVER)		//Check for included TZ and epoch time offset
+		if(packet.data[m2mMeshPacketFlagsIndex] & NHS_FLAGS_RTCSERVER)		//Check for included TZ and epoch time offset
 		{
 			if(rtc == true)	//This node is an RTC source
 			{
@@ -1967,7 +1977,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(m2mMeshPacketBuffer &packet)
 			}
 		}
 		#endif
-		if(packet.data[3] & NHS_FLAGS_NODE_NAME_SET)	//Look for a node name
+		if(packet.data[m2mMeshPacketFlagsIndex] & NHS_FLAGS_NODE_NAME_SET)	//Look for a node name
 		{
 			#ifdef m2mMeshIncludeDebugFeatures
 			bool nameChanged = false;
@@ -2019,7 +2029,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processNhs(m2mMeshPacketBuffer &packet)
 			#endif
 			receivedPacketIndex += nodeNameLength;	//Advance the packet index past the name
 		}
-		if(packet.data[3] & NHS_FLAGS_INCLUDES_ORIGINATORS)	//Extract originator information, if included
+		if(packet.data[m2mMeshPacketFlagsIndex] & NHS_FLAGS_INCLUDES_ORIGINATORS)	//Extract originator information, if included
 		{
 			uint8_t originatorCount = packet.data[receivedPacketIndex++];	//Retrieve the number of originators in the end of the packet
 			#ifdef m2mMeshIncludeDebugFeatures
@@ -2075,7 +2085,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processUsr(m2mMeshPacketBuffer &packet)
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
 	{
-		_debugStream->printf_P(m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[2],packet.length);
+		_debugStream->printf_P(m2mMeshUSRR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[1],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[m2mMeshPacketTTLIndex],packet.length);
 	}
 	#endif
 	if(_applicationBuffer[_applicationBufferWriteIndex].length == 0) //There's a free slot in the app buffer
@@ -2088,14 +2098,14 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processUsr(m2mMeshPacketBuffer &packet)
 		if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
 		{
 			char packetTypeDescription[] = "UNK";
-			_packetTypeDescription(packetTypeDescription,(packet.data[0] & 0x07));
+			_packetTypeDescription(packetTypeDescription,(packet.data[m2mMeshPacketTypeIndex] & 0x07));
 			_debugStream->printf_P(m2mMeshfillAPPbufferslotd,_applicationBufferWriteIndex,packet.length, packetTypeDescription,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5]);
 		}
 		#endif
 		_applicationBufferWriteIndex++;																//Advance the buffer index
 		_applicationBufferWriteIndex = _applicationBufferWriteIndex%M2MMESHAPPLICATIONBUFFERSIZE;	//Rollover buffer index
 		uint8_t receivedPacketIndex = 18;
-		if((packet.data[0] & SEND_TO_ALL_NODES) == 0x00)	//If there's a destination, skip past
+		if((packet.data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES) == 0x00)	//If there's a destination, skip past
 		{
 			receivedPacketIndex+=6;
 		}
@@ -2912,21 +2922,21 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::ping(uint8_t destId, bool wait)
 	{
 		m2mMeshPacketBuffer packet;
 		packet.destinationId = destId;
-		packet.data[0] = PING_PACKET_TYPE | PING_DEFAULT_FLAGS;//Packet type
+		packet.data[m2mMeshPacketTypeIndex] = PING_PACKET_TYPE | PING_DEFAULT_FLAGS;//Packet type
 		if(wait == true)
 		{
-			packet.data[0] = packet.data[0] | CONFIRM_SEND;
+			packet.data[m2mMeshPacketTypeIndex] = packet.data[m2mMeshPacketTypeIndex] | CONFIRM_SEND;
 		}
-		packet.data[1] = 0;								//The CRC goes here
-		packet.data[2] = _currentTtl[PING_PACKET_TYPE];	//TTL
-		memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number
-		packet.data[8] = _localMacAddress[0];			//Origin address
+		packet.data[m2mMeshPacketChecksumIndex] = 0;								//The CRC goes here
+		packet.data[m2mMeshPacketTTLIndex] = _currentTtl[PING_PACKET_TYPE];	//TTL
+		memcpy(&packet.data[m2mMeshPacketSNIndex], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number
+		packet.data[m2mMeshPacketOriginatorIndex] = _localMacAddress[0];			//Origin address
 		packet.data[9] = _localMacAddress[1];
 		packet.data[10] = _localMacAddress[2];
 		packet.data[11] = _localMacAddress[3];
 		packet.data[12] = _localMacAddress[4];
 		packet.data[13] = _localMacAddress[5];
-		packet.data[14] = _originator[destId].macAddress[0];
+		packet.data[m2mMeshPacketDestinationIndex] = _originator[destId].macAddress[0];
 		packet.data[15] = _originator[destId].macAddress[1];
 		packet.data[16] = _originator[destId].macAddress[2];
 		packet.data[17] = _originator[destId].macAddress[3];
@@ -2945,7 +2955,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::ping(uint8_t destId, bool wait)
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_SEND && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.destinationId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshPINGsentR02x02x02x02x02x02xD02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[14],packet.data[15],packet.data[16],packet.data[17],packet.data[18],packet.data[19],packet.data[2],packet.length);
+					_debugStream->printf_P(m2mMeshPINGsentR02x02x02x02x02x02xD02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[m2mMeshPacketDestinationIndex],packet.data[15],packet.data[16],packet.data[17],packet.data[18],packet.data[19],packet.data[m2mMeshPacketTTLIndex],packet.length);
 				}
 				#endif
 				return(true);
@@ -2955,7 +2965,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::ping(uint8_t destId, bool wait)
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_SEND && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.destinationId == _nodeToLog))
 				{
-					_debugStream->printf_P(m2mMeshPINGsentR02x02x02x02x02x02xD02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[14],packet.data[15],packet.data[16],packet.data[17],packet.data[18],packet.data[19],packet.data[2],packet.length);
+					_debugStream->printf_P(m2mMeshPINGsentR02x02x02x02x02x02xD02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.data[m2mMeshPacketDestinationIndex],packet.data[15],packet.data[16],packet.data[17],packet.data[18],packet.data[19],packet.data[m2mMeshPacketTTLIndex],packet.length);
 				}
 				#endif
 				_droppedTxPackets++;
@@ -2970,10 +2980,10 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPing(m2mMeshPacketBuffer &packet)
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
 	{
-		_debugStream->printf_P(m2mMeshPINGreceivedR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[2],packet.length);
+		_debugStream->printf_P(m2mMeshPINGreceivedR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdLengthd,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5],packet.data[m2mMeshPacketTTLIndex],packet.length);
 	}
 	#endif
-	if(packet.data[0] & RESPONSE)	//This is a ping response for a ping this node sent
+	if(packet.data[m2mMeshPacketTypeIndex] & RESPONSE)	//This is a ping response for a ping this node sent
 	{
 		if(_applicationBuffer[_applicationBufferWriteIndex].length == 0) //There's a free slot in the app buffer
 		{
@@ -2985,7 +2995,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPing(m2mMeshPacketBuffer &packet)
 			if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
 			{
 				char packetTypeDescription[] = "UNK";
-				_packetTypeDescription(packetTypeDescription,(packet.data[0] & 0x07));
+				_packetTypeDescription(packetTypeDescription,(packet.data[m2mMeshPacketTypeIndex] & 0x07));
 				_debugStream->printf_P(m2mMeshfillAPPbufferslotd,_applicationBufferWriteIndex,packet.length, packetTypeDescription,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],_originator[packet.originatorId].macAddress[0],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[2],_originator[packet.originatorId].macAddress[3],_originator[packet.originatorId].macAddress[4],_originator[packet.originatorId].macAddress[5]);
 			}
 			#endif
@@ -3007,17 +3017,17 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPing(m2mMeshPacketBuffer &packet)
 			#endif
 			_droppedAppPackets++;
 		}
-		packet.data[2] = 0;	//Smash the TTL to 0 to stop an endless forwarding loop
+		packet.data[m2mMeshPacketTTLIndex] = 0;	//Smash the TTL to 0 to stop an endless forwarding loop
 	}
 	else //This node is the target of the ping, turn the packet around and forward it back
 	{
-		packet.data[0] = packet.data[0] | RESPONSE;							//Mark it as a response
-		memcpy(&packet.data[14], &packet.data[8], 6);						//Set destination from the source
+		packet.data[m2mMeshPacketTypeIndex] = packet.data[m2mMeshPacketTypeIndex] | RESPONSE;							//Mark it as a response
+		memcpy(&packet.data[m2mMeshPacketDestinationIndex], &packet.data[m2mMeshPacketOriginatorIndex], 6);						//Set destination from the source
 		packet.destinationId = packet.originatorId;							//Set destination from the source
 		packet.originatorId = MESH_THIS_ORIGINATOR;							//Set source as this node
-		memcpy(&packet.data[8], _localMacAddress, 6);						//Set source as this node
-		packet.data[2] = _currentTtl[PING_PACKET_TYPE];						//Reset the TTL
-		memcpy(&packet.data[4], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number for this node
+		memcpy(&packet.data[m2mMeshPacketOriginatorIndex], _localMacAddress, 6);						//Set source as this node
+		packet.data[m2mMeshPacketTTLIndex] = _currentTtl[PING_PACKET_TYPE];						//Reset the TTL
+		memcpy(&packet.data[m2mMeshPacketSNIndex], &_sequenceNumber, sizeof(_sequenceNumber));	//Add the sequence number for this node
 		_sequenceNumber++;	//Increment this node's sequence number
 		if(packet.length < ESP_NOW_MAX_PACKET_SIZE - 6)
 		{
@@ -3036,7 +3046,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::pingResponse()
 {
 	for(uint8_t i = 0 ; i < M2MMESHAPPLICATIONBUFFERSIZE ; i++)
 	{
-		if(_applicationBuffer[_applicationBufferReadIndex].length > 0 && (_applicationBuffer[_applicationBufferReadIndex].data[0] & 0x07) == PING_PACKET_TYPE)
+		if(_applicationBuffer[_applicationBufferReadIndex].length > 0 && (_applicationBuffer[_applicationBufferReadIndex].data[m2mMeshPacketTypeIndex] & 0x07) == PING_PACKET_TYPE)
 		{
 			//Non-zero length implies data in the buffer
 			return(true);
@@ -3050,7 +3060,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::pingResponse()
 
 uint32_t ICACHE_FLASH_ATTR m2mMeshClass::pingTime()
 {
-	if((_applicationBuffer[_applicationBufferReadIndex].data[0] & 0x07) == PING_PACKET_TYPE)
+	if((_applicationBuffer[_applicationBufferReadIndex].data[m2mMeshPacketTypeIndex] & 0x07) == PING_PACKET_TYPE)
 	{
 		uint32_t sendTime;
 		memcpy(&sendTime, &_applicationBuffer[_applicationBufferReadIndex].data[20], sizeof(sendTime));
@@ -3061,7 +3071,7 @@ uint32_t ICACHE_FLASH_ATTR m2mMeshClass::pingTime()
 
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::pingHops()
 {
-	if((_applicationBuffer[_applicationBufferReadIndex].data[0] & 0x07) == PING_PACKET_TYPE)
+	if((_applicationBuffer[_applicationBufferReadIndex].data[m2mMeshPacketTypeIndex] & 0x07) == PING_PACKET_TYPE)
 	{
 		return(_applicationBuffer[_applicationBufferReadIndex].data[24]);
 	}
@@ -3070,7 +3080,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::pingHops()
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::retrievePingHop(uint8_t hop, uint8_t* macAddress)
 {
-	if((_applicationBuffer[_applicationBufferReadIndex].data[0] & 0x07) == PING_PACKET_TYPE && hop < _applicationBuffer[_applicationBufferReadIndex].data[24])
+	if((_applicationBuffer[_applicationBufferReadIndex].data[m2mMeshPacketTypeIndex] & 0x07) == PING_PACKET_TYPE && hop < _applicationBuffer[_applicationBufferReadIndex].data[24])
 	{
 		memcpy(macAddress,&_applicationBuffer[_applicationBufferReadIndex].data[25+hop*6],6);
 		return(true);
@@ -3084,7 +3094,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::markPingRead()
 	if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
 	{
 		char packetTypeDescription[] = "UNK";
-		_packetTypeDescription(packetTypeDescription,(_applicationBuffer[_applicationBufferReadIndex].data[0] & 0x07));
+		_packetTypeDescription(packetTypeDescription,(_applicationBuffer[_applicationBufferReadIndex].data[m2mMeshPacketTypeIndex] & 0x07));
 		_debugStream->printf_P(m2mMeshreadAPPbufferslotd,_applicationBufferReadIndex, _applicationBuffer[_applicationBufferReadIndex].length, packetTypeDescription, _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[0], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[1], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[2], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[3], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[4], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[5]);
 	}
 	#endif
@@ -3137,11 +3147,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader(uint8_t destId)
 {
 	if(not _buildingUserPacket)
 	{
-		_userPacketBuffer.data[0] = USR_PACKET_TYPE | USR_DEFAULT_FLAGS;
-		_userPacketBuffer.data[2] = _currentTtl[USR_PACKET_TYPE];
+		_userPacketBuffer.data[m2mMeshPacketTypeIndex] = USR_PACKET_TYPE | USR_DEFAULT_FLAGS;
+		_userPacketBuffer.data[m2mMeshPacketTTLIndex] = _currentTtl[USR_PACKET_TYPE];
 		//The sequence number is put in at time of sending
 		//Origin address
-		_userPacketBuffer.data[8] = _localMacAddress[0];
+		_userPacketBuffer.data[m2mMeshPacketOriginatorIndex] = _localMacAddress[0];
 		_userPacketBuffer.data[9] = _localMacAddress[1];
 		_userPacketBuffer.data[10] = _localMacAddress[2];
 		_userPacketBuffer.data[11] = _localMacAddress[3];
@@ -3151,7 +3161,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_buildUserPacketHeader(uint8_t destId)
 		_userPacketBuffer.length = 14;
 		if(destId != MESH_ORIGINATOR_NOT_FOUND)
 		{
-			_userPacketBuffer.data[0] = _userPacketBuffer.data[0] & ~SEND_TO_ALL_NODES;
+			_userPacketBuffer.data[m2mMeshPacketTypeIndex] = _userPacketBuffer.data[m2mMeshPacketTypeIndex] & ~SEND_TO_ALL_NODES;
 			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[0];
 			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[1];
 			_userPacketBuffer.data[_userPacketBuffer.length++] = _originator[destId].macAddress[2];
@@ -3361,15 +3371,15 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 {
 	if(wait == true)
 	{
-		_userPacketBuffer.data[0] = _userPacketBuffer.data[0] | CONFIRM_SEND;
+		_userPacketBuffer.data[m2mMeshPacketTypeIndex] = _userPacketBuffer.data[m2mMeshPacketTypeIndex] | CONFIRM_SEND;
 	}
 	//Sequence number is added immediately before routing
-	memcpy(&_userPacketBuffer.data[4], &_sequenceNumber, sizeof(_sequenceNumber));
+	memcpy(&_userPacketBuffer.data[m2mMeshPacketSNIndex], &_sequenceNumber, sizeof(_sequenceNumber));
 	_sequenceNumber++;
 	#ifdef m2mMeshIncludeDebugFeatures
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ALL_SENT_PACKETS)
 	{
-		_debugStream->printf_P(m2mMeshSendingpackettype02x,_userPacketBuffer.data[0] & 0x07);
+		_debugStream->printf_P(m2mMeshSendingpackettype02x,_userPacketBuffer.data[m2mMeshPacketTypeIndex] & 0x07);
 	}
 	#endif
 	if(_routePacket(_userPacketBuffer) == true)	//Choose the best router for this packet
@@ -3379,7 +3389,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 			#ifdef m2mMeshIncludeDebugFeatures
 			if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_USR_SEND)
 			{
-				_debugStream->printf_P(m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x,_userPacketBuffer.data[8],_userPacketBuffer.data[9],_userPacketBuffer.data[10],_userPacketBuffer.data[11],_userPacketBuffer.data[12],_userPacketBuffer.data[13],_userPacketBuffer.data[2],_userPacketBuffer.data[0] & 0xf8);
+				_debugStream->printf_P(m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x,_userPacketBuffer.data[m2mMeshPacketOriginatorIndex],_userPacketBuffer.data[9],_userPacketBuffer.data[10],_userPacketBuffer.data[11],_userPacketBuffer.data[12],_userPacketBuffer.data[13],_userPacketBuffer.data[m2mMeshPacketTTLIndex],_userPacketBuffer.data[m2mMeshPacketTypeIndex] & 0xf8);
 			}
 			#endif
 			_userPacketBuffer.length = 0;
@@ -3398,7 +3408,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_routePacket(m2mMeshPacketBuffer &packet)
 {
 	//memcpy(&packet.routerMacAddress, &_broadcastMacAddress,6);	//Nothing needs doing beyond adding
 	//return(true);
-	if(packet.data[0] & SEND_TO_ALL_NODES)
+	if(packet.data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES)
 	{
 		memcpy(&packet.routerMacAddress, &_broadcastMacAddress,6);	//Nothing needs doing beyond adding broadcast address
 		packet.routerId = MESH_ALL_ORIGINATORS;
@@ -3406,7 +3416,6 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_routePacket(m2mMeshPacketBuffer &packet)
 	}
 	else if(packet.destinationId < _numberOfOriginators)
 	{
-		//packet.destinationId = _originatorIdFromMac(&packet.data[14]);//BODGE!
 		if(elpIsValid(packet.destinationId) && _originator[packet.destinationId].ltq > _originator[packet.destinationId].gtq)
 		{
 			packet.routerId = packet.destinationId;	//Send direct, as ELP is valid
@@ -3417,15 +3426,21 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_routePacket(m2mMeshPacketBuffer &packet)
 		}
 		else
 		{
+			memcpy(&packet.routerMacAddress, &_broadcastMacAddress,6);	//Fall back to broadcast address
+			packet.routerId = MESH_ALL_ORIGINATORS;
+			return(true);
+		}
+		/*else
+		{
 			_lastError = m2mMesh_NoRoute;
 			packet.routerId = MESH_ORIGINATOR_NOT_FOUND;	//Fail to route
 			return(false);
-		}
+		}*/
 		_originator[packet.routerId].peerNeeded = millis();	//Update the record of when the peer was last needed
 		if(_originator[packet.routerId].hasUsAsPeer == false)	//The next hop won't accept the packet from a non-peer so this forces a broadcast instead, which will kick off a peering for future packets
 		{
 			memcpy(&packet.routerMacAddress, &_broadcastMacAddress,6);	//Send as a broadcast
-			packet.data[0] = packet.data[0] | PEERING_REQUEST;			//Make a peering request
+			packet.data[m2mMeshPacketTypeIndex] = packet.data[m2mMeshPacketTypeIndex] | PEERING_REQUEST;			//Make a peering request
 		}
 		else
 		{
@@ -3473,7 +3488,7 @@ bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet)
 	{
 		_blinkActivityLed();
 	}
-	if(packet.data[0] & CONFIRM_SEND)	//This is a synchronous send, the default which is safest
+	if(packet.data[m2mMeshPacketTypeIndex] & CONFIRM_SEND)	//This is a synchronous send, the default which is safest
 	{
 		_sendtimer = 0;
 		_waitingForSend = true;
@@ -3481,7 +3496,7 @@ bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet)
 	}
 	if(esp_now_send(packet.routerMacAddress, packet.data, packet.length) == ESP_OK)
 	{
-		if(packet.data[0] & CONFIRM_SEND)//If this is a synchronous send, wait here for the callback to acknowledge sending
+		if(packet.data[m2mMeshPacketTypeIndex] & CONFIRM_SEND)//If this is a synchronous send, wait here for the callback to acknowledge sending
 		{
 			uint32_t now = millis();
 			while(_waitingForSend == true && millis() - now < _sendTimeout)
@@ -3633,7 +3648,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::markMessageRead()
 	if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_BUFFER_MANAGEMENT))
 	{
 		char packetTypeDescription[] = "UNK";
-		_packetTypeDescription(packetTypeDescription,(_applicationBuffer[_applicationBufferReadIndex].data[0] & 0x07));
+		_packetTypeDescription(packetTypeDescription,(_applicationBuffer[_applicationBufferReadIndex].data[m2mMeshPacketTypeIndex] & 0x07));
 		_debugStream->printf_P(m2mMeshreadAPPbufferslotd,_applicationBufferReadIndex, _applicationBuffer[_applicationBufferReadIndex].length, packetTypeDescription, _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[0], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[1], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[2], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[3], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[4], _applicationBuffer[_applicationBufferReadIndex].routerMacAddress[5]);
 	}
 	#endif
@@ -3649,7 +3664,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::markMessageRead()
 
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::sourceId()
 {
-	return(_originatorIdFromMac(&_applicationBuffer[_applicationBufferReadIndex].data[8]));
+	return(_originatorIdFromMac(&_applicationBuffer[_applicationBufferReadIndex].data[m2mMeshPacketOriginatorIndex]));
 }
 
 bool ICACHE_FLASH_ATTR m2mMeshClass::sourceMacAddress(uint8_t *macAddressArray)
@@ -3657,7 +3672,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::sourceMacAddress(uint8_t *macAddressArray)
 	//if(_userPacketReceived)
 	if(true)
 	{
-		macAddressArray[0] = _applicationBuffer[_applicationBufferReadIndex].data[8];
+		macAddressArray[0] = _applicationBuffer[_applicationBufferReadIndex].data[m2mMeshPacketOriginatorIndex];
 		macAddressArray[1] = _applicationBuffer[_applicationBufferReadIndex].data[9];
 		macAddressArray[2] = _applicationBuffer[_applicationBufferReadIndex].data[10];
 		macAddressArray[3] = _applicationBuffer[_applicationBufferReadIndex].data[11];
@@ -4636,23 +4651,23 @@ void m2mMeshClass::_debugPacket(m2mMeshPacketBuffer &packet)
 #endif
 {
 	_debugStream->printf_P(m2mMeshR02x02x02x02x02x02xdbytesm2mMeshType,packet.routerMacAddress[0],packet.routerMacAddress[1],packet.routerMacAddress[2],packet.routerMacAddress[3],packet.routerMacAddress[4],packet.routerMacAddress[5],packet.length);
-	if((packet.data[0] & 0x07) == ELP_PACKET_TYPE)
+	if((packet.data[m2mMeshPacketTypeIndex] & 0x07) == ELP_PACKET_TYPE)
 	{
 		_debugStream->print(F("ELP"));
 	}
-	else if((packet.data[0] & 0x07) == OGM_PACKET_TYPE)
+	else if((packet.data[m2mMeshPacketTypeIndex] & 0x07) == OGM_PACKET_TYPE)
 	{
 		_debugStream->print(F("OGM"));
 	}
-	else if((packet.data[0] & 0x07) == NHS_PACKET_TYPE)
+	else if((packet.data[m2mMeshPacketTypeIndex] & 0x07) == NHS_PACKET_TYPE)
 	{
 		_debugStream->print(F("NHS"));
 	}
-	else if((packet.data[0] & 0x07) == USR_PACKET_TYPE)
+	else if((packet.data[m2mMeshPacketTypeIndex] & 0x07) == USR_PACKET_TYPE)
 	{
 		_debugStream->print(F("USR"));
 	}
-	else if((packet.data[0] & 0x07) == PING_PACKET_TYPE)
+	else if((packet.data[m2mMeshPacketTypeIndex] & 0x07) == PING_PACKET_TYPE)
 	{
 		_debugStream->print(F("PING"));
 	}
@@ -4660,19 +4675,19 @@ void m2mMeshClass::_debugPacket(m2mMeshPacketBuffer &packet)
 	{
 		_debugStream->print(F("Unknown"));
 	}
-	_debugStream->printf_P(m2mMeshChecksumx,packet.data[1]);
+	_debugStream->printf_P(m2mMeshChecksumx,packet.data[m2mMeshPacketChecksumIndex]);
 	if(_checksumCorrect(packet) == true)
 	{
 		_debugStream->print(m2mMesh_valid);
 	}
-	_debugStream->printf_P(m2mMesh_TTLd,packet.data[2]);
-	_debugStream->printf_P(m2mMesh_Flags2x, packet.data[0] & 0xf8);
+	_debugStream->printf_P(m2mMesh_TTLd,packet.data[m2mMeshPacketTTLIndex]);
+	_debugStream->printf_P(m2mMesh_Flags2x, packet.data[m2mMeshPacketTypeIndex] & 0xf8);
 	uint32_t packetSequenceNumber;
-	memcpy(&packetSequenceNumber, &packet.data[4],sizeof(packetSequenceNumber));
+	memcpy(&packetSequenceNumber, &packet.data[m2mMeshPacketSNIndex],sizeof(packetSequenceNumber));
 	_debugStream->printf_P(m2mMesh_Sequencenumberd,packetSequenceNumber);
-	_debugStream->printf_P(m2mMeshSrc02x02x02x02x02x02x,packet.data[8],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13]);
+	_debugStream->printf_P(m2mMeshSrc02x02x02x02x02x02x,packet.data[m2mMeshPacketOriginatorIndex],packet.data[9],packet.data[10],packet.data[11],packet.data[12],packet.data[13]);
 	uint8_t packetIndex = 14;
-	if(packet.data[0] & SEND_TO_ALL_NODES)
+	if(packet.data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES)
 	{
 		_debugStream->print(m2mMeshDstALL);
 	}

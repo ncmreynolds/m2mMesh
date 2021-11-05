@@ -221,7 +221,7 @@ const char m2mMeshFWDbufferfull[] PROGMEM =	"\r\nFWRD buffer full";
 const char m2mMeshchecksumValid[] PROGMEM =	"\r\nChecksum valid";
 const char m2mMesh_valid[] PROGMEM =	" valid";
 const char m2mMeshchecksumInvalidreceived2xshouldbe2x[] PROGMEM = "\r\nChecksum invalid, received %02x, should be %02x";
-const char m2mMeshrtrr02x02x02x02x02x02xd02x02x02x02x02x02xunexpectedflood[] PROGMEM = "\r\nRTR R:%02x:%02x:%02x:%02x:%02x:%02x D:%02x:%02x:%02x:%02x:%02x:%02x unexpected flood";
+const char m2mMeshrtrr02x02x02x02x02x02xd02x02x02x02x02x02xunexpectedflood[] PROGMEM = "\r\nRTR O:%02x:%02x:%02x:%02x:%02x:%02x D:%02x:%02x:%02x:%02x:%02x:%02x R:%02x:%02x:%02x:%02x:%02x:%02x unexpected flood";
 const char m2mMesh_expired[] PROGMEM = " expired";
 const char m2mMesh_peer[] PROGMEM = " peer";
 const char m2mMeshPeering_request_from[] PROGMEM = "\r\nPeering request from R:%02x:%02x:%02x:%02x:%02x:%02x";
@@ -256,6 +256,15 @@ constexpr const char *errorDescriptionTable[7] PROGMEM = {
   errorDescription5,
   errorDescription6
   };
+  
+#define m2mMeshPacketTypeIndex				0
+#define m2mMeshPacketChecksumIndex			1
+#define m2mMeshPacketTTLIndex				2
+#define m2mMeshPacketFlagsIndex				3
+#define m2mMeshPacketSNIndex				4
+#define m2mMeshPacketOriginatorIndex		8
+#define m2mMeshPacketIntervalIndex			14
+#define m2mMeshPacketDestinationIndex		14
 
 struct m2mMeshOriginatorInfo							//A structure for storing information about originators (nodes)
 {
