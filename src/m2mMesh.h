@@ -65,7 +65,7 @@ const char m2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLEN[] PRO
 const char m2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xTTLdHOPdLENinvalid[] PROGMEM = "\r\nOGM ECHO R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x INVALID SEQ:%x expected %u";
 const char m2mMeshOGMECHOR02x02x02x02x02x02xO02x02x02x02x02x02xSEQumissed[] PROGMEM = "\r\nOGM ECHO R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x SEQ:%x missed";
 const char m2mMeshOGMFROMO02x02x02x02x02x02xmissed[] PROGMEM = "\r\nOGM FROM O:%02x:%02x:%02x:%02x:%02x:%02x missed";
-const char m2mMesh02x02x02x02x02x02xsequencenumberprotectionenabled[] PROGMEM = "\r\n%02x:%02x:%02x:%02x:%02x:%02x sequence number protection enabled";
+const char m2mMesh02x02x02x02x02x02xsequencenumberprotectionenabled[] PROGMEM = "\r\n%O:02x:%02x:%02x:%02x:%02x:%02x sequence number protection enabled";
 const char m2mMeshsoriginator02x02x02x02x02x02xchangedintervalfromdtod[] PROGMEM = "\r\n%s originator %02x:%02x:%02x:%02x:%02x:%02x changed interval from %u to %u";
 const char nm2mMeshWARNINGunknowntypedfrom02x02x02x02x02x02x[] PROGMEM = "\r\nWARNING: unknown type %u from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshsFWDR02x02x02x02x02x02xO02x02x02x02x02x02xTTLd[] PROGMEM = "\r\n%s FWRD R:%02x:%02x:%02x:%02x:%02x:%02x O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%u";
@@ -239,8 +239,8 @@ const char m2mMeshPeering_expired_with[] PROGMEM = "\r\nPeering expired with R:%
 #define m2mMesh_UnknownNode	5
 #define m2mMesh_UnableToPeer	6
 
-const char errorDescription0[] PROGMEM = "Generic failure";
-const char errorDescription1[] PROGMEM = "Success, no failure";
+const char errorDescription0[] PROGMEM = "Failure";
+const char errorDescription1[] PROGMEM = "Success";
 const char errorDescription2[] PROGMEM = "No route to node";
 const char errorDescription3[] PROGMEM = "Cannot send";
 const char errorDescription4[] PROGMEM = "Acknowledgment from peer timed out";
