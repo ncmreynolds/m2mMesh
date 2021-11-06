@@ -140,7 +140,7 @@ void originatorView()
     moveToXy(56,9);
     if(m2mMesh.nhsIsValid(currentlyViewedOriginator))
     {
-      if(m2mMesh.actingAsTimeServer(currentlyViewedOriginator))
+      if(m2mMesh.actingAsSyncServer(currentlyViewedOriginator))
       {
         Serial.print(F("Yes    "));
       }
@@ -155,7 +155,7 @@ void originatorView()
     }
     //Is this the time server
     moveToXy(55,10);
-    if(m2mMesh.currentMeshTimeServer() == currentlyViewedOriginator)
+    if(m2mMesh.currentMeshSyncServer() == currentlyViewedOriginator)
     {
       Serial.print(F("Yes"));
     }

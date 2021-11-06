@@ -40,11 +40,11 @@ void refreshTopLine()
   }
   //Mesh time
   printUptimeAtXy(38,1,m2mMesh.syncedMillis());
-  if(m2mMesh.actingAsTimeServer())
+  if(m2mMesh.actingAsSyncServer())
   {
     Serial.print('*');
   }
-    else if(abs(m2mMesh.meshTimeDrift()) > 1000)
+    else if(abs(m2mMesh.meshSyncDrift()) > 1000)
   {
     Serial.print('D');
   }
@@ -211,7 +211,7 @@ void statusView()
           {
             flags[0] = '-';
           }
-          if(m2mMesh.actingAsTimeServer(originatorId))
+          if(m2mMesh.actingAsSyncServer(originatorId))
           {
             flags[1] = 'T';
           }
@@ -284,9 +284,9 @@ void statusView()
           {
             flags[0] = '-';
           }
-          if(m2mMesh.actingAsTimeServer(originatorId))
+          if(m2mMesh.actingAsSyncServer(originatorId))
           {
-            flags[1] = 'T';
+            flags[1] = 'S';
           }
           else
           {
