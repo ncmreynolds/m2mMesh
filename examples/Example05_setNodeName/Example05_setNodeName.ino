@@ -9,6 +9,7 @@
 
 char nodeName[17];
 uint8_t numberOfNodes = 0;
+uint8_t numberOfReachableNodes = 0;
 uint32_t timeOfLastNodeList = 0;
 uint32_t nodeListInterval = 60000;
 bool meshJoined = false;
@@ -52,9 +53,15 @@ void loop()
       meshJoined = true;
       Serial.println("Joined mesh");
     }
-    if(numberOfNodes != m2mMesh.numberOfReachableNodes())
+    if(numberOfNodes != m2mMesh.numberOfNodes())
     {
-      numberOfNodes = m2mMesh.numberOfReachableNodes();
+      numberOfNodes = m2mMesh.numberOfNodes();
+      timeOfLastNodeList = millis();
+      listNodes();
+    }
+    else if(numberOfReachableNodes != m2mMesh.numberOfReachableNodes())
+    {
+      numberOfReachableNodes = m2mMesh.numberOfReachableNodes();
       timeOfLastNodeList = millis();
       listNodes();
     }
@@ -73,18 +80,18 @@ void loop()
 
 void listNodes()
 {
-  Serial.printf("Number of reachable nodes:%02u\r\n",numberOfNodes);
+  Serial.printf("Number of nodes:%02u, %02u reachable \r\n", numberOfNodes, numberOfReachableNodes);
   uint8_t macaddress[6];
   for(uint8_t node=0; node < numberOfNodes; node++)
   {
     m2mMesh.macAddress(node,macaddress);
     if(m2mMesh.nodeNameIsSet(node))
     {
-      Serial.printf("\tNode:%02u\tMAC address:%02x%02x%02x%02x%02x%02x\tNode name:%s\r\n",node,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5],m2mMesh.getNodeName(node));
+      Serial.printf("\tNode:%02u\t%s\tMAC address:%02x%02x%02x%02x%02x%02x\tNode name:%s\r\n",node,m2mMesh.nodeIsReachableNode(node) == true ? "Up  ":"Down",macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5],m2mMesh.getNodeName(node));
     }
     else
     {
-      Serial.printf("\tNode:%02u\tMAC address:%02x%02x%02x%02x%02x%02x\tNode name:<Unknown>\r\n",node,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5]);
+      Serial.printf("\tNode:%02u\t%s\tMAC address:%02x%02x%02x%02x%02x%02x\tNode name:<Unknown>\r\n",node,m2mMesh.nodeIsReachableNode(node) == true ? "Up  ":"Down",macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5]);
     }
   }
 }
