@@ -8,6 +8,7 @@ setCallback	KEYWORD2
 nodeNameIsSet	KEYWORD2
 setNodeName	KEYWORD2
 getNodeName	KEYWORD2
+nodeIsReachableNode	KEYWORD2
 joined	KEYWORD2
 stable	KEYWORD2
 supplyVoltage	KEYWORD2

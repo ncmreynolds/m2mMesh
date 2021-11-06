@@ -208,7 +208,7 @@ const char m2mMeshNHSUnabletostorenodenamenotenoughmemory[] PROGMEM = "\r\nNHS U
 const char m2mMeshnew[] PROGMEM = " - new";
 const char m2mMeshthisnode[] PROGMEM = " - this node";
 const char m2mMeshPreviousUSRmessagenotreadpacketdropped[] PROGMEM = "\r\nPrevious USR message not read, packet dropped";
-const char m2mMeshTimeserverhasgoneofflinetakingovertimeserverrole[] PROGMEM = "Time server has gone offline, taking over time server role";
+const char m2mMeshSyncserverhasgoneofflinetakingovertimeserverrole[] PROGMEM = "\r\nSync server has gone offline, taking over time server role";
 const char m2mMeshfillRCVbufferslotd[] PROGMEM = 	"\r\nFill RECV buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadRCVbufferslotd[] PROGMEM =	"\r\nRead RECV buffer slot %u %u bytes %s from %02x:%02x:%02x:%02x:%02x:%02x";
 const char m2mMeshreadRCVbufferfull[] PROGMEM =	"\r\nRead RECV buffer full";
@@ -231,13 +231,14 @@ const char m2mMeshPeering_expired_with[] PROGMEM = "\r\nPeering expired with R:%
 //const char m2mMeshNHSincludeddoriginators[] PROGMEM = "\r\nNHS included %u originators";
 #endif
 
-#define m2mMesh_Fail	0
-#define m2mMesh_Success	1
-#define m2mMesh_NoRoute	2
-#define m2mMesh_CannotSend	3
+#define m2mMesh_Fail			0
+#define m2mMesh_Success			1
+#define m2mMesh_NoRoute			2
+#define m2mMesh_CannotSend		3
 #define m2mMesh_PeerAckTimeout	4
-#define m2mMesh_UnknownNode	5
+#define m2mMesh_UnknownNode		5
 #define m2mMesh_UnableToPeer	6
+#define m2mMesh_MeshIsFull		7
 
 const char errorDescription0[] PROGMEM = "Failure";
 const char errorDescription1[] PROGMEM = "Success";
@@ -246,32 +247,88 @@ const char errorDescription3[] PROGMEM = "Cannot send";
 const char errorDescription4[] PROGMEM = "Acknowledgment from peer timed out";
 const char errorDescription5[] PROGMEM = "Unknown node";
 const char errorDescription6[] PROGMEM = "Unable to peer with next hop";
+const char errorDescription7[] PROGMEM = "Mesh is full";
 
-constexpr const char *errorDescriptionTable[7] PROGMEM = {
+constexpr const char *errorDescriptionTable[8] PROGMEM = {
   errorDescription0,
   errorDescription1,
   errorDescription2,
   errorDescription3,
   errorDescription4,
   errorDescription5,
-  errorDescription6
+  errorDescription6,
+  errorDescription7
   };
-  
+
+//All packets use this layout  
 #define m2mMeshPacketTypeIndex				0
 #define m2mMeshPacketChecksumIndex			1
 #define m2mMeshPacketTTLIndex				2
-#define m2mMeshPacketFlagsIndex				3
 #define m2mMeshPacketSNIndex				4
-#define m2mMeshPacketOriginatorIndex		8
-#define m2mMeshPacketIntervalIndex			14
-#define m2mMeshPacketDestinationIndex		14
 
-struct m2mMeshOriginatorInfo							//A structure for storing information about originators (nodes)
+#define m2mMeshPacketOriginatorIndex		8
+#define m2mMeshPacketOriginatorIndex1		9
+#define m2mMeshPacketOriginatorIndex2		10
+#define m2mMeshPacketOriginatorIndex3		11
+#define m2mMeshPacketOriginatorIndex4		12
+#define m2mMeshPacketOriginatorIndex5		13
+
+#define m2mMeshPacketIntervalIndex			14
+#define m2mMeshPacketFlagsIndex				18
+
+//ELP packet format
+#define m2mMeshNeighbourIndex				19
+#define m2mMeshNeighbourIndex1				20
+#define m2mMeshNeighbourIndex2				21
+#define m2mMeshNeighbourIndex3				22
+#define m2mMeshNeighbourIndex4				23
+#define m2mMeshNeighbourIndex5				24
+#define m2mMeshNeighbourPeerInfoIndex		25
+
+//OGM packet format
+#define m2mMeshPacketTqIndex				19
+#define m2mMeshOGMforwardingChainIndex		21
+#define m2mMeshOGMforwardingChainIndex1		22
+#define m2mMeshOGMforwardingChainIndex2		23
+#define m2mMeshOGMforwardingChainIndex3		24
+#define m2mMeshOGMforwardingChainIndex4		25
+#define m2mMeshOGMforwardingChainIndex5		26
+
+//NHS packet format
+#define m2mMeshUptimeIndex					19
+#define m2mMeshFreeHeapIndex				23
+#define m2mMeshInitialFreeHeapIndex			27
+#define m2mMeshMaxFreeBlockIndex			31
+#define m2mMeshHeapFragmentationIndex		35
+#define m2mMeshRxPacketsIndex				36
+#define m2mMeshDroppedRxPacketsIndex		40
+#define m2mMeshTxPacketsIndex				44
+#define m2mMeshDroppedTxPacketsIndex		48
+#define m2mMeshFwdPacketsIndex				52
+#define m2mMeshDroppedFwdPacketsIndex		56
+#define m2mMeshActiveNeighboursIndex		60
+#define m2mMeshNumberOfOriginatorsIndex		61
+#define m2mMeshMeshFingerprintIndex			62
+#define m2mMeshMeshFingerprintIndex1		63
+#define m2mMeshMeshFingerprintIndex2		64
+#define m2mMeshMeshFingerprintIndex3		65
+#define m2mMeshMeshFingerprintIndex4		66
+#define m2mMeshMeshFingerprintIndex5		67
+#define m2mMeshMeshTxPowerIndex				68
+
+//USR packet format
+#define m2mMeshPacketDestinationIndex		14
+#define m2mMeshPacketDestinationIndex1		15
+#define m2mMeshPacketDestinationIndex2		16
+#define m2mMeshPacketDestinationIndex3		17
+#define m2mMeshPacketDestinationIndex4		18
+#define m2mMeshPacketDestinationIndex5		19
+
+struct m2mMeshOriginatorInfo							//A structure for storing information about originators (nodes), note use of bitfields to reduce size
 {
 	char *nodeName = nullptr;							//Node name, which may or may not be set. Memory is allocated dynamically at runtime
 	uint8_t macAddress[6] = {0, 0, 0, 0, 0, 0};			//Defaults to nothing
-	uint8_t channel = 0;								//Defaults to whatever the mesh channel is
-	uint8_t flags = 0;									//Defaults to no flags
+	uint8_t channel : 4 = 0;							//Defaults to whatever the mesh channel is
 	//ESP-Now peer management
 	bool isCurrentlyPeer = false;						//Is it an ESP-Now peer
 	bool hasUsAsPeer = false;							//Does it have this node as peer
@@ -279,24 +336,23 @@ struct m2mMeshOriginatorInfo							//A structure for storing information about o
 	uint32_t peerNeeded = 0;							//Last time the peer was needed
 	uint8_t numberOfPeers = 0;
 	uint8_t numberOfExpiredPeers = 0;
-	//Mesh info
 	uint8_t numberOfOriginators = 0;					//Number of originators this node asserts is in the mesh
 	uint8_t numberOfActiveNeighbours = 0;				//Number of active neighbours this node sees traffic from
 	//Routing info
 	uint32_t lastSequenceNumber = 0;					//The last sequence number from this originator
 	bool sequenceNumberProtectionWindowActive = true;	//Used to handle rollover and out of sequence packets
 	uint32_t lastSeen[3] = {0, 0, 0};					//The last time each protocol ELP/OGM/NHS was seen
-	uint32_t interval[3] = {0, 0, 0};					//The expected interval for ELP/OGM/NHS ELP/OGM/NHS/USR/FSP
+	uint32_t interval[3] = {0, 0, 0};					//The expected interval for ELP/OGM/NHS
 	uint16_t ogmReceived = 0;							//The number of OGMs received
 	uint32_t ogmReceiptLastConfirmed = 0;				//Last time an incoming OGM was checked for
 	uint16_t ogmEchoes = 0;								//The number of OGM ecoes received
 	uint32_t ogmEchoLastConfirmed = 0;					//Time of the last OGM echo
 	uint16_t ltq = 0;									//Local Transmission Quality
 	uint16_t gtq = 0;									//Global Transmission Quality
-	uint8_t selectedRouter = 255;						//Best global router for this node, which starts as unknown
+	uint8_t selectedRouter = 255;						//Best global router for this node
 	//Health info
+	uint8_t flags = 0;									//Defaults to no flags
 	uint32_t uptime = 0;								//The time the device has been up
-	//float supplyVoltage = 0;							//Supply voltage as measured by the ESP, whether it is the Vcc or battery voltage up to you
 	float currentTxPower = 0;							//Radio transmission power, if managing transmit power
 	uint32_t currentFreeHeap = 0;						//Current free heap
 	uint32_t initialFreeHeap = 0;						//Initial free heap
@@ -370,7 +426,8 @@ class m2mMeshClass
 		uint8_t syncServer();								//Returns ID of the 'mesh time' server
 		uint32_t syncedMillis();							//Returns 'mesh time' which should be broadly synced across all the nodes, useful for syncing events
 		uint8_t numberOfNodes();							//Returns the total number of originators in the mesh
-		uint8_t numberOfReachableNodes();				//Returns the number of originators reachable from this node
+		uint8_t numberOfReachableNodes();					//Returns the number of originators reachable from this node
+		bool nodeIsReachableNode(uint8_t originatorId);		//Is a particular node reachable
 		uint32_t expectedUptime(uint8_t);					//Uptime of a node, assuming it has continued running
 		uint8_t lastError();								//Last error code
 		void clearLastError();								//Clear last error code
@@ -623,8 +680,8 @@ class m2mMeshClass
 		uint32_t elpLastSeen(uint8_t);						//Last time ELP was seen
 		uint32_t ogmLastSeen(uint8_t);						//Last time OGM was seen
 		uint32_t nhsLastSeen(uint8_t);						//Last time NHS was seen
-		bool actingAsTimeServer();							//Is this node acting as a time server
-		bool actingAsTimeServer(uint8_t);					//Is a node acting as a time server
+		bool actingAsSyncServer();							//Is this node acting as a time server
+		bool actingAsSyncServer(uint8_t);					//Is a node acting as a time server
 		uint32_t initialFreeHeap(uint8_t);					//Initial free heap of a node
 		uint32_t currentFreeHeap(uint8_t);					//Current free heap of a node
 		uint32_t largestFreeBlock(uint8_t);					//Current free heap of a node
@@ -640,8 +697,8 @@ class m2mMeshClass
 		float currentTxPower();								//Returns current TxPower for this node
 		float currentTxPower(uint8_t);						//Returns current TxPower for another node
 		float txPowerFloor();								//Returns the current tx power floor
-		uint8_t currentMeshTimeServer();					//The node this one is using as a time server
-		int32_t meshTimeDrift();							//Returns 'mesh time' drift
+		uint8_t currentMeshSyncServer();					//The node this one is using as a time server
+		int32_t meshSyncDrift();							//Returns 'mesh time' drift
 		uint32_t rxPackets();								//Stats on received packets
 		uint32_t rxPackets(uint8_t);						//Stats on received packets for another node
 		uint32_t txPackets();								//Stats on transmitted packets
@@ -757,8 +814,8 @@ class m2mMeshClass
 		bool _waitingForSend = false;						//Are we waiting for a synchronous send?
 		bool _sendSuccess = false;							//Store the result of the sending callback
 		uint8_t _lastError = m2mMesh_Success;				//Store the last error code
-		uint8_t _sendtimer = 0;								//Used in timing out synchronous sends
-		uint8_t _sendTimeout = 500;							//Send timeout in ~ms when waiting for ack
+		uint32_t _sendtimer = 0;							//Used in timing out synchronous sends
+		uint32_t _sendTimeout = 500;						//Send timeout in ~ms when waiting for ack
 		M2MMESH_CALLBACK;									//Function pointer for the callback function
 
 		//Packet buffers
@@ -798,75 +855,68 @@ class m2mMeshClass
 		uint8_t _numberOfActiveNeighbours = 0;				//The current number of nearby active neighbours
 		uint8_t _meshMacAddress[6] = {0,0,0,0,0,0};			//A synthetic MAC address XORed from all the members used to indicate stability
 
-		//Global packet flags & values
-		static const uint8_t ESP_NOW_MIN_PACKET_SIZE = 64;			//Minimum packet size
-		static const uint8_t ESP_NOW_MAX_PACKET_SIZE = 250;			//Maximum packet size
-		//static const uint8_t MESH_PROTOCOL_VERSION = 0x01;			//Mesh version
-		static const uint8_t NO_FLAGS = 0x00;						//No flags on packet
-		static const uint8_t SEND_TO_ALL_NODES = 0x80;				//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
-		static const uint8_t PEERING_REQUEST = 0x40;				//If in the packet it flags the sender is trying to establish a peer relationship
-		static const uint8_t CONFIRM_SEND = 0x20;					//If in the packet it flags the sender should confirm send/forward
-		static const uint8_t RESPONSE = 0x10;						//Flag set this is a response/ack
-		static const uint32_t ANTI_COLLISION_JITTER = 250ul;		//Maximum jitter in milliseconds to try and avoid in-air collisions arising from repeated sending at regular intervals
-		uint32_t _nextJitter = 0;									//Next jitter is randomised after every send
-		static const uint8_t MESH_ORIGINATOR_NOT_FOUND = 255;		//Signifies that a node is unset or unknown
-		static const uint8_t MESH_NO_MORE_ORIGINATORS_LEFT = 254;	//Signifies the mesh is 'full' and no more members can join
-		static const uint8_t MESH_THIS_ORIGINATOR = 253;			//Signifies this node
-		static const uint8_t MESH_ALL_ORIGINATORS = 252;			//Signifies all nodes
+		//Global packet options & values
+		static const uint8_t  ESP_NOW_MIN_PACKET_SIZE =			64;			//Minimum packet size
+		static const uint8_t  ESP_NOW_MAX_PACKET_SIZE =			250;		//Maximum packet size
+		static const uint8_t  NO_FLAGS =						0x00;		//No flags on packet
+		static const uint8_t  SEND_TO_ALL_NODES =				0x80;		//If in the packet it flags this packet be sent to all ESP-Now nodes and does not include a destination address
+		static const uint8_t  PEERING_REQUEST =					0x40;		//If in the packet it flags the sender is trying to establish a peer relationship
+		static const uint8_t  CONFIRM_SEND =					0x20;		//If in the packet it flags the sender should confirm send/forward
+		static const uint8_t  RESPONSE =						0x10;		//Flag set this is a response/ack
+		static const uint32_t ANTI_COLLISION_JITTER =			250;		//Maximum jitter in milliseconds to try and avoid in-air collisions arising from repeated sending at regular intervals
+		uint32_t              _nextJitter =						0;			//Next jitter is randomised after every send
+		static const uint8_t  MESH_ORIGINATOR_NOT_FOUND =		255;		//Signifies that a node is unset or unknown
+		static const uint8_t  MESH_NO_MORE_ORIGINATORS_LEFT =	254;		//Signifies the mesh is 'full' and no more members can join
+		static const uint8_t  MESH_THIS_ORIGINATOR =			253;		//Signifies this node
+		static const uint8_t  MESH_ALL_ORIGINATORS =			252;		//Signifies all nodes
+		static const uint8_t  SEQUENCE_NUMBER_MAX_AGE =			8;			//Used for detection of sequence number resets/rollover
 
 
 		//ELP - Echo Location Protocol packet flags & values
-		static const uint8_t ELP_PACKET_TYPE = 0x00;				//The first octet of every ESP-Now packet identifies what it is
-		static const uint8_t ELP_DEFAULT_TTL = 0;					//A TTL of >0 means it may be forwarded
-		static const uint8_t ELP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;	//Default ELP flags
-
-		static const uint32_t ELP_FAST_INTERVAL = 5000ul;			//How often to send ELP (default every 10s)
-		static const uint32_t ELP_DEFAULT_INTERVAL = 10000ul;		//How often to send ELP (default every 10s)
-		static const uint16_t LTQ_MAX_VALUE = 65535;				//Maximum value for Local Transmit Quality
-		static const uint16_t LTQ_STARTING_VALUE = 32768;			//Starting value for Local Transmit Quality given to a new peer
+		static const uint8_t  ELP_PACKET_TYPE =					0x00;		//The first octet of every ESP-Now packet identifies what it is
+		static const uint8_t  ELP_DEFAULT_TTL =					0;			//A TTL of >0 means it may be forwarded
+		static const uint8_t  ELP_DEFAULT_OPTIONS =				SEND_TO_ALL_NODES;	//Default packet options
+		static const uint32_t ELP_FAST_INTERVAL =				5000ul;		//How often to send ELP (default every 10s)
+		static const uint32_t ELP_DEFAULT_INTERVAL =			10000ul;	//How often to send ELP (default every 10s)
 
 		//OGM - Originator Message packet flags & values
-		static const uint8_t OGM_PACKET_TYPE = 0x01;				//The first octet of every ESP-Now packet identifies what it is
-		static const uint8_t OGM_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
-		static const uint8_t OGM_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Default OGM flags
-		static const uint32_t OGM_FAST_INTERVAL = 10000ul; 		//How often to send OGM (default every 60s)
-		static const uint32_t OGM_DEFAULT_INTERVAL = 60000ul; 		//How often to send OGM (default every 60s)
-		static const uint8_t OGM_HOP_PENALTY = 0x00ff;				//Drop the GTQ in OGM packets before forwarding
-		static const uint8_t SEQUENCE_NUMBER_MAX_AGE = 8;			//Used for detection of sequence number resets/rollover
+		static const uint8_t  OGM_PACKET_TYPE =					0x01;		//The first octet of every ESP-Now packet identifies what it is
+		static const uint8_t  OGM_DEFAULT_OPTIONS =				SEND_TO_ALL_NODES;	//Default packet options
+		static const uint8_t  OGM_DEFAULT_TTL =					50;    		//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
+		static const uint32_t OGM_FAST_INTERVAL =				10000ul;	//How often to send OGM (default every 60s)
+		static const uint32_t OGM_DEFAULT_INTERVAL =			60000ul;	//How often to send OGM (default every 60s)
+		static const uint8_t  OGM_HOP_PENALTY =					0x00ff;		//Drop the GTQ in OGM packets before forwarding
+		static const uint16_t LTQ_MAX_VALUE =					65535;		//Maximum value for Local Transmit Quality
+		static const uint16_t LTQ_STARTING_VALUE =				32768;		//Starting value for Local Transmit Quality given to a new peer
 
 		//NHS - Node Health/Status packet flags & values
-		static const uint8_t NHS_PACKET_TYPE = 0x02;          		//The first octet of every ESP-Now packet identifies what it is
-		static const uint8_t NHS_DEFAULT_TTL = 50;            		//A TTL of >0 means it may be forwarded.
-		static const uint8_t NHS_FLAGS_TIMESERVER =				0x01;  	//Flag set when acting as a time server
+		static const uint8_t  NHS_PACKET_TYPE = 				0x02;		//The first octet of every ESP-Now packet identifies what it is
+		static const uint8_t  NHS_DEFAULT_OPTIONS =				SEND_TO_ALL_NODES;	//Default packet options
+		static const uint8_t  NHS_DEFAULT_TTL =					50; 		//A TTL of >0 means it may be forwarded.
+		static const uint8_t  NHS_FLAGS_SYNCSERVER =			0x01;	  	//Flag set when acting as a time server
 		#if defined (m2mMeshIncludeRTCFeatures)
-		static const uint8_t NHS_FLAGS_RTCSERVER =				0x02;	//Flag set when have a source of real time clock
+		static const uint8_t  NHS_FLAGS_RTCSERVER =				0x02;		//Flag set when have a source of real time clock
 		#endif
-		static const uint8_t NHS_FLAGS_NODE_NAME_SET =			0x04;	//Flag set when the NHS packet includes a friendly name
-		static const uint8_t NHS_FLAGS_INCLUDES_ORIGINATORS =	0x08;	//Flag set when the NHS packet includes peer information
-		//static const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;			//Flag set when the NHS packet includes supply voltage
-		static const uint8_t PROCESSOR_ESP8266 =				0x10;	//Processor is ESP8266
-		static const uint8_t PROCESSOR_ESP32 =					0x20;	//Processor is ESP32
-		static const uint8_t PROCESSOR_ESP8285 =				0x30;	//Processor is ESP32
-		static const uint8_t PROCESSOR_ESP32S1 =				0x40;	//Processor is ESP32S1
-		static const uint8_t PROCESSOR_ESP32S2 =				0x50;	//Processor is ESP32S2
-		static const uint8_t PROCESSOR_ESP32C3 =				0x60;	//Processor is ESP32C3
-		static const uint8_t PROCESSOR_ESP32S3 =				0x70;	//Processor is ESP32S3
-		static const uint32_t NHS_FAST_INTERVAL = 30000ul; 			//How often to send NHS (default every 5m)
-		static const uint32_t NHS_DEFAULT_INTERVAL = 300000ul; 		//How often to send NHS (default every 5m)
+		static const uint8_t  NHS_FLAGS_NODE_NAME_SET =			0x04;		//Flag set when the NHS packet includes a friendly name
+		static const uint8_t  NHS_FLAGS_INCLUDES_ORIGINATORS =	0x08;		//Flag set when the NHS packet includes peer information
+		//static const uint8_t NHS_FLAGS_INCLUDES_VCC = 0x10;				//Flag set when the NHS packet includes supply voltage
+		static const uint8_t  PROCESSOR_ESP8266 =				0x10;		//Processor is ESP8266
+		static const uint8_t  PROCESSOR_ESP32 =					0x20;		//Processor is ESP32
+		static const uint8_t  PROCESSOR_ESP8285 =				0x30;		//Processor is ESP32
+		static const uint8_t  PROCESSOR_ESP32S1 =				0x40;		//Processor is ESP32S1
+		static const uint8_t  PROCESSOR_ESP32S2 =				0x50;		//Processor is ESP32S2
+		static const uint8_t  PROCESSOR_ESP32C3 =				0x60;		//Processor is ESP32C3
+		static const uint8_t  PROCESSOR_ESP32S3 =				0x70;		//Processor is ESP32S3
+		static const uint32_t NHS_FAST_INTERVAL =				30000ul;	//How often to send NHS (default every 5m)
+		static const uint32_t NHS_DEFAULT_INTERVAL =			300000ul;	//How often to send NHS (default every 5m)
 
-		#if defined(ESP8266)
-		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES | PROCESSOR_ESP8266;	//Default NHS flags
-		#elif defined(ESP32)
-		static const uint8_t NHS_DEFAULT_FLAGS = SEND_TO_ALL_NODES | PROCESSOR_ESP32;	//Default NHS flags
-		#endif
-
-
-		bool _actingAsTimeServer = true;					//Everything starts out as a potential time server, but defers to longer running nodes
-		uint8_t _currentMeshTimeServer 						//The current time server
-			= MESH_ORIGINATOR_NOT_FOUND;
-		int32_t _meshTimeOffset = 0;						//NHS keeps a semi-synced clock to the device with the longest uptime. This is not uber-accurate and may fluctuate slightly!
-		int32_t _meshTimeDrift = 0;							//Track clock drift over time, just for info
-		bool _meshTimeNegotiated = false;					//This is false until this node has participated in a time server election
+		bool _actingAsSyncServer = true;					//Everything starts out as a potential sync server, but defers to longer running nodes
+		bool _meshSyncNegotiated = false;					//This is false until this node has participated in a time server election
+		uint8_t _currentMeshSyncServer 						//The current sync server
+			= MESH_THIS_ORIGINATOR;
+		int32_t _meshSyncOffset = 0;						//NHS keeps a semi-synced clock to the device with the longest uptime. This is not uber-accurate and may fluctuate slightly!
+		int32_t _meshSyncDrift = 0;							//Track sync drift over time, just for info
+		int32_t	_meshSyncWindow = 1000ul;					//How far out of the window things have to be for the server to change
 
 		#if defined (m2mMeshIncludeRTCFeatures)
 		bool rtc = false;									//Set if an RTC is configured
@@ -892,16 +942,16 @@ class m2mMeshClass
 		//USR - User data packet flags and values
 		const uint8_t USR_PACKET_TYPE = 0x03;				//The first octet of every ESP-Now packet identifies what it is
 		const uint8_t USR_DEFAULT_TTL = 50;					//A TTL of >0 means it may be forwared.
-		const uint8_t USR_DEFAULT_FLAGS = SEND_TO_ALL_NODES;
+		const uint8_t USR_DEFAULT_OPTIONS = SEND_TO_ALL_NODES;	//Default packet options
 
 		//FSP - File Sync Protocol, for SDFat filesystem
 		const uint8_t FSP_PACKET_TYPE = 0x04;				//The first octet of every ESP-Now packet identifies what it is
 		const uint8_t FSP_DEFAULT_TTL = 50;					//A TTL of >0 means it may be forwared. OGM MUST be forwarded for a multi-hop mesh to form
-		const uint8_t FSP_DEFAULT_FLAGS = SEND_TO_ALL_NODES;//Not yet implemented
+		const uint8_t FSP_DEFAULT_OPTIONS = SEND_TO_ALL_NODES;//Not yet implemented
 
 		const uint8_t PING_PACKET_TYPE = 0x05;				//The first octet of every ESP-Now packet identifies what it is
 		const uint8_t PING_DEFAULT_TTL = 50;				//A TTL of >0 means it may be forwared.
-		const uint8_t PING_DEFAULT_FLAGS = NO_FLAGS;		//Ping has 'confirm send' set for reliability
+		const uint8_t PING_DEFAULT_OPTIONS = NO_FLAGS;		//Ping has 'confirm send' set for reliability
 
 		//Power management & sleep related variables
 		const uint32_t POWER_MANAGEMENT_INTERVAL = 10000;	//How often to adjust the Wi-Fi Tx power
@@ -919,10 +969,10 @@ class m2mMeshClass
 		uint32_t _powerManagementTimer = 0;					//Don't do power management until there's been enough time to pick up and settle some peers
 
 		//Time syncing functions
-		void _updateMeshTime(uint32_t, uint8_t);			//Updates the time from an advertising time server
-		void _setMeshTime(uint32_t, uint8_t);
-		void _chooseNewTimeServer();						//If the current time server disappears, try to pick a new one
-		void _becomeTimeServer();
+		void _updateMeshSync(uint32_t, uint8_t);			//Updates the time from an advertising time server
+		void _setMeshSync(uint32_t, uint8_t);
+		void _chooseNewSyncServer();						//If the current time server disappears, try to pick a new one
+		void _becomeSyncServer();
 		
 		//ESP-NOW related functions in many of these there are lots of preprocessor directives to handle API differences between ESP8266/8285 and ESP32 at compile time
 		bool _initESPNow();											//Initialises ESP-NOW
