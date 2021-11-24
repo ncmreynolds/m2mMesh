@@ -185,7 +185,11 @@ const char m2mMesh02x02x02x02x02x02xcouldnotbeadded[] PROGMEM = "originator %02x
 const char m2mMeshNodenamesettos[] PROGMEM = "\r\nNode name set to '%s'";
 const char m2mMeshSendingpackettype02x[] PROGMEM = "\r\nSending packet type %02x";
 const char m2mMeshUSRSNDO02x02x02x02x02x02xTTL02dFlags02x[] PROGMEM = "\r\nUSR SEND O:%02x:%02x:%02x:%02x:%02x:%02x TTL:%02d Flags:%02x";
-const char m2mMeshstartedwithautomaticallocationofmemoryStabilitymaybeimpacted[] PROGMEM = "\r\nstarted with automatic allocation of memory. Stability may be impacted.";
+const char m2mMeshautomaticallysizingmeshStabilitymaybeimpacted[] PROGMEM = ", automatically sizing mesh. Stability may be impacted.";
+const char m2mMeshincreasingmaximummeshsizebyunodestoaccommodate[] PROGMEM = "increasing maximum mesh size by %u nodes to accommodate ";
+const char m2mMeshenableddynamicmeshgrowthinincrementsofu[] PROGMEM = "\r\nEnabled dynamic mesh growth in increments of %u";
+const char m2mMeshdisableddynamicmeshgrowth[] PROGMEM = "\r\nDisabled dynamic mesh growth";
+const char m2mMeshskippingsendingzerolengthpacket[] PROGMEM = "\r\nSkipping sending zero length packet";
 const char m2mMeshTTL02dFLG02xSEQ08xLENd[] PROGMEM = "TTL:%02d FLG:%02x SEQ:%x LEN:%u";
 const char m2mMeshTIMEs[] PROGMEM = " TIME:%s";
 const char m2mMeshd02x[] PROGMEM = "%u/%02x ";
@@ -386,9 +390,7 @@ class m2mMeshClass
 		~m2mMeshClass();
 
 		//Setup functions
-		bool begin();										//Start the mesh, with the default maximum number of nodes (16)
-		bool begin(uint8_t);								//Start the mesh with a specific maximum number of nodes. Set to 0 for unlimited dynamic allocation of memory, which may cause instability.
-		bool begin(uint8_t, uint8_t);						//Start the mesh with a specific maximum number of nodes and channel.
+		bool begin(uint8_t max = 16, uint8_t channel = 1);	//Start the mesh, with the default maximum number of nodes (16) and channel
 		void end();											//Stop the mesh and free most memory. Configured items such as the node name or maximum number of nodes ARE retained but no originator/routing information.
 		
 		//Maintenance functions
@@ -404,6 +406,8 @@ class m2mMeshClass
 		char * getNodeName(uint8_t);						//Get a pointer to the node name for another node
 		uint8_t * getMeshAddress();							//Get a pointer to the mesh MAC address
 		uint8_t * getMeshAddress(uint8_t);					//Get a pointer to the mesh MAC address	 for a specific node
+		void enableDynamicGrowth(uint8_t increment = 4);	//Enables dynamic increase in max number of nodes
+		void disableDynamicGrowth();						//Disable dynamic growth
 		
 		//RTC functions
 		#if defined (m2mMeshIncludeRTCFeatures)
@@ -427,7 +431,7 @@ class m2mMeshClass
 		uint32_t syncedMillis();							//Returns 'mesh time' which should be broadly synced across all the nodes, useful for syncing events
 		uint8_t numberOfNodes();							//Returns the total number of originators in the mesh
 		uint8_t numberOfReachableNodes();					//Returns the number of originators reachable from this node
-		bool nodeIsReachableNode(uint8_t originatorId);		//Is a particular node reachable
+		bool nodeIsReachableNode(uint8_t);					//Is a particular node reachable
 		uint32_t expectedUptime(uint8_t);					//Uptime of a node, assuming it has continued running
 		uint8_t lastError();								//Last error code
 		void clearLastError();								//Clear last error code
@@ -714,7 +718,7 @@ class m2mMeshClass
 		void enableDebugging(Stream &);						//Start debugging on a Stream, probably Serial but could be elsewhere
 		void enableDebugging(Stream &, uint32_t);			//Start debugging on a Stream, probably Serial but could be elsewhere, and change the default logging level
 		void enableDebugging();								//Start debugging if previously stopped
-		void enableDebugging(uint32_t);						//Start debugging if previously stopped and set a level
+		void enableDebugging(uint32_t);						//Start debugging if previously stopped and/or change the debugging level
 		void disableDebugging();							//Stop debugging
 		uint32_t loggingLevel();							//Returns current log level
 		void setLoggingLevel(uint32_t );					//Sets current log level
@@ -846,7 +850,9 @@ class m2mMeshClass
 
 		//Originator related variables
 		m2mMeshOriginatorInfo *_originator;					//Pointer to the originator table, which is allocated in the constructor function
-		uint8_t _maxNumberOfOriginators = 16;				//The default number of maximum originators. This can be changed at begin(). Set to 0 for automatic allocation of resource, which may cause heap fragmentation and affect stability.
+		uint8_t _maxNumberOfOriginators = 1;				//The default number of maximum originators. This can be changed at begin(). Set to 0 for automatic allocation of resource, which may cause heap fragmentation and affect stability.
+		bool _allowMeshGrowth = false;						//True if the mesh is allowed to grow beyond _maxNumberOfOriginators
+		uint8_t _meshGrowthIncrement = 4;
 		uint8_t _numberOfOriginators = 0;					//The current number of originators
 		static const uint8_t _maxNumberOfPeers = 20;		//The maximum number of ESP-Now peers
 		uint32_t _peerLifetime = 60000;						//How long a peering lasts without use, default 5m
@@ -866,7 +872,7 @@ class m2mMeshClass
 		static const uint32_t ANTI_COLLISION_JITTER =			250;		//Maximum jitter in milliseconds to try and avoid in-air collisions arising from repeated sending at regular intervals
 		uint32_t              _nextJitter =						0;			//Next jitter is randomised after every send
 		static const uint8_t  MESH_ORIGINATOR_NOT_FOUND =		255;		//Signifies that a node is unset or unknown
-		static const uint8_t  MESH_NO_MORE_ORIGINATORS_LEFT =	254;		//Signifies the mesh is 'full' and no more members can join
+		//static const uint8_t  MESH_NO_MORE_ORIGINATORS_LEFT =	254;		//Signifies the mesh is 'full' and no more members can join
 		static const uint8_t  MESH_THIS_ORIGINATOR =			253;		//Signifies this node
 		static const uint8_t  MESH_ALL_ORIGINATORS =			252;		//Signifies all nodes
 		static const uint8_t  SEQUENCE_NUMBER_MAX_AGE =			8;			//Used for detection of sequence number resets/rollover
@@ -988,6 +994,7 @@ class m2mMeshClass
 		uint8_t _originatorIdFromMac(uint8_t *);			//Finds the ID of an originator from the MAC address or MESH_ORIGINATOR_NOT_FOUND if it isn't found
 		uint8_t _originatorIdFromMac(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 		uint8_t _addOriginator(uint8_t *,uint8_t);			//Adds an originator given the MAC address and channel
+		bool _increaseMeshSize(uint8_t);					//Increase the mesh size (if allowed)
 		void rollOutTheWelcomeWagon();						//Change some timings when a new or restarted originator appears
 		void _calculateLtq(uint8_t);						//Calculates the LTQ for a node
 		bool _isLocalMacAddress(uint8_t *);					//Checks if a MAC address is the local one

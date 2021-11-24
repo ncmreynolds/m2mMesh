@@ -12,6 +12,8 @@ nodeIsReachableNode	KEYWORD2
 joined	KEYWORD2
 stable	KEYWORD2
 supplyVoltage	KEYWORD2
+enableDynamicGrowth	KEYWORD2
+disableDynamicGrowth	KEYWORD2
 
 //Time synchronisation
 synced	KEYWORD2

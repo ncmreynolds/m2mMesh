@@ -43,15 +43,17 @@ ICACHE_FLASH_ATTR m2mMeshClass::~m2mMeshClass()
 	//Do nothing
 }
 
-//Overloaded function for starting the mesh
-bool ICACHE_FLASH_ATTR m2mMeshClass::begin()
+bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t max, const uint8_t channel)
 {
-	return(begin(_maxNumberOfOriginators));
-}
-
-bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
-{
-	_maxNumberOfOriginators = i;
+	if(max == 0)
+	{
+		_maxNumberOfOriginators = 1;
+		_allowMeshGrowth = true;
+	}
+	else
+	{
+		_maxNumberOfOriginators = max;
+	}
 	//Allocate a block of memory for the originator table, a minimum of one
 	if(_maxNumberOfOriginators > 0)
 	{
@@ -87,13 +89,10 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 	#endif
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
-		if(_maxNumberOfOriginators > 0)
+		_debugStream->printf_P(m2mMeshstartedwithcapacityfordnodes,_maxNumberOfOriginators);
+		if(_allowMeshGrowth == true)
 		{
-			_debugStream->printf_P(m2mMeshstartedwithcapacityfordnodes,_maxNumberOfOriginators);
-		}
-		else
-		{
-			_debugStream->print(m2mMeshstartedwithautomaticallocationofmemoryStabilitymaybeimpacted);
+			_debugStream->print(m2mMeshautomaticallysizingmeshStabilitymaybeimpacted);
 		}
 	}
 	#endif
@@ -119,15 +118,11 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i)
 	_currentTtl[USR_PACKET_TYPE] = USR_DEFAULT_TTL;
 	_currentTtl[FSP_PACKET_TYPE] = FSP_DEFAULT_TTL;
 	_currentTtl[PING_PACKET_TYPE] = PING_DEFAULT_TTL;
+	_currentChannel = channel;										//Set the send channel
+	WiFi.channel(_currentChannel);									//Set the receive channel
 	return(_initESPNow());											//Initialise ESP-NOW, the function handles the API differences between ESP8266/ESP8285 and ESP32
 }
 
-bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t i, const uint8_t c)
-{
-	WiFi.channel(c);		//Set the receive channel
-	_currentChannel = c;	//Set the send channel
-	return(begin(i));		//Begin for i nodes
-}
 
 void ICACHE_FLASH_ATTR m2mMeshClass::end()
 {
@@ -2726,7 +2721,7 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_originatorIdFromMac(const uint8_t mac0,
 //Adds an originator record
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_addOriginator(uint8_t* mac, const uint8_t originatorChannel)
 {
-	if(_numberOfOriginators<MESH_NO_MORE_ORIGINATORS_LEFT && _numberOfOriginators<_maxNumberOfOriginators)
+	if(_numberOfOriginators < _maxNumberOfOriginators)
 	{
 		//memcpy(&&originator[numberOfOriginators].macAddress[0],mac,6);
 		_originator[_numberOfOriginators].macAddress[0] = mac[0];
@@ -2748,6 +2743,31 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_addOriginator(uint8_t* mac, const uint8
 		rollOutTheWelcomeWagon();			//Do stuff to welcome a new originator
 		return(_numberOfOriginators - 1);
 	}
+	else if(_allowMeshGrowth == true && _numberOfOriginators < 255 - _meshGrowthIncrement)
+	{
+		#ifdef m2mMeshIncludeDebugFeatures
+		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NODE_MANAGEMENT)
+		{
+			_debugStream->printf_P(m2mMeshincreasingmaximummeshsizebyunodestoaccommodate, _meshGrowthIncrement);
+		}
+		#endif
+		if(_increaseMeshSize(_meshGrowthIncrement))
+		{
+			#ifdef m2mMeshIncludeDebugFeatures
+			#endif
+			return(_addOriginator(mac, originatorChannel)); //Add the originator
+		}
+		else
+		{
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NODE_MANAGEMENT)
+			{
+				_debugStream->print(m2mMeshfailed);
+			}
+			#endif
+			return(MESH_ORIGINATOR_NOT_FOUND);
+		}
+	}
 	#ifdef m2mMeshIncludeDebugFeatures
 	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NODE_MANAGEMENT)
 	{
@@ -2756,7 +2776,94 @@ uint8_t ICACHE_FLASH_ATTR m2mMeshClass::_addOriginator(uint8_t* mac, const uint8
 	#endif
 	_meshHasBecomeUnstable();
 	_lastError = m2mMesh_MeshIsFull;
-	return(MESH_NO_MORE_ORIGINATORS_LEFT);
+	return(MESH_ORIGINATOR_NOT_FOUND);
+}
+
+bool ICACHE_FLASH_ATTR m2mMeshClass::_increaseMeshSize(uint8_t extraNodes)
+{
+	if(_allowMeshGrowth == true && _numberOfOriginators < 255 - extraNodes)
+	{
+		m2mMeshOriginatorInfo *_originatorNew = new m2mMeshOriginatorInfo[_maxNumberOfOriginators + _meshGrowthIncrement];
+		/*for(uint8_t i = 0; i < _maxNumberOfOriginators; i++)
+		{
+			_originatorNew[i].nodeName = _originator[i].nodeName;
+			_originatorNew[i].macAddress[0] = _originator[i].macAddress[0];
+			_originatorNew[i].macAddress[1] = _originator[i].macAddress[1];
+			_originatorNew[i].macAddress[2] = _originator[i].macAddress[2];
+			_originatorNew[i].macAddress[3] = _originator[i].macAddress[3];
+			_originatorNew[i].macAddress[4] = _originator[i].macAddress[4];
+			_originatorNew[i].macAddress[5] = _originator[i].macAddress[5];
+			_originatorNew[i].channel = _originator[i].channel;
+			_originatorNew[i].isCurrentlyPeer = _originator[i].isCurrentlyPeer;
+			_originatorNew[i].hasUsAsPeer = _originator[i].hasUsAsPeer;
+			_originatorNew[i].peeringExpired = _originator[i].peeringExpired;
+			_originatorNew[i].peerNeeded = _originator[i].peerNeeded;
+			_originatorNew[i].numberOfPeers = _originator[i].numberOfPeers;
+			_originatorNew[i].numberOfExpiredPeers = _originator[i].numberOfExpiredPeers;
+			_originatorNew[i].numberOfOriginators = _originator[i].numberOfOriginators;
+			_originatorNew[i].numberOfActiveNeighbours = _originator[i].numberOfActiveNeighbours;
+			_originatorNew[i].lastSequenceNumber =  _originatorNew[i].lastSequenceNumber;
+			_originatorNew[i].sequenceNumberProtectionWindowActive = _originator[i].sequenceNumberProtectionWindowActive;
+			_originatorNew[i].lastSeen[0] = _originator[i].lastSeen[0];
+			_originatorNew[i].lastSeen[1] = _originator[i].lastSeen[1];
+			_originatorNew[i].lastSeen[2] = _originator[i].lastSeen[2];
+			_originatorNew[i].interval[0] = _originator[i].interval[0];
+			_originatorNew[i].interval[1] = _originator[i].interval[1];
+			_originatorNew[i].interval[2] = _originator[i].interval[2];
+			_originatorNew[i].ogmReceived = _originator[i].ogmReceived;
+			_originatorNew[i].ogmReceiptLastConfirmed = _originator[i].ogmReceiptLastConfirmed;
+			_originatorNew[i].ogmEchoes = _originator[i].ogmEchoes;
+			_originatorNew[i].ogmEchoLastConfirmed = _originator[i].ogmEchoLastConfirmed;
+			_originatorNew[i].ltq = _originator[i].ltq;
+			_originatorNew[i].gtq = _originator[i].gtq;
+			_originatorNew[i].selectedRouter = _originator[i].selectedRouter;
+			_originatorNew[i].flags = _originator[i].flags;
+			_originatorNew[i].uptime = _originator[i].uptime;
+			_originatorNew[i].currentTxPower = _originator[i].currentTxPower;
+			_originatorNew[i].currentFreeHeap = _originator[i].currentFreeHeap;
+			_originatorNew[i].initialFreeHeap = _originator[i].initialFreeHeap;
+			_originatorNew[i].largestFreeBlock = _originator[i].largestFreeBlock;
+			_originatorNew[i].heapFragmentation = _originator[i].heapFragmentation;
+			_originatorNew[i].rxPackets = _originator[i].rxPackets;
+			_originatorNew[i].txPackets = _originator[i].txPackets;
+			_originatorNew[i].droppedRxPackets = _originator[i].droppedRxPackets;
+			_originatorNew[i].droppedTxPackets = _originator[i].droppedTxPackets;	
+		}*/
+		memcpy(_originatorNew, _originator, sizeof(m2mMeshOriginatorInfo[_maxNumberOfOriginators]));
+		_maxNumberOfOriginators += extraNodes;
+		delete[] _originator;			//Delete the old block on heap (ouch)
+		_originator = _originatorNew;	//Point the pointer at the new place on heap
+		return(true);
+	}
+	return(false);
+}
+void ICACHE_FLASH_ATTR m2mMeshClass::enableDynamicGrowth(uint8_t increment)
+{
+	_allowMeshGrowth = true;
+	if(increment > 0)
+	{
+		_meshGrowthIncrement = increment;
+	}
+	else
+	{
+		_meshGrowthIncrement = 1;
+	}
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NODE_MANAGEMENT)
+	{
+		_debugStream->printf_P(m2mMeshenableddynamicmeshgrowthinincrementsofu, _meshGrowthIncrement);
+	}
+	#endif
+}
+void ICACHE_FLASH_ATTR m2mMeshClass::disableDynamicGrowth()
+{
+	#ifdef m2mMeshIncludeDebugFeatures
+	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NODE_MANAGEMENT)
+	{
+		_debugStream->print(m2mMeshdisableddynamicmeshgrowth);
+	}
+	#endif
+	_allowMeshGrowth = false;
 }
 
 void ICACHE_FLASH_ATTR m2mMeshClass::_calculateLtq(const uint8_t originatorId)
@@ -3444,6 +3551,13 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::send(bool wait)
 			return(true);
 		}
 	}
+	else
+	{
+		if (_debugEnabled == true)
+		{
+			_debugStream->print("Routing failure");
+		}
+	}
 	_userPacketBuffer.length = 0;
 	_buildingUserPacket = false;
 	_waitingForSend = false;
@@ -3521,7 +3635,7 @@ bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet)
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
 		{
-			_debugStream->print("\r\nSkipping sending zero length packet");
+			_debugStream->print(m2mMeshskippingsendingzerolengthpacket);
 		}
 		#endif
 		return(true);
