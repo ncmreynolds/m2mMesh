@@ -6,3 +6,10 @@ For more detailed examples of sending and receiving data see examples 3 and 4.
 
 ![](output.png)
 
+## Methods for sending data
+
+```c++
+bool m2mMesh.add(<most data types>)	//Adds data to the message
+bool m2mMesh.send(bool wait)	//Sends the message. By default it waits until the packet is registered as succesfully sending, but this can be overriden. A succesful send is no guarantee of delivery.
+```
+

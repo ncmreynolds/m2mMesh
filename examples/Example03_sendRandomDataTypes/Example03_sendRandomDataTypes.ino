@@ -22,7 +22,7 @@ uint8_t maximumArrayLength = 16;
 void setup()
 {
   Serial.begin(115200);
-  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_ESP_NOW_EVENTS);
+  m2mMesh.setNodeName("Data flooding node");
   if(m2mMesh.begin())
   {
     Serial.print("\n\nMesh started on channel:");
@@ -40,7 +40,7 @@ void loop()
   if(joinedMesh == false && m2mMesh.joined() == true)
   {
     joinedMesh = true;
-    Serial.println("Joined mesh, sending random data types");
+    Serial.println("Joined mesh, flooding random data types to the whole mesh");
   }
   else if(joinedMesh == true && m2mMesh.joined() == false)
   {
@@ -197,5 +197,9 @@ void loop()
         Serial.println("Sending failed");
       }
     }
+  }
+  if(m2mMesh.messageWaiting())
+  {
+    m2mMesh.markMessageRead();
   }
 }

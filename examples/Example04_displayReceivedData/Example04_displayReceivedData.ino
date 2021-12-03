@@ -20,12 +20,7 @@ uint8_t numberOfReachableNodes = 0;
 void setup()
 {
   Serial.begin(115200);
-  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_USR_RECEIVED);
-  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_ESP_NOW_EVENTS | m2mMesh.MESH_UI_LOG_BUFFER_MANAGEMENT);
-  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_ALL_RECEIVED_PACKETS);
-  //m2mMesh.enableDebugging(Serial, m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS| m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_ESP_NOW_EVENTS | m2mMesh.MESH_UI_LOG_BUFFER_MANAGEMENT);
-  m2mMesh.enableDebugging(Serial, m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS| m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_ESP_NOW_EVENTS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT);
-  m2mMesh.setNodeName("Sequential hello node");
+  m2mMesh.setNodeName("Data logging node");
   if(m2mMesh.begin())
   {
     Serial.print("\n\nMesh started on channel:");

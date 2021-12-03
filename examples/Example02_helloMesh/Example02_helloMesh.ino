@@ -33,7 +33,9 @@ void loop() {
   if(joinedMesh == false && m2mMesh.joined() == true)
   {
     joinedMesh = true;
-    Serial.println("Joined mesh");
+    Serial.print("Joined mesh, flooding \"");
+    Serial.print(messageToSend);
+    Serial.println("\" to all nodes.");
   }
   else if(joinedMesh == true && m2mMesh.joined() == false)
   {
@@ -52,7 +54,7 @@ void loop() {
   if(millis() - lastSend > sendInterval)
   {
     lastSend = millis();
-    if(m2mMesh.joined())
+    if(m2mMesh.joined() && numberOfReachableNodes > 0)
     {
       if(m2mMesh.add(messageToSend))
       {
