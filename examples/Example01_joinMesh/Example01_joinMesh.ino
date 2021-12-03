@@ -29,6 +29,7 @@ void setup() {
   digitalWrite(LED_BUILTIN,LED_OFF);
   #endif
   Serial.begin(115200);
+  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_OGM_RECEIVED |  m2mMesh.MESH_UI_LOG_OGM_SEND | m2mMesh.MESH_UI_LOG_OGM_FORWARDING);
   delay(1000);
   if(m2mMesh.begin())
   {
@@ -67,5 +68,9 @@ void loop() {
     Serial.print(numberOfNodes);
     Serial.print(", reachable nodes:");
     Serial.println(numberOfReachableNodes);
+  }
+  if(m2mMesh.messageWaiting())
+  {
+    m2mMesh.markMessageRead();
   }
 }
