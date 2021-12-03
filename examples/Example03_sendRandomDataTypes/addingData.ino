@@ -55,7 +55,7 @@ void addBoolArray()
   }
   else
   {
-    Serial.printf("\tFailed to add bool array data\r\n");
+    Serial.printf("\tFailed to add bool[%u] array data\r\n", arrayLength);
   }
 }
 void addUint8_t()
@@ -86,7 +86,7 @@ void addUint8_tArray()
   }
   else
   {
-    Serial.printf("\tFailed to add uint8_t array data\r\n");
+    Serial.printf("\tFailed to add uint8_t[%u] array data\r\n", arrayLength);
   }
 }
 void addInt8_t()
@@ -117,7 +117,7 @@ void addInt8_tArray()
   }
   else
   {
-    Serial.printf("\tFailed to add uint16_t array data\r\n");
+    Serial.printf("\tFailed to add int8_t[%u] array data\r\n", arrayLength);
   }
 }
 void addUint16_t()
@@ -148,7 +148,7 @@ void addUint16_tArray()
   }
   else
   {
-    Serial.printf("\tFailed to add uint16_t array data\r\n");
+    Serial.printf("\tFailed to add uint16_t[%u] array data\r\n", arrayLength);
   }
 }
 void addInt16_t()
@@ -179,7 +179,7 @@ void addInt16_tArray()
   }
   else
   {
-    Serial.printf("\tFailed to add int16_t array data\r\n");
+    Serial.printf("\tFailed to add int16_t[%u] array data\r\n", arrayLength);
   }
 }
 void addUint32_t()
@@ -210,7 +210,7 @@ void addUint32_tArray()
   }
   else
   {
-    Serial.printf("\tFailed to add uint32_t array data\r\n");
+    Serial.printf("\tFailed to add uint32_t[%u] array data\r\n", arrayLength);
   }
 }
 void addInt32_t()
@@ -241,7 +241,7 @@ void addInt32_tArray()
   }
   else
   {
-    Serial.printf("\tFailed to add int32_t array data\r\n");
+    Serial.printf("\tFailed to add int32_t[%u] array data\r\n", arrayLength);
   }
 }
 void addUint64_t()
@@ -272,7 +272,7 @@ void addUint64_tArray()
   }
   else
   {
-    Serial.printf("\tFailed to add uint64_t array data\r\n");
+    Serial.printf("\tFailed to add uint64_t[%u] array data\r\n", arrayLength);
   }
 }
 void addInt64_t()
@@ -303,7 +303,7 @@ void addInt64_tArray()
   }
   else
   {
-    Serial.printf("\tFailed to add int32_t array data\r\n");
+    Serial.printf("\tFailed to add int64_t[%u] array data\r\n", arrayLength);
   }
 }
 void addFloat()
@@ -334,7 +334,7 @@ void addFloatArray()
   }
   else
   {
-    Serial.printf("\tFailed to add float array data\r\n");
+    Serial.printf("\tFailed to add float[%u] array data\r\n", arrayLength);
   }
 }
 void addDouble()
@@ -365,7 +365,7 @@ void addDoubleArray()
   }
   else
   {
-    Serial.printf("\tFailed to add double array data\r\n");
+    Serial.printf("\tFailed to add double[%u] array data\r\n", arrayLength);
   }
 }
 void addChar()
@@ -396,7 +396,7 @@ void addCharArray()
   }
   else
   {
-    Serial.printf("\tFailed to add array data:\"%s\"\r\n",dataToAdd);
+    Serial.printf("\tFailed to add char[%u] array\r\n", arrayLength);
   }
 }
 void addString()

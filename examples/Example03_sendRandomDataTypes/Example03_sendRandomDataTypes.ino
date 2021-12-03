@@ -22,7 +22,7 @@ uint8_t maximumArrayLength = 16;
 void setup()
 {
   Serial.begin(115200);
-  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT);
+  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_ESP_NOW_EVENTS);
   if(m2mMesh.begin())
   {
     Serial.print("\n\nMesh started on channel:");
@@ -40,7 +40,7 @@ void loop()
   if(joinedMesh == false && m2mMesh.joined() == true)
   {
     joinedMesh = true;
-    Serial.println("Joined mesh");
+    Serial.println("Joined mesh, sending random data types");
   }
   else if(joinedMesh == true && m2mMesh.joined() == false)
   {
