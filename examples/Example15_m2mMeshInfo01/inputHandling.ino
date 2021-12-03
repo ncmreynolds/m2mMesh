@@ -217,7 +217,7 @@ void inputHandling()
   }
   else if(currentUiView == UI_PROTOCOLS)
   {
-    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_PING_RESPONDER);
+    m2mMesh.setServiceFlags(m2mMesh.serviceFlags() ^ m2mMesh.PROTOCOL_TRACE_RESPONDER);
     servicesChanged = true;
   }
   break;
