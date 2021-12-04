@@ -252,24 +252,26 @@ const char m2mMeshPeering_expired_with[] PROGMEM = "\r\nPeering with node %u %02
 #define m2mMesh_NoDirectRoute			2
 #define m2mMesh_NoIndirectRoute			3
 #define m2mMesh_CannotSend		4
-#define m2mMesh_PeerAckTimeout	5
-#define m2mMesh_UnknownNode		6
-#define m2mMesh_UnableToPeerLocally	7
-#define m2mMesh_UnableToConfirmNextHopPeer	8
-#define m2mMesh_MeshIsFull		9
+#define m2mMesh_CannotConfirmSend		5
+#define m2mMesh_PeerAckTimeout	6
+#define m2mMesh_UnknownNode		7
+#define m2mMesh_UnableToPeerLocally	8
+#define m2mMesh_UnableToConfirmNextHopPeer	9
+#define m2mMesh_MeshIsFull		910
 
 const char errorDescription0[] PROGMEM = "Failure";
 const char errorDescription1[] PROGMEM = "Success";
 const char errorDescription2[] PROGMEM = "No direct route to node";
 const char errorDescription3[] PROGMEM = "No indirect route to node";
 const char errorDescription4[] PROGMEM = "Cannot send";
-const char errorDescription5[] PROGMEM = "Acknowledgment from peer timed out";
-const char errorDescription6[] PROGMEM = "Unknown node";
-const char errorDescription7[] PROGMEM = "Unable to add next hop as peer";
-const char errorDescription8[] PROGMEM = "Unable to confirm peering with next hop";
-const char errorDescription9[] PROGMEM = "Mesh is full";
+const char errorDescription5[] PROGMEM = "Cannot confirm send";
+const char errorDescription6[] PROGMEM = "Acknowledgment from peer timed out";
+const char errorDescription7[] PROGMEM = "Unknown node";
+const char errorDescription8[] PROGMEM = "Unable to add next hop as peer";
+const char errorDescription9[] PROGMEM = "Unable to confirm peering with next hop";
+const char errorDescription10[] PROGMEM = "Mesh is full";
 
-constexpr const char *errorDescriptionTable[10] PROGMEM = {
+constexpr const char *errorDescriptionTable[11] PROGMEM = {
   errorDescription0,
   errorDescription1,
   errorDescription2,
@@ -279,7 +281,8 @@ constexpr const char *errorDescriptionTable[10] PROGMEM = {
   errorDescription6,
   errorDescription7,
   errorDescription8,
-  errorDescription9
+  errorDescription9,
+  errorDescription10
   };
 
 const char packetTypeDescription0[] PROGMEM = "ELP";

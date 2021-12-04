@@ -700,12 +700,18 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		if(_sendElp(_sendBuffer))
 		{
 			_lastSent[ELP_PACKET_TYPE] = millis();
+			_packetSent = true;
 		}
 		else
 		{
-			_lastSent[ELP_PACKET_TYPE] += random(50,100);	//Cause a retry in 50-100ms
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_ERRORS))
+			{
+				_debugStream->printf("\r\nELP send failed \"%s\", retrying", errorDescriptionTable[_lastError]);
+			}
+			#endif
+			_lastSent[ELP_PACKET_TYPE] += random(100,1000);	//Cause a retry in 100-1000ms
 		}
-		_packetSent = true;
 	}
 	//Conside sending OGM
 	else if ((_serviceFlags & PROTOCOL_OGM_SEND) && millis() - (_lastSent[OGM_PACKET_TYPE] - _nextJitter) > _currentInterval[OGM_PACKET_TYPE])
@@ -718,12 +724,18 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		if(_sendOgm(_sendBuffer))
 		{
 			_lastSent[OGM_PACKET_TYPE] = millis();
+			_packetSent = true;
 		}
 		else
 		{
-			_lastSent[OGM_PACKET_TYPE] += random(50,100);	//Cause a retry in 50-100ms
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_ERRORS))
+			{
+				_debugStream->printf("\r\nOGM send failed \"%s\", retrying", errorDescriptionTable[_lastError]);
+			}
+			#endif
+			_lastSent[OGM_PACKET_TYPE] += random(100,1000);	//Cause a retry in 100-1000ms
 		}
-		_packetSent = true;
 	}
 	//Consider sending NHS
 	else if ((_serviceFlags & PROTOCOL_NHS_SEND) && millis() - (_lastSent[NHS_PACKET_TYPE] - _nextJitter) > _currentInterval[NHS_PACKET_TYPE])
@@ -742,12 +754,18 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 		if(_sendNhs(_sendBuffer))
 		{
 			_lastSent[NHS_PACKET_TYPE] = millis();
+			_packetSent = true;
 		}
 		else
 		{
-			_lastSent[NHS_PACKET_TYPE] += random(50,100);	//Cause a retry in 50-100ms
+			#ifdef m2mMeshIncludeDebugFeatures
+			if(_debugEnabled == true && (_loggingLevel & MESH_UI_LOG_ERRORS))
+			{
+				_debugStream->printf("\r\nNHS send failed \"%s\", retrying", errorDescriptionTable[_lastError]);
+			}
+			#endif
+			_lastSent[NHS_PACKET_TYPE] += random(100,1000);	//Cause a retry in 100-1000ms
 		}
-		_packetSent = true;
 	}
 	//Housekeep the tables after something happens
 	if(_packetReceived == true || _packetSent == true || millis() - _lastHousekeeping > _housekeepingInterval)	//Need to refresh the stats and routes
@@ -1497,7 +1515,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processOgm(m2mMeshPacketBuffer &packet)
 				//This is a better indirect route than we already have
 				_originator[packet.originatorId].selectedRouter = packet.routerId;
 				_originator[packet.originatorId].gtq = tq;
-				_meshHasBecomeUnstable();
+				//_meshHasBecomeUnstable();
 				#ifdef m2mMeshIncludeDebugFeatures
 				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_OGM_RECEIVED && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || packet.routerId == _nodeToLog || packet.originatorId == _nodeToLog))
 				{
@@ -4139,27 +4157,23 @@ bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet)
 			uint32_t now = millis();
 			while(_waitingForSend == true && millis() - now < _sendTimeout)
 			{
-				//Serial.print('.');
 				delay(1);				//Yield to system for handling callbacks
 			}
 			if(_sendSuccess == true)
 			{
-				//Serial.print("Ack");
 				_txPackets++;			//Update the packet stats
 				return(true);			//Feed back the result from the callback function
 			}
 			else if(millis() - now >= _sendTimeout)
 			{
-				//Serial.print("Timeout");
 				_droppedTxPackets++;	//Update the packet stats
 				_lastError = m2mMesh_PeerAckTimeout;
 				return(false);			//Feed back the result from the callback function
 			}
 			else
 			{
-				//Serial.print("Fail");
 				_droppedTxPackets++;	//Update the packet stats
-				_lastError = m2mMesh_CannotSend;
+				_lastError = m2mMesh_CannotConfirmSend;
 				return(false);			//Feed back the result from the callback function
 			}
 		}
