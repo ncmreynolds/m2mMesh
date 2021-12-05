@@ -257,7 +257,7 @@ const char m2mMeshPeering_expired_with[] PROGMEM = "\r\nPeering with node %u %02
 #define m2mMesh_UnknownNode		7
 #define m2mMesh_UnableToPeerLocally	8
 #define m2mMesh_UnableToConfirmNextHopPeer	9
-#define m2mMesh_MeshIsFull		910
+#define m2mMesh_MeshIsFull		10
 
 const char errorDescription0[] PROGMEM = "Failure";
 const char errorDescription1[] PROGMEM = "Success";
@@ -764,7 +764,7 @@ class m2mMeshClass
 		void enableDebugging(uint32_t);						//Start debugging if previously stopped and/or change the debugging level
 		void disableDebugging();							//Stop debugging
 		uint32_t loggingLevel();							//Returns current log level
-		void setLoggingLevel(uint32_t );					//Sets current log level
+		void setLoggingLevel(uint32_t);						//Sets current log level
 		void nodeToLog(uint8_t);							//Sets the node to log
 		void logAllNodes();									//Sets the node to log
 		static const uint32_t MESH_UI_LOG_ALL_SENT_PACKETS =		0x80000000;
@@ -911,7 +911,7 @@ class m2mMeshClass
 		uint8_t _meshGrowthIncrement = 4;
 		uint8_t _numberOfOriginators = 0;					//The current number of originators
 		static const uint8_t _maxNumberOfPeers = 20;		//The maximum number of ESP-Now peers
-		uint32_t _peerLifetime = 300000;					//How long a peering lasts without use, default 5m
+		uint32_t _peerLifetime = 10000;					//How long a peering lasts without use, default 5m
 		uint32_t _peeringTimeout = 5000;					//How long to wait for PRP to time out
 		uint8_t _numberOfPeers = 0;							//The current number of ESP-Now peers
 		uint8_t _numberOfReachableOriginators = 0;			//The current number of reachable originators
@@ -1132,9 +1132,9 @@ class m2mMeshClass
 		uint32_t _loggingLevel = MESH_UI_LOG_INFORMATION | MESH_UI_LOG_WARNINGS | MESH_UI_LOG_ERRORS | MESH_UI_LOG_NODE_MANAGEMENT;
 		uint8_t _nodeToLog = MESH_ORIGINATOR_NOT_FOUND;
 		#if defined(ESP8266)
-		void _errorDescription(uint8_t);					//Prints an error description
+		void _printEspNowErrorDescription(uint8_t);					//Prints an error description
 		#elif defined(ESP32)
-		void _errorDescription(esp_err_t);
+		void _printEspNowErrorDescription(esp_err_t);
 		#endif
 		#ifdef ESP8266
 		//void _debugPacket(uint8_t *, uint8_t *, uint8_t); //Decode incoming packet for debugging purpose

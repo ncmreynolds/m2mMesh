@@ -1260,7 +1260,9 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendElp(m2mMeshPacketBuffer &packet)
 		}
 	}
 	packet.data[m2mMeshPacketDataLengthIndex] = packet.length;
-	memcpy(&packet.routerMacAddress[0], &_broadcastMacAddress[0],6);	//Nothing needs doing beyond adding broadcast address
+	packet.destinationId = MESH_ORIGINATOR_NOT_FOUND;	//Flood this
+	packet.routerId = MESH_ORIGINATOR_NOT_FOUND;	//Flood this
+	memcpy(&packet.routerMacAddress[0], &_broadcastMacAddress[0],6);	//Flood this
 	bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
 	#ifdef m2mMeshIncludeDebugFeatures
 	if(sendResult == true && _debugEnabled == true)
@@ -1465,6 +1467,8 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendOgm(m2mMeshPacketBuffer &packet)
 	memcpy(&packet.data[m2mMeshPacketTqIndex], &tQ, sizeof(tQ));
 	packet.length = 20;
 	packet.data[m2mMeshPacketDataLengthIndex] = packet.length;
+	packet.destinationId = MESH_ORIGINATOR_NOT_FOUND;	//Flood this
+	packet.routerId = MESH_ORIGINATOR_NOT_FOUND;	//Flood this
 	memcpy(&packet.routerMacAddress[0], &_broadcastMacAddress[0],6);	//Nothing needs doing beyond adding broadcast address
 	bool sendResult = _sendPacket(packet);	//Send immediately without any complicated routing
 	#ifdef m2mMeshIncludeDebugFeatures
@@ -1729,7 +1733,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_originatorHasBecomeRoutable(const uint8_t 
 	_numberOfReachableOriginators++;
 	_meshHasBecomeUnstable();
 	#ifdef m2mMeshIncludeDebugFeatures
-	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NODE_MANAGEMENT && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
+	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PACKET_ROUTING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
 	{
 		_debugStream->printf_P(m2mMeshOGM02x02x02x02x02x02xhasbecomereachable,_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5]);
 	}
@@ -1747,7 +1751,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_originatorHasBecomeUnroutable(uint8_t orig
 	_originator[originatorId].selectedRouter = MESH_ORIGINATOR_NOT_FOUND;
 	_meshHasBecomeUnstable();
 	#ifdef m2mMeshIncludeDebugFeatures
-	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_NODE_MANAGEMENT && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
+	if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PACKET_ROUTING && (_nodeToLog == MESH_ORIGINATOR_NOT_FOUND || originatorId == _nodeToLog))
 	{
 		_debugStream->printf_P(m2mMeshOGM02x02x02x02x02x02xhasbecomeunreachable,_originator[originatorId].macAddress[0],_originator[originatorId].macAddress[1],_originator[originatorId].macAddress[2],_originator[originatorId].macAddress[3],_originator[originatorId].macAddress[4],_originator[originatorId].macAddress[5]);
 	}
@@ -1900,6 +1904,8 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendNhs(m2mMeshPacketBuffer &packet)
 		_debugStream->print(m2mMeshNHSSND);
 	}
 	#endif
+	packet.destinationId = MESH_ORIGINATOR_NOT_FOUND;	//Flood this
+	packet.routerId = MESH_ORIGINATOR_NOT_FOUND;	//Flood this
 	memcpy(&packet.routerMacAddress[0], &_broadcastMacAddress[0],6);	//Nothing needs doing beyond adding broadcast address
 	bool sendResult = _sendPacket(packet);
 	#ifdef m2mMeshIncludeDebugFeatures
@@ -2326,7 +2332,6 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_sendPrpResponse(m2mMeshPacketBuffer &packe
 void ICACHE_FLASH_ATTR m2mMeshClass::_processPrp(m2mMeshPacketBuffer &packet)
 {
 	if(packet.destinationId == MESH_THIS_ORIGINATOR)
-	//if(_isLocalMacAddress(&packet.data[m2mMeshPacketDestinationIndex]))
 	{
 		if(packet.data[m2mMeshPacketTypeIndex] & RESPONSE)
 		{
@@ -4089,10 +4094,17 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_routePacket(m2mMeshPacketBuffer &packet)
 			memcpy(&packet.routerMacAddress, _originator[packet.routerId].macAddress, 6);//Send direct to the next hop router MAC address
 			if(elpIsValid(packet.routerId))
 			{
-				if(_originator[packet.routerId].isCurrentlyPeer == false && _addPeer(_originator[packet.routerId].macAddress,_currentChannel) == false)
+				if(_originator[packet.routerId].isCurrentlyPeer == false)
 				{
-					_lastError = m2mMesh_UnableToPeerLocally;	//Can't add the local peer
-					return(false);
+					if(_addPeer(_originator[packet.routerId].macAddress,_currentChannel) == true)
+					{
+						_originator[packet.routerId].isCurrentlyPeer = true;	//Peering succesfule
+					}
+					else
+					{
+						_lastError = m2mMesh_UnableToPeerLocally;	//Can't add the local peer
+						return(false);
+					}
 				}
 				_originator[packet.routerId].peerNeeded = millis();	//Update the record of when the peer was last needed
 				if(_originator[packet.routerId].isCurrentlyPeer == true && _originator[packet.routerId].hasUsAsPeer == false)
@@ -4150,7 +4162,12 @@ bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet)
 		_waitingForSend = true;
 		_sendSuccess = false;
 	}
-	if(esp_now_send(packet.routerMacAddress, packet.data, packet.length) == ESP_OK)
+	#if defined(ESP8266)
+	int8_t sendResult = esp_now_send(packet.routerMacAddress, packet.data, packet.length);
+	#elif defined(ESP32)
+	esp_err_t sendResult = esp_now_send(packet.routerMacAddress, packet.data, packet.length);
+	#endif
+	if(sendResult == ESP_OK)
 	{
 		if(packet.data[m2mMeshPacketTypeIndex] & CONFIRM_SEND)//If this is a synchronous send, wait here for the callback to acknowledge sending
 		{
@@ -4188,6 +4205,12 @@ bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet)
 		_waitingForSend = false;
 		_droppedTxPackets++;	//Update the packet stats
 		_lastError = m2mMesh_CannotSend;
+		#ifdef m2mMeshIncludeDebugFeatures
+		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_ERRORS)
+		{
+			_printEspNowErrorDescription(sendResult);
+		}
+		#endif
 		return(false);
 	}
 }
@@ -4205,7 +4228,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_addPeer(uint8_t* macAddress, uint8_t peerC
 	#endif
 	if(_numberOfPeers < _maxNumberOfPeers)
 	{
-		if(esp_now_is_peer_exist(macAddress) == ESP_OK)
+		if(esp_now_is_peer_exist(macAddress) == true)
 		{
 			#ifdef m2mMeshIncludeDebugFeatures
 			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
@@ -4216,10 +4239,10 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_addPeer(uint8_t* macAddress, uint8_t peerC
 			uint8_t originatorId = _originatorIdFromMac(macAddress);
 			if(originatorId != MESH_ORIGINATOR_NOT_FOUND)
 			{
-				if(_originator[originatorId].isCurrentlyPeer == false)
+				/*if(_originator[originatorId].isCurrentlyPeer == false)
 				{
 					_numberOfPeers++;
-				}
+				}*/
 				_originator[originatorId].isCurrentlyPeer = true;
 			}
 			return (true);
@@ -4263,7 +4286,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_addPeer(uint8_t* macAddress, uint8_t peerC
 		else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 		{
 			_debugStream->print(m2mMeshfailed_code_);
-			_errorDescription(result);
+			_printEspNowErrorDescription(result);
 		}
 		#endif
 	}
@@ -4292,7 +4315,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_removePeer(uint8_t originatorId)
 			_maxNumberOfPeers);
 	}
 	#endif
-	if(esp_now_is_peer_exist(_originator[originatorId].macAddress) != ESP_OK)
+	if(esp_now_is_peer_exist(_originator[originatorId].macAddress) == false)
 	{
 		#ifdef m2mMeshIncludeDebugFeatures
 		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
@@ -4328,7 +4351,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_removePeer(uint8_t originatorId)
 	else if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
 	{
 		_debugStream->print(m2mMeshfailed_code_);
-		_errorDescription(result);
+		_printEspNowErrorDescription(result);
 	}
 	#endif
 	_originator[originatorId].peerNeeded = millis();	//Avoid instantly retrying this
@@ -5311,9 +5334,9 @@ void m2mMeshClass::logAllNodes()	//Sets logging to all nodes
 }
 
 #if defined(ESP8266)
-void m2mMeshClass::_errorDescription(const uint8_t result)
+void m2mMeshClass::_printEspNowErrorDescription(const uint8_t result)
 #elif defined(ESP32)
-void m2mMeshClass::_errorDescription(const esp_err_t result)
+void m2mMeshClass::_printEspNowErrorDescription(const esp_err_t result)
 #endif
 {
 	if (result == ESP_OK)
