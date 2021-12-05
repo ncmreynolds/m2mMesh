@@ -6,11 +6,11 @@ void displayMessage()
       case m2mMesh.USR_DATA_BOOL:
         if(m2mMesh.retrieveBool() == true)
         {
-          Serial.println("\r\n\tRetrieved bool:true");
+          Serial.print("\r\n\tRetrieved bool:true");
         }
         else
         {
-          Serial.println("\r\n\tRetrieved bool:false");
+          Serial.print("\r\n\tRetrieved bool:false");
         }
       break;
       case m2mMesh.USR_DATA_BOOL_ARRAY:
