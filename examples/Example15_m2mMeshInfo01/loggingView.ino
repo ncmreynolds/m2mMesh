@@ -18,19 +18,10 @@ void loggingView()
         printAtXy(20,3,titleString);
       }
       moveToXy(1,24);
-      inverseOn();Serial.print('P');inverseOff();Serial.print(F("ause logging | "));
-      inverseOn();Serial.print('l');inverseOff();
-      if(logAllNodes)
-      {
-        Serial.print(F("og specific node | "));
-      }
-      else
-      {
-        Serial.print(F("og all nodes | "));
-        inverseOn();Serial.print('+');inverseOff();inverseOn();Serial.print('/');Serial.print('-');inverseOff();Serial.print(F(" Next/Previous originator|"));
-      }
-      Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew | "));
-      Serial.print(F("Change "));inverseOn();Serial.print('C');inverseOff();Serial.print(F("hannel"));
+      Serial.print(F("[Space] pause | "));
+      Serial.print(F("[+]/[-] log next/previous node | "));
+      Serial.print(F("[Tab] view | "));
+      Serial.print(F("[c] channel"));
       setScrollWindow(4, 23);
       drawWholeUi = false;
     }

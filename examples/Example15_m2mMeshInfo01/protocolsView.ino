@@ -23,8 +23,8 @@ void protocolsView()
       printAtXy(3,21,F ("1 - PROTOCOL_ELP_RECEIVE -------------- "));
       printAtXy(3,22,F ("0 - PROTOCOL_ELP_SEND ----------------- "));
       moveToXy(1,24);
-      inverseOn();Serial.print('0');inverseOff();inverseOn();Serial.print('-');Serial.print('f');inverseOff();Serial.print(F(" toggle service | "));
-      Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew"));
+      Serial.print(F("[0]-[f] toggle service | "));
+      Serial.print(F("[Tab] view"));
     }
     if(drawWholeUi || servicesChanged)
     {

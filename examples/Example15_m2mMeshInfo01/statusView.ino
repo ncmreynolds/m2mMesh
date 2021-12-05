@@ -28,7 +28,7 @@ void drawTopLine()
     Serial.print(F("Seq:"));
     moveToXy(43,2);
     Serial.print(F("Err:"));
-    moveToXy(60,2);
+    moveToXy(59,2);
     Serial.print(F("Heap:"));
     refreshTopLine();
 }
@@ -89,8 +89,8 @@ void refreshTopLine()
   }
   //Free Heap
   {
-    moveToXy(65,2);
-    Serial.printf("%05d/%05d(%02d%%)",ESP.getFreeHeap(),initialFreeHeap,(100ul*ESP.getFreeHeap()/initialFreeHeap));
+    moveToXy(64,2);
+    Serial.printf("%5.1fk/%5.1fk/%02d%%",float(ESP.getFreeHeap())/1024,float(initialFreeHeap)/1024,(100ul*ESP.getFreeHeap()/initialFreeHeap));
   }
   //Originators
   if(numberOfNodesChanged || drawWholeUi)
@@ -185,11 +185,11 @@ void statusView()
       printCentred(14,titleString);
     }
     moveToXy(1,24);
-    inverseOn();Serial.print('r');inverseOff();Serial.print(F("eboot | "));
-    inverseOn();Serial.print('+');inverseOff();inverseOn();Serial.print('/');Serial.print('-');inverseOff();Serial.print(F(" Tx power | "));
-    inverseOn();Serial.print('P');inverseOff();Serial.print(F("ause logging | "));
-    Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew | "));
-    Serial.print(F("Switch "));inverseOn();Serial.print('C');inverseOff();Serial.print(F("hannel"));
+    Serial.print(F("[r] Reboot | "));
+    //Serial.print(F("[+]/[-] Tx power | "));
+    Serial.print(F("[Space] Pause | "));
+    Serial.print(F("[Tab] view | "));
+    Serial.print(F("[c] Channel"));
   }
   refreshTopLine();
   //Neighbour table

@@ -100,7 +100,7 @@ void ICACHE_FLASH_ATTR setup(){
   drawUi();
   Serial.write(17); //Send an XON to unlock an XOFFed terminal
   //m2mMesh.enableDebugging(Serial);
-  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT);
+  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT);
   //m2mMesh.MESH_UI_LOG_ELP_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_NHS_RECEIVED |  m2mMesh.MESH_UI_LOG_USR_RECEIVED);
   //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_OGM_RECEIVED | m2mMesh.MESH_UI_LOG_NHS_RECEIVED |  m2mMesh.MESH_UI_LOG_USR_RECEIVED | m2mMesh.MESH_UI_LOG_OGM_SEND | m2mMesh.MESH_UI_LOG_NHS_SEND | m2mMesh.MESH_UI_LOG_OGM_FORWARDING );
   //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT | m2mMesh.MESH_UI_LOG_NHS_RECEIVED);
@@ -155,7 +155,7 @@ void loop() {
     lastRedraw = millis();
     if(m2mMesh.messageWaiting())
     {
-      if(currentUiView == UI_STATUS || currentUiView == UI_LOGS)
+      if(loggingPaused == false && (currentUiView == UI_STATUS || currentUiView == UI_LOGS))
       {
         uint8_t sourceId = m2mMesh.sourceId();
         if(logAllNodes || sourceId == nodeToLog)

@@ -60,9 +60,8 @@ void originatorView()
 
       moveToXy(1,24);
       eraseLine();
-      inverseOn();Serial.print('+');inverseOff();inverseOn();Serial.print('/');Serial.print('-');inverseOff();Serial.print(F(" Next/Previous originator | "));
-      inverseOn();Serial.print('l');inverseOff();Serial.print(F("og this node only | "));
-      Serial.print(F("Change "));inverseOn();Serial.print('v');inverseOff();Serial.print(F("iew"));
+      Serial.print(F("[+]/[-] next/previous node | "));
+      Serial.print(F("[Tab] view"));
     }
   }
   if(numberOfNodes > 0)
