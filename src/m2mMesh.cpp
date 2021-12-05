@@ -2347,10 +2347,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPrp(m2mMeshPacketBuffer &packet)
 			}
 			if(_originator[packet.originatorId].isCurrentlyPeer == false)
 			{
-				if(_addPeer(_originator[packet.originatorId].macAddress,_currentChannel))
-				{
-					_originator[packet.originatorId].isCurrentlyPeer = true; //This _should_ be a peer, but still check
-				}
+				_addPeer(packet.originatorId);	//Add again, just in case
 			}
 		}
 		else
@@ -2365,16 +2362,11 @@ void ICACHE_FLASH_ATTR m2mMeshClass::_processPrp(m2mMeshPacketBuffer &packet)
 			{
 				_originator[packet.originatorId].hasUsAsPeer = true;	//Nodes only send PRP to peers
 			}
-			if(_originator[packet.originatorId].isCurrentlyPeer == false)
+			if(_originator[packet.originatorId].isCurrentlyPeer == true)
 			{
-					if(_addPeer(_originator[packet.originatorId].macAddress,_currentChannel) == true)
-					{
-						_originator[packet.originatorId].peerNeeded = millis();
-						_originator[packet.originatorId].isCurrentlyPeer = true;
-						_sendPrpResponse(_sendBuffer, packet.originatorId);
-					}
+				_sendPrpResponse(_sendBuffer, packet.originatorId);
 			}
-			else
+			else if(_addPeer(packet.originatorId) == true)
 			{
 				_sendPrpResponse(_sendBuffer, packet.originatorId);
 			}
@@ -4094,17 +4086,10 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_routePacket(m2mMeshPacketBuffer &packet)
 			memcpy(&packet.routerMacAddress, _originator[packet.routerId].macAddress, 6);//Send direct to the next hop router MAC address
 			if(elpIsValid(packet.routerId))
 			{
-				if(_originator[packet.routerId].isCurrentlyPeer == false)
+				if(_originator[packet.routerId].isCurrentlyPeer == false && _addPeer(packet.routerId) == false)
 				{
-					if(_addPeer(_originator[packet.routerId].macAddress,_currentChannel) == true)
-					{
-						_originator[packet.routerId].isCurrentlyPeer = true;	//Peering succesfule
-					}
-					else
-					{
-						_lastError = m2mMesh_UnableToPeerLocally;	//Can't add the local peer
-						return(false);
-					}
+					_lastError = m2mMesh_UnableToPeerLocally;	//Can't add the local peer
+					return(false);
 				}
 				_originator[packet.routerId].peerNeeded = millis();	//Update the record of when the peer was last needed
 				if(_originator[packet.routerId].isCurrentlyPeer == true && _originator[packet.routerId].hasUsAsPeer == false)
@@ -4214,9 +4199,41 @@ bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet)
 		return(false);
 	}
 }
-bool ICACHE_FLASH_ATTR m2mMeshClass::_addPeer(uint8_t peer)
+bool ICACHE_FLASH_ATTR m2mMeshClass::_addPeer(uint8_t originatorId)
 {
-	return(_addPeer(_originator[peer].macAddress, _currentChannel));
+	if(esp_now_is_peer_exist(_originator[originatorId].macAddress) == true)
+	{
+		#ifdef m2mMeshIncludeDebugFeatures
+		if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
+		{
+			_debugStream->printf_P(m2mMeshPeer02u02x02x02x02x02x02xalreadyaddednotaddingagain,
+				originatorId,
+				_originator[originatorId].macAddress[0],
+				_originator[originatorId].macAddress[1],
+				_originator[originatorId].macAddress[2],
+				_originator[originatorId].macAddress[3],
+				_originator[originatorId].macAddress[4],
+				_originator[originatorId].macAddress[5]);
+		}
+		#endif
+		if(_originator[originatorId].isCurrentlyPeer == false)
+		{
+			_numberOfPeers++;
+		}
+		_originator[originatorId].peerNeeded = millis();
+		_originator[originatorId].isCurrentlyPeer = true;
+		return (true);
+	}
+	if(_addPeer(_originator[originatorId].macAddress, _currentChannel) == true)
+	{
+		_originator[originatorId].peerNeeded = millis();
+		_originator[originatorId].isCurrentlyPeer = true;
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
 }
 bool ICACHE_FLASH_ATTR m2mMeshClass::_addPeer(uint8_t* macAddress, uint8_t peerChannel)
 {
@@ -4228,25 +4245,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_addPeer(uint8_t* macAddress, uint8_t peerC
 	#endif
 	if(_numberOfPeers < _maxNumberOfPeers)
 	{
-		if(esp_now_is_peer_exist(macAddress) == true)
-		{
-			#ifdef m2mMeshIncludeDebugFeatures
-			if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_PEER_MANAGEMENT)
-			{
-				_debugStream->printf(m2mMeshalreadyadded);
-			}
-			#endif
-			uint8_t originatorId = _originatorIdFromMac(macAddress);
-			if(originatorId != MESH_ORIGINATOR_NOT_FOUND)
-			{
-				/*if(_originator[originatorId].isCurrentlyPeer == false)
-				{
-					_numberOfPeers++;
-				}*/
-				_originator[originatorId].isCurrentlyPeer = true;
-			}
-			return (true);
-		}
+
 		//The API differs between ESP8266 and ESP32, so needs some conditional compilation
 		#if defined(ESP8266)
 		int result = esp_now_add_peer(macAddress, ESP_NOW_ROLE_COMBO, peerChannel, NULL, 0);
