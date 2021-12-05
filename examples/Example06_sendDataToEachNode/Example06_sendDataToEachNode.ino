@@ -22,11 +22,8 @@ void setup()
 {
   Serial.begin(115200);
   delay(1000);
-  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_NHS_RECEIVED);
+  m2mMesh.setNodeName("Data sending node");
   m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT);
-  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT);
-  //m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT);
-  m2mMesh.setNodeName("Data display node");
   if(m2mMesh.begin())
   {
     Serial.print("\n\nMesh started on channel:");
@@ -74,7 +71,7 @@ void loop()
           m2mMesh.macAddress(destinationId,macaddress);
           if(m2mMesh.nodeNameIsSet(destinationId))
           {
-            Serial.printf("Sending message to node:%02u MAC address:%02x:%02x:%02x:%02x:%02x:%02x Node name:%s",destinationId,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5],m2mMesh.getNodeName(destinationId));
+            Serial.printf("Sending message to node:%02u MAC address:%02x:%02x:%02x:%02x:%02x:%02x Node name:\"%s\"",destinationId,macaddress[0],macaddress[1],macaddress[2],macaddress[3],macaddress[4],macaddress[5],m2mMesh.getNodeName(destinationId));
           }
           else
           {
@@ -124,5 +121,9 @@ void loop()
         destinationId = 0;
       }
     }
+  }
+  if(m2mMesh.messageWaiting())
+  {
+    m2mMesh.markMessageRead();  //Simply trash any inbound application messages
   }
 }
