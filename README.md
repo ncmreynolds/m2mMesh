@@ -75,12 +75,18 @@ In order to make this library accessible to 'casual' programmers who are likely 
 3. Send random data - Floods data of many different random types and amounts to the mesh
 4. Display received data - Displays any received data and its type
 5. Set node name - Sets the name of a node
-6. Send data to random node - Sends a message to a specific node on the mesh
+6. Send data to each node - Sends a message to each node on the mesh in turn
 7. 
 8. Synced blink - Uses the shared time signal to synchronise a blinking LED across the whole mesh
 9. RTC server - Shares a real-time-clock across the whole mesh, based off the mesh time signal
 10. RTC client - Shows the real-time-clock set by the RTC server
 11. Event callbacks - Shows using callbacks for responding to events on the mesh. Callbacks for event based structure are still under development.
+12. Trace to random node. Sends a trace packet (similar to IP traceroute) to random nodes on the mesh, displaying the route and round trip times.
+13.  
+14.  
+15. Mesh info. A kind of 'protocol analyser' for the mesh which allows you to see what is happening by showing stats etc. over the UART of an ESP. You must use a fully featured terminal emulator (PuTTY, basically) as it uses control character to draw the screens. The Arduino IDE Serial monitor is not a proper terminal emulator and will not work.
+
+
 
 **[Back to top](#table-of-contents)**
 
