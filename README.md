@@ -4,6 +4,8 @@ m2mMesh is an Arduino library that provides a self-organising machine-to-machine
 
 It was written to allow small, cheap microcontroller based projects to communicate with no need for 'infrastructure' or 'servers'.
 
+**Beware it is still riddled with problems that need addressing and various features may change in both style and internal implementation, so it has not been submitted for inclusion in the Arduino Library Manager yet.**
+
 ## Table of Contents
 
 1. [About the Project](#about-the-project)
