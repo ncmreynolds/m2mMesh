@@ -124,6 +124,13 @@ void loop()
   }
   if(m2mMesh.messageWaiting())
   {
-    m2mMesh.markMessageRead();  //Simply trash any inbound application messages
+    if(m2mMesh.nextDataType() == m2mMesh.USR_DATA_STRING)
+    {
+      Serial.print("Received message:\"");
+      Serial.print(m2mMesh.retrieveString());
+      Serial.print("\" from node:");
+      Serial.println(m2mMesh.sourceId());
+    }
+    m2mMesh.markMessageRead();
   }
 }

@@ -86,6 +86,17 @@ void loop() {
     lastClockTick = millis();
     printTimeAndDate(time(nullptr));
   }
+  if(m2mMesh.messageWaiting())
+  {
+    if(m2mMesh.nextDataType() == m2mMesh.USR_DATA_STRING)
+    {
+      Serial.print("Received message:\"");
+      Serial.print(m2mMesh.retrieveString());
+      Serial.print("\" from node:");
+      Serial.println(m2mMesh.sourceId());
+    }
+    m2mMesh.markMessageRead();
+  }
 }
 
 void printTimeAndDate(const time_t timestamp)
