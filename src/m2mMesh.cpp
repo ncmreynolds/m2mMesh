@@ -3809,6 +3809,36 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::destination(uint8_t destId)
 	return(false);
 }
 
+bool ICACHE_FLASH_ATTR m2mMeshClass::destination(char *nodeName)
+{
+	if(nodeName == nullptr)
+	{
+		return(false);
+	}
+	for(uint8_t destId = 0; destId < _numberOfOriginators; destId++)
+	{
+		if(_originator[destId].nodeName != nullptr && strcmp(nodeName,_originator[destId].nodeName) == 0)
+		{
+			_buildUserPacketHeader(destId);
+			return(true);
+		}
+	}
+	return(false);
+}
+
+bool ICACHE_FLASH_ATTR m2mMeshClass::destination(String nodeName)
+{
+	for(uint8_t destId = 0; destId < _numberOfOriginators; destId++)
+	{
+		if(nodeName.equals(String(_originator[destId].nodeName)))
+		{
+			_buildUserPacketHeader(destId);
+			return(true);
+		}
+	}
+	return(false);
+}
+
 bool ICACHE_FLASH_ATTR m2mMeshClass::add(String dataToAdd)
 {
 	_buildUserPacketHeader();
@@ -5491,14 +5521,68 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::nodeIsReachable(uint8_t originatorId)
 	}
 	return(false);
 }
-void ICACHE_FLASH_ATTR m2mMeshClass::macAddress(const uint8_t id,uint8_t *array)
+bool ICACHE_FLASH_ATTR m2mMeshClass::macAddress(const uint8_t id,uint8_t *array)
 {
-	array[0] = _originator[id].macAddress[0];
-	array[1] = _originator[id].macAddress[1];
-	array[2] = _originator[id].macAddress[2];
-	array[3] = _originator[id].macAddress[3];
-	array[4] = _originator[id].macAddress[4];
-	array[5] = _originator[id].macAddress[5];
+	if(id < _numberOfOriginators)
+	{
+		array[0] = _originator[id].macAddress[0];
+		array[1] = _originator[id].macAddress[1];
+		array[2] = _originator[id].macAddress[2];
+		array[3] = _originator[id].macAddress[3];
+		array[4] = _originator[id].macAddress[4];
+		array[5] = _originator[id].macAddress[5];
+		return(true);
+	}
+	return(true);
+}
+bool ICACHE_FLASH_ATTR m2mMeshClass::macAddress(String nodeName,uint8_t *array)
+{
+	for(uint8_t destId = 0; destId < _numberOfOriginators; destId++)
+	{
+		if(nodeName.equals(String(_originator[destId].nodeName)))
+		{
+			array[0] = _originator[destId].macAddress[0];
+			array[1] = _originator[destId].macAddress[1];
+			array[2] = _originator[destId].macAddress[2];
+			array[3] = _originator[destId].macAddress[3];
+			array[4] = _originator[destId].macAddress[4];
+			array[5] = _originator[destId].macAddress[5];
+			return(true);
+		}
+	}
+	array[0] = 0x00;
+	array[1] = 0x00;
+	array[2] = 0x00;
+	array[3] = 0x00;
+	array[4] = 0x00;
+	array[5] = 0x00;
+	return(false);
+}
+bool ICACHE_FLASH_ATTR m2mMeshClass::macAddress(char* nodeName,uint8_t *array)
+{
+	if(nodeName != nullptr)
+	{
+		for(uint8_t destId = 0; destId < _numberOfOriginators; destId++)
+		{
+			if(_originator[destId].nodeName != nullptr && strcmp(nodeName,_originator[destId].nodeName) == 0)
+			{
+				array[0] = _originator[destId].macAddress[0];
+				array[1] = _originator[destId].macAddress[1];
+				array[2] = _originator[destId].macAddress[2];
+				array[3] = _originator[destId].macAddress[3];
+				array[4] = _originator[destId].macAddress[4];
+				array[5] = _originator[destId].macAddress[5];
+				return(true);
+			}
+		}
+	}
+	array[0] = 0x00;
+	array[1] = 0x00;
+	array[2] = 0x00;
+	array[3] = 0x00;
+	array[4] = 0x00;
+	array[5] = 0x00;
+	return(false);
 }
 uint8_t ICACHE_FLASH_ATTR m2mMeshClass::maxNumberOfOriginators()
 {

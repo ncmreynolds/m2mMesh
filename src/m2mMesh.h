@@ -483,25 +483,10 @@ class m2mMeshClass
 
 		//Sending data
 		bool destination(uint8_t);			//Add a destination ID to a message. Without a destination it is flooded to the whole mesh.
-		//bool destination(char *);			//Add a destination to a message. This can be a node name or MAC address, the function will attempt to distinguish between them.
-		//bool destination(String);			//Add a destination to a message. This can be a node name or MAC address.
-		bool destination(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);	//Add a destination MAC address
+		bool destination(char *);			//Add a destination to a message as a char*.
+		bool destination(String);			//Add a destination to a message as a String.
+		bool destination(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);	//Add a destination MAC address.
 		uint8_t payloadLeft();				//Returns the number of bytes left in the packet, helps with checking before adding
-		/*
-		bool add(bool);						//Add a bool to a message
-		bool add(uint8_t);					//Add an uint8_t to a message
-		bool add(uint8_t *, uint8_t);		//Add an array of uint8_t, mostly used to send chunks of binary data
-		bool add(uint16_t);					//Add an uint16_t to a message
-		bool add(uint16_t*, uint8_t);		//Add an array of uint16_t to a message
-		bool add(uint32_t);					//Add an uint32_t to a message
-		bool add(uint64_t);					//Add an uint64_t to a message
-		bool add(int8_t);					//Add an int8_t to a message
-		bool add(int16_t);					//Add an int16_t to a message
-		bool add(int32_t);					//Add an int32_t to a message
-		bool add(int64_t);					//Add an int64_t to a message
-		bool add(char);						//Add a char to a message
-		bool add(float);					//Add a float to a message
-		*/
 		bool add(String);					//Add a String to a message, which is a special case
 		bool add(const char *);				//Add a C string to a message, which is a special case
 		bool add(char *);					//Add a C string to a message, which is a special case
@@ -709,7 +694,9 @@ class m2mMeshClass
 		uint8_t numberOfActiveNeighbours(uint8_t);			//Number of active neighbours for another node
 		uint8_t nodeId(uint8_t *);							//Finds the ID of an originator from the MAC address or MESH_ORIGINATOR_NOT_FOUND if it isn't found
 		bool nodeIsReachable(uint8_t);						//Is a node valid
-		void macAddress(uint8_t,uint8_t *);					//Supplies the MAC address of an originator when passed an array
+		bool macAddress(uint8_t,uint8_t *);					//Supplies the MAC address of an originator when passed an array
+		bool macAddress(char*,uint8_t *);					//Supplies the MAC address of an originator when passed an array
+		bool macAddress(String,uint8_t *);					//Supplies the MAC address of an originator when passed an array
 		uint8_t espnowPeer(uint8_t);						//Is this node a peer, returns 0,1,2,3
 		uint32_t espnowPeeringLastUsed(uint8_t);			//When was the peering last used
 		uint8_t numberOfPeers(uint8_t);						//How many peers this node has
@@ -911,7 +898,7 @@ class m2mMeshClass
 		uint8_t _meshGrowthIncrement = 4;
 		uint8_t _numberOfOriginators = 0;					//The current number of originators
 		static const uint8_t _maxNumberOfPeers = 20;		//The maximum number of ESP-Now peers
-		uint32_t _peerLifetime = 10000;					//How long a peering lasts without use, default 5m
+		uint32_t _peerLifetime = 1000000;					//How long a peering lasts without use, default 5m
 		uint32_t _peeringTimeout = 5000;					//How long to wait for PRP to time out
 		uint8_t _numberOfPeers = 0;							//The current number of ESP-Now peers
 		uint8_t _numberOfReachableOriginators = 0;			//The current number of reachable originators
