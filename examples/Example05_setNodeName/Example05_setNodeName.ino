@@ -7,7 +7,7 @@
 
 #include <m2mMesh.h>
 
-char nodeName[17];
+char nodeName[] = "setNodeName.ino";
 uint8_t numberOfNodes = 0;
 uint8_t numberOfReachableNodes = 0;
 uint32_t timeOfLastNodeList = 0;
@@ -17,12 +17,7 @@ bool meshJoined = false;
 void setup()
 {
   Serial.begin(115200);
-  //Set the Node name from the ESP chip ID
-  #ifdef ESP8266
-  sprintf(nodeName, "MeshNode%08x",ESP.getChipId());
-  #elif defined (ESP32)
-  sprintf(nodeName, "MeshNode%08x",getChipId());
-  #endif
+  m2mMesh.enableDebugging(Serial,m2mMesh.MESH_UI_LOG_INFORMATION | m2mMesh.MESH_UI_LOG_WARNINGS | m2mMesh.MESH_UI_LOG_ERRORS | m2mMesh.MESH_UI_LOG_NODE_MANAGEMENT | m2mMesh.MESH_UI_LOG_PEER_MANAGEMENT);
   if(m2mMesh.setNodeName(nodeName))
   {
     Serial.print("\n\nMesh node name:");
@@ -76,6 +71,11 @@ void loop()
     meshJoined = false;
     Serial.println("Left mesh");
   }
+  if(m2mMesh.messageWaiting())
+  {
+    m2mMesh.markMessageRead();  //Simply trash any inbound application messages
+    Serial.println("Received message");
+  }
 }
 
 void listNodes()
@@ -95,15 +95,3 @@ void listNodes()
     }
   }
 }
-
-#if defined (ESP32)
-uint32_t getChipId()
-{
-  uint32_t chipId = 0;
-  for(int i=0; i<17; i=i+8)
-  {
-    chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
-  }
-  return(chipId);
-}
-#endif
