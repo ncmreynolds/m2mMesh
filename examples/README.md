@@ -22,17 +22,17 @@ This sketch will show all the fields of data in any message received. It should 
 
 The mesh can optionally use node names to set destinations on messages, to avoid hardcoding MAC addresses etc. The sketch demonstrates setting and retrieving node names and MAC addresses.
 
-## Example 6 - Send data to random node
+## Example 6 - Use node name
+
+The mesh can optionally use node names to set destinations on messages, to avoid hardcoding MAC addresses etc. The sketch demonstrates using a node name to set the destintation of a message.
+
+## Example 7 - Send data to each node
 
 This sketch demonstrates adding a destination so the data does not flood the whole mesh. It can be used along with Example 4 to demonstrate more targeted delivery of data.
 
 ## Example 8 - Synced Blink
 
 The mesh has a shared time source, its 'uptime' that is synced across all nodes. This can be used to synchronise events. So long as at least one node has remained up, the uptime will continuously increase much like the Arduino 'millis()' function.
-
-## Example 7 - p2p Chat
-
-This is an example application, a trivial serverless chat application that can be used over the serial console.
 
 ## Example 9 - RTC server
 
@@ -45,6 +45,10 @@ Demonstrates how the real-time-clock on every node synchronises with another mes
 ## Example 11 - Event Callbacks
 
 There is experimental support for an event driven style of programming, which this sketch demonstrates.
+
+## Example 12 - Trace to random node
+
+The library includes a traceroute-like method for tracing the route to a node and measuring the round trip time.
 
 ## Example 15 - m2mMesh Info
 
