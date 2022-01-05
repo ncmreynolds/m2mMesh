@@ -2,9 +2,11 @@
 
 m2mMesh is an Arduino library that provides a self-organising machine-to-machine (m2m) mesh network between Espressif ESP8266/8285/32 microcontrollers, using ESP-Now as a transport.
 
-It was written to allow small, cheap microcontroller based projects to communicate with no need for 'infrastructure' or 'servers'.
+It was written to allow small, cheap microcontroller based projects to communicate with no need for 'infrastructure' or 'servers'. None of the communication across the mesh is encrypted. Do not use the m2mMesh to send sensitive information unless you encrypt the payload before adding it to a message. There is an aspiration to optionally support encryption of the payload.
 
-**Beware it is still riddled with problems that need addressing and various features may change in both style and internal implementation, so it has not been submitted for inclusion in the Arduino Library Manager yet.**
+**Beware m2mMesh is still riddled with problems that need addressing and various features may change in both style and internal implementation, so it has not been submitted for inclusion in the Arduino Library Manager yet.**
+
+
 
 ## Table of Contents
 
