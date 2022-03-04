@@ -56,6 +56,7 @@ retrieveChar	KEYWORD2
 retrieveString	KEYWORD2
 retrieveDataLength	KEYWORD2
 retrieveStr	KEYWORD2
+retrieveArray	KEYWORD2
 skipRetrieve	KEYWORD2
 
 //Traceing nodes
