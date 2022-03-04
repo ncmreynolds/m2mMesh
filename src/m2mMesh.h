@@ -522,8 +522,6 @@ class m2mMeshClass
 		uint8_t retrieveDataLength();			//Retrieve length of an array from a message
 		bool retrieveStr(char *);				//Retrieve C string from a message NB will be null terminated automatically
 		String retrieveString();				//Retrieve Arduino String data from a message
-		//void retrieveUint8_tArray(uint8_t *);	//Retrieve int8_t array from a message
-		//void retrieveUint16_tArray(uint16_t *);	//Retrieve int16_t array from a message
 		void skipRetrieve();					//Skip retrieving this field
 		
 		//Trace methods
@@ -536,7 +534,7 @@ class m2mMeshClass
 
 		//Generic templated retrieve function (which must be in the class definition)
 		template<typename typeToRetrieve>
-		void ICACHE_FLASH_ATTR retrieveArray(typeToRetrieve *data)
+		bool ICACHE_FLASH_ATTR retrieve(typeToRetrieve *data)
 		{
 			if(dataAvailable() == 0)
 			{
@@ -546,7 +544,43 @@ class m2mMeshClass
 					_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
 				}
 				#endif
-				//Return a dummy value if nothing available
+				return false;
+			}
+			else
+			{
+				uint8_t dataType = determineType(data);
+				if(dataType == _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex])
+				{
+					_receivedUserPacketFieldCounter--;
+					uint8_t dataLength = sizeof(typeToRetrieve);
+					_receivedUserPacketIndex+=_packingOverhead(_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex]);
+					memcpy(data,&_applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex],dataLength);
+					_receivedUserPacketIndex+=dataLength;
+					if(dataAvailable() == 0)
+					{
+						markMessageRead();
+					}
+					return(true);
+				}
+				else
+				{
+					return(false);
+				}
+			}
+		}
+		//Generic templated retrieve function (which must be in the class definition)
+		template<typename typeToRetrieve>
+		bool ICACHE_FLASH_ATTR retrieveArray(typeToRetrieve *data)
+		{
+			if(dataAvailable() == 0)
+			{
+				#ifdef m2mMeshIncludeDebugFeatures
+				if(_debugEnabled == true && _loggingLevel & MESH_UI_LOG_WARNINGS)
+				{
+					_debugStream->print(m2mMesherrorReadBeyondEndOfPacket);
+				}
+				#endif
+				return false;
 			}
 			else
 			{
@@ -559,6 +593,7 @@ class m2mMeshClass
 				{
 					markMessageRead();
 				}
+				return true;
 			}
 		}
 		//Generic templated add functions (which must be in the class definition)
@@ -898,7 +933,7 @@ class m2mMeshClass
 		uint8_t _meshGrowthIncrement = 4;
 		uint8_t _numberOfOriginators = 0;					//The current number of originators
 		static const uint8_t _maxNumberOfPeers = 20;		//The maximum number of ESP-Now peers
-		uint32_t _peerLifetime = 1000000;					//How long a peering lasts without use, default 5m
+		uint32_t _peerLifetime = 300000;					//How long a peering lasts without use, default 5m
 		uint32_t _peeringTimeout = 5000;					//How long to wait for PRP to time out
 		uint8_t _numberOfPeers = 0;							//The current number of ESP-Now peers
 		uint8_t _numberOfReachableOriginators = 0;			//The current number of reachable originators
