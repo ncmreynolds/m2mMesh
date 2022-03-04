@@ -7,9 +7,9 @@
 m2mMeshClass* m2mMeshPointer = nullptr;	//A pointer to 'this' eventually
 
 #ifdef ESP8266
-void ICACHE_RAM_ATTR espNowSendCallbackWrapper(uint8_t* a, uint8_t b)
+void IRAM_ATTR espNowSendCallbackWrapper(uint8_t* a, uint8_t b)
 #elif defined(ESP32)
-void ICACHE_RAM_ATTR espNowSendCallbackWrapper(const uint8_t *a, esp_now_send_status_t b)
+void IRAM_ATTR espNowSendCallbackWrapper(const uint8_t *a, esp_now_send_status_t b)
 #endif
 {
     if (m2mMeshPointer)
@@ -19,9 +19,9 @@ void ICACHE_RAM_ATTR espNowSendCallbackWrapper(const uint8_t *a, esp_now_send_st
 }
 
 #ifdef ESP8266
-void ICACHE_RAM_ATTR espNowReceiveCallbackWrapper(uint8_t *a, uint8_t *b, uint8_t c)
+void IRAM_ATTR espNowReceiveCallbackWrapper(uint8_t *a, uint8_t *b, uint8_t c)
 #elif defined(ESP32)
-void ICACHE_RAM_ATTR espNowReceiveCallbackWrapper(const uint8_t *a, const uint8_t *b, int32_t c)
+void IRAM_ATTR espNowReceiveCallbackWrapper(const uint8_t *a, const uint8_t *b, int32_t c)
 #endif
 {
     if (m2mMeshPointer)
@@ -64,31 +64,25 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t max, const uint8_t chan
 		_originator = new m2mMeshOriginatorInfo[1];
 	}
 	#ifdef m2mMeshIncludeDebugFeatures
-	//ESP8266/ESP8285 and ESP32 need different handling and have subtly different APIs
-	#if defined(ESP8266)
+	//ESP8266/ESP8285 and ESP32 need different handling and have subtly different APIs	
 	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
 	{
+		#if defined(ESP8266)
 		_debugStream->print(F("\r\nMesh running on ESP8266/ESP8285"));
-	}
-	#elif defined(ESP32)
-	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
-	{
+		#elif defined(ESP32)
 		_debugStream->print(F("\r\nMesh running on ESP32"));
-	}
-	#endif
-	//Show the IDF version, if possible
-	#ifdef ESP_IDF_VERSION_MAJOR
-	_debugStream->print(F("\r\nIDF version:"));			
-	#ifdef ESP_IDF_VERSION_MINOR
-		_debugStream->print(ESP_IDF_VERSION_MAJOR);
-		_debugStream->print('.');
-		_debugStream->println(ESP_IDF_VERSION_MINOR);
-	#else
-		_debugStream->println(ESP_IDF_VERSION_MAJOR);
-	#endif
-	#endif
-	if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
-	{
+		#endif
+		//Show the IDF version, if possible
+		#ifdef ESP_IDF_VERSION_MAJOR
+		_debugStream->print(F("\r\nIDF version:"));			
+		#ifdef ESP_IDF_VERSION_MINOR
+			_debugStream->print(ESP_IDF_VERSION_MAJOR);
+			_debugStream->print('.');
+			_debugStream->println(ESP_IDF_VERSION_MINOR);
+		#else
+			_debugStream->println(ESP_IDF_VERSION_MAJOR);
+		#endif
+		#endif
 		_debugStream->printf_P(m2mMeshstartedwithcapacityfordnodes,_maxNumberOfOriginators);
 		if(_allowMeshGrowth == true)
 		{
@@ -236,9 +230,9 @@ bool m2mMeshClass::_initESPNow()
 }
 
 #ifdef ESP8266
-void ICACHE_RAM_ATTR m2mMeshClass::espNowSendCallback(uint8_t* macAddress, uint8_t status)
+void IRAM_ATTR m2mMeshClass::espNowSendCallback(uint8_t* macAddress, uint8_t status)
 #elif defined(ESP32)
-void ICACHE_RAM_ATTR m2mMeshClass::espNowSendCallback(const uint8_t* macAddress, esp_now_send_status_t status)
+void IRAM_ATTR m2mMeshClass::espNowSendCallback(const uint8_t* macAddress, esp_now_send_status_t status)
 #endif
 {
 	//Don't HAVE to do anything in the send callback
@@ -265,10 +259,10 @@ void ICACHE_RAM_ATTR m2mMeshClass::espNowSendCallback(const uint8_t* macAddress,
 }
 
 #ifdef ESP8266
-//void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(uint8_t *macAddress, uint8_t *data, uint8_t length)
+//void IRAM_ATTR m2mMeshClass::espNowReceiveCallback(uint8_t *macAddress, uint8_t *data, uint8_t length)
 void ICACHE_FLASH_ATTR m2mMeshClass::espNowReceiveCallback(uint8_t *macAddress, uint8_t *data, uint8_t length)
 #elif defined(ESP32)
-//void ICACHE_RAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
+//void IRAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
 void ICACHE_FLASH_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
 #endif
 {
@@ -4145,7 +4139,7 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_routePacket(m2mMeshPacketBuffer &packet)
 		return(false);
 	}
 }
-bool ICACHE_RAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet)
+bool IRAM_ATTR m2mMeshClass::_sendPacket(m2mMeshPacketBuffer &packet)
 {
 	if(packet.length == 0)
 	{
