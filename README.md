@@ -118,6 +118,14 @@ For a list of available versions, see the [repository tag list](https://github.c
 
 ### Version history
 
+#### 0.1.2
+
+Fixed compilation for ESP32-C3 target, which has very slight change in Espressif SDK from other ESP32 versions.
+
+#### 0.1.1
+
+Improved methods for retrieving arrays from messages.
+
 #### 0.1.0
 
 First public release.
