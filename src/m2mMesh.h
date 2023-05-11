@@ -548,7 +548,7 @@ class m2mMeshClass
 			}
 			else
 			{
-				uint8_t dataType = determineType(data);
+				uint8_t dataType = determineType(*data);
 				if(dataType == _applicationBuffer[_applicationBufferReadIndex].data[_receivedUserPacketIndex])
 				{
 					_receivedUserPacketFieldCounter--;
