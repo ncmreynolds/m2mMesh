@@ -19,9 +19,17 @@ void IRAM_ATTR espNowSendCallbackWrapper(const uint8_t *a, esp_now_send_status_t
 }
 
 #ifdef ESP8266
-void IRAM_ATTR espNowReceiveCallbackWrapper(uint8_t *a, uint8_t *b, uint8_t c)
+	void IRAM_ATTR espNowReceiveCallbackWrapper(uint8_t *a, uint8_t *b, uint8_t c)
 #elif defined(ESP32)
-void IRAM_ATTR espNowReceiveCallbackWrapper(const uint8_t *a, const uint8_t *b, int32_t c)
+	#if ESP_IDF_VERSION_MAJOR > 3	// IDF 4+
+		#if CONFIG_IDF_TARGET_ESP32C3
+			void IRAM_ATTR espNowReceiveCallbackWrapper(const uint8_t *a, const uint8_t *b, int c)	//ESP32C3 has different callback from other ESP32 with int data length
+		#else
+			void IRAM_ATTR espNowReceiveCallbackWrapper(const uint8_t *a, const uint8_t *b, int32_t c)
+		#endif
+	#else
+		void IRAM_ATTR espNowReceiveCallbackWrapper(const uint8_t *a, const uint8_t *b, int32_t c)
+	#endif
 #endif
 {
     if (m2mMeshPointer)
