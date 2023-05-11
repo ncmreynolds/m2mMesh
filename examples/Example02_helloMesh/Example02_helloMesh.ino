@@ -1,4 +1,4 @@
-/**
+/*
  * ESP-NOW mesh network test sketch
  * 
  * Author: Nick Reynolds
@@ -35,7 +35,9 @@ void loop() {
     joinedMesh = true;
     Serial.print("Joined mesh, flooding \"");
     Serial.print(messageToSend);
-    Serial.println("\" to all nodes.");
+    Serial.print("\" to all nodes every ");
+    Serial.print(float(sendInterval)/1000.0);
+    Serial.println('s');
   }
   else if(joinedMesh == true && m2mMesh.joined() == false)
   {
