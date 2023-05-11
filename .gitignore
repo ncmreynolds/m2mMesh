@@ -1,3 +1,10 @@
+#Arduino environment
+
+.development
+debug.cfg
+debug_custom.json
+*.svd
+
 # Prerequisites
 *.d
 
