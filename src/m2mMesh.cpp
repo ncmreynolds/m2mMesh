@@ -631,7 +631,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 			{
 				if(_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketTypeIndex] & SEND_TO_ALL_NODES)
 				{
-					Serial.printf("\r\nFWD O:%02u/%02x:%02x:%02x:%02x:%02x:%02x D:%02u/ff:ff:ff:ff:ff:ff R:%02u/%02x:%02x:%02x:%02x:%02x:%02x %s",
+					_debugStream->printf("\r\nFWD O:%02u/%02x:%02x:%02x:%02x:%02x:%02x D:%02u/ff:ff:ff:ff:ff:ff R:%02u/%02x:%02x:%02x:%02x:%02x:%02x %s",
 					_forwardingBuffer[_forwardingBufferReadIndex].originatorId,
 					_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketOriginatorIndex],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketOriginatorIndex1],
@@ -651,7 +651,7 @@ void ICACHE_FLASH_ATTR m2mMeshClass::housekeeping()
 				}
 				else
 				{
-					Serial.printf("\r\nFWD O:%02u/%02x:%02x:%02x:%02x:%02x:%02x D:%02u/%02x:%02x:%02x:%02x:%02x:%02x R:%02u/%02x:%02x:%02x:%02x:%02x:%02x %s",
+					_debugStream->printf("\r\nFWD O:%02u/%02x:%02x:%02x:%02x:%02x:%02x D:%02u/%02x:%02x:%02x:%02x:%02x:%02x R:%02u/%02x:%02x:%02x:%02x:%02x:%02x %s",
 					_forwardingBuffer[_forwardingBufferReadIndex].originatorId,
 					_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketOriginatorIndex],
 					_forwardingBuffer[_forwardingBufferReadIndex].data[m2mMeshPacketOriginatorIndex1],
@@ -3895,7 +3895,11 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(const char *dataToAdd)
 	}
 	else
 	{
-		uint16_t numberOfElements = strlen(dataToAdd);
+		uint16_t numberOfElements = 0;
+		if(dataToAdd != nullptr)
+		{
+			numberOfElements = strlen(dataToAdd);
+		}
 		if(numberOfElements < 15)
 		{
 			if(_userPacketBuffer.length + numberOfElements < ESP_NOW_MAX_PACKET_SIZE)
@@ -3939,7 +3943,11 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::add(char *dataToAdd)
 	}
 	else
 	{
-		uint16_t numberOfElements = strlen(dataToAdd);
+		uint16_t numberOfElements = 0;
+		if(dataToAdd != nullptr)
+		{
+			numberOfElements = strlen(dataToAdd);
+		}
 		if(numberOfElements < 15)
 		{
 			if(_userPacketBuffer.length + numberOfElements < ESP_NOW_MAX_PACKET_SIZE)
