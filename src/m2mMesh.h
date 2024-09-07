@@ -34,7 +34,8 @@
 		#include <time.h>
 	#endif
 	extern "C" {
-	#include <esp_now.h>
+		#include <esp_now.h>
+		#include <esp_wifi.h>
 	}
 #endif
 
@@ -434,7 +435,7 @@ class m2mMeshClass
 		~m2mMeshClass();
 
 		//Setup functions
-		bool begin(uint8_t max = 16, uint8_t channel = 1);	//Start the mesh, with the default maximum number of nodes (16) and channel
+		bool begin(uint8_t max = 16, uint8_t channel = 255);//Start the mesh, with the default maximum number of nodes (16) and channel
 		void end();											//Stop the mesh and free most memory. Configured items such as the node name or maximum number of nodes ARE retained but no originator/routing information.
 		
 		//Maintenance functions
@@ -450,6 +451,7 @@ class m2mMeshClass
 		char * getNodeName(uint8_t);						//Get a pointer to the node name for another node
 		uint8_t * getMeshAddress();							//Get a pointer to the mesh MAC address
 		uint8_t * getMeshAddress(uint8_t);					//Get a pointer to the mesh MAC address	 for a specific node
+		uint8_t getChannel();								//Get the current channel
 		void enableDynamicGrowth(uint8_t increment = 4);	//Enables dynamic increase in max number of nodes
 		void disableDynamicGrowth();						//Disable dynamic growth
 		
@@ -519,7 +521,7 @@ class m2mMeshClass
 		float retrieveFloat();					//Retrieve float data from a message
 		double retrieveDouble();				//Retrieve double precision float data from a message
 		char retrieveChar();					//Retrieve char data from a message
-		uint8_t retrieveDataLength();			//Retrieve length of an array from a message
+		uint8_t retrieveDataLength();			//Retrieve length of an array/str from a message, if it's an str it will include the null termination!
 		bool retrieveStr(char *);				//Retrieve C string from a message NB will be null terminated automatically
 		String retrieveString();				//Retrieve Arduino String data from a message
 		void skipRetrieve();					//Skip retrieving this field
@@ -707,11 +709,15 @@ class m2mMeshClass
 
 		//Callback functions
 		#ifdef ESP8266
-		void espNowReceiveCallback(uint8_t*, uint8_t*, uint8_t);	//Callbacks for the espnow library have to be public due to the wrapper function, but we do not expect somebody to call them
-		void espNowSendCallback(uint8_t*, uint8_t);
+			void espNowReceiveCallback(uint8_t*, uint8_t*, uint8_t);	//Callbacks for the espnow library have to be public due to the wrapper function, but we do not expect somebody to call them
+			void espNowSendCallback(uint8_t*, uint8_t);
 		#elif defined(ESP32)
-		void espNowReceiveCallback(const uint8_t* , const uint8_t*, int32_t);
-		void espNowSendCallback(const uint8_t*, esp_now_send_status_t);
+			#if ESP_IDF_VERSION_MAJOR >= 5	// IDF 5+
+				void espNowReceiveCallback(const esp_now_recv_info* , const uint8_t*, int);
+			#else
+				void espNowReceiveCallback(const uint8_t* , const uint8_t*, int32_t);
+			#endif
+			void espNowSendCallback(const uint8_t*, esp_now_send_status_t);
 		#endif
 
 
@@ -872,6 +878,8 @@ class m2mMeshClass
 		static const uint8_t USR_DATA_DOUBLE_ARRAY =   0xfb;			//Used to denote a double float array (64-bit) in user data
 		static const uint8_t USR_DATA_CHAR_ARRAY =     0xfc;			//Used to denote a char array in user data
 
+		static const uint8_t	MESH_ORIGINATOR_NOT_FOUND =		255;	//Signifies that a node is unset or unknown
+
 	private:
 		//High level variables
 		uint8_t _currentChannel = 1;						//Mesh channel is set at begin() and should never change
@@ -951,7 +959,6 @@ class m2mMeshClass
 		static const uint8_t	SENDER_IS_SOFTAP =				0x08;		//Sender is a Soft AP so MAC address needs modifying
 		static const uint32_t	ANTI_COLLISION_JITTER =			250;		//Maximum jitter in milliseconds to try and avoid in-air collisions arising from repeated sending at regular intervals
 		uint32_t				_nextJitter =						0;			//Next jitter is randomised after every send
-		static const uint8_t	MESH_ORIGINATOR_NOT_FOUND =		255;		//Signifies that a node is unset or unknown
 		static const uint8_t	MESH_THIS_ORIGINATOR =			253;		//Signifies this node
 		static const uint8_t	SEQUENCE_NUMBER_MAX_AGE =			8;			//Used for detection of sequence number resets/rollover
 

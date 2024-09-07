@@ -12,7 +12,7 @@ void IRAM_ATTR espNowSendCallbackWrapper(uint8_t* a, uint8_t b)
 void IRAM_ATTR espNowSendCallbackWrapper(const uint8_t *a, esp_now_send_status_t b)
 #endif
 {
-    if (m2mMeshPointer)
+    if(m2mMeshPointer)
 	{
         m2mMeshPointer->espNowSendCallback(a,b);
 	}
@@ -21,7 +21,9 @@ void IRAM_ATTR espNowSendCallbackWrapper(const uint8_t *a, esp_now_send_status_t
 #ifdef ESP8266
 	void IRAM_ATTR espNowReceiveCallbackWrapper(uint8_t *a, uint8_t *b, uint8_t c)
 #elif defined(ESP32)
-	#if ESP_IDF_VERSION_MAJOR > 3	// IDF 4+
+	#if ESP_IDF_VERSION_MAJOR >= 5	// IDF 5+
+		void IRAM_ATTR espNowReceiveCallbackWrapper(const esp_now_recv_info *a, const uint8_t *b, int c)
+	#elif ESP_IDF_VERSION_MAJOR >= 4	// IDF 4+
 		#if CONFIG_IDF_TARGET_ESP32C3
 			void IRAM_ATTR espNowReceiveCallbackWrapper(const uint8_t *a, const uint8_t *b, int c)	//ESP32C3 has different callback from other ESP32 with int data length
 		#else
@@ -32,7 +34,7 @@ void IRAM_ATTR espNowSendCallbackWrapper(const uint8_t *a, esp_now_send_status_t
 	#endif
 #endif
 {
-    if (m2mMeshPointer)
+    if(m2mMeshPointer)
 	{
         m2mMeshPointer->espNowReceiveCallback(a,b,c);
 	}
@@ -121,8 +123,49 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::begin(const uint8_t max, const uint8_t chan
 	_currentTtl[TRACE_PACKET_TYPE] = TRACE_DEFAULT_TTL;
 	_currentTtl[USR_PACKET_TYPE] = USR_DEFAULT_TTL;
 	_currentTtl[BTP_PACKET_TYPE] = BTP_DEFAULT_TTL;
-	_currentChannel = channel;										//Set the send channel
-	WiFi.channel(_currentChannel);									//Set the receive channel
+	#ifdef ESP32
+		wifi_second_chan_t second = WIFI_SECOND_CHAN_NONE;
+		if(channel == 255)														//Automatically choose a channel, which will default to 1 unless already running STA or AP
+		{
+			esp_wifi_get_channel(&_currentChannel, &second);					//Set the send channel to whatever it currently is
+			#ifdef m2mMeshIncludeDebugFeatures
+				if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+				{
+					_debugStream->print(F("Using channel "));
+					_debugStream->println(_currentChannel);
+				}
+			#endif
+		}
+		else
+		{
+			if(esp_wifi_set_channel(channel, second) == ESP_OK)
+			{
+				_currentChannel = channel;										//Set the send channel
+				#ifdef m2mMeshIncludeDebugFeatures
+					if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+					{
+						_debugStream->print(F("Set channel to "));
+						_debugStream->println(channel);
+					}
+				#endif
+			}
+			else
+			{
+				esp_wifi_get_channel(&_currentChannel, &second);				//Set the send channel to whatever it currently is
+				#ifdef m2mMeshIncludeDebugFeatures
+					if (_debugEnabled == true && _loggingLevel & MESH_UI_LOG_INFORMATION)
+					{
+						_debugStream->print(F("Unable to set channel to "));
+						_debugStream->print(channel);
+						_debugStream->print(F(" using channel "));
+						_debugStream->println(_currentChannel);
+					}
+				#endif
+			}
+		}
+	#else
+		WiFi.channel(_currentChannel);									//Set the receive channel
+	#endif
 	return(_initESPNow());											//Initialise ESP-NOW, the function handles the API differences between ESP8266/ESP8285 and ESP32
 }
 
@@ -267,13 +310,21 @@ void IRAM_ATTR m2mMeshClass::espNowSendCallback(const uint8_t* macAddress, esp_n
 }
 
 #ifdef ESP8266
-//void IRAM_ATTR m2mMeshClass::espNowReceiveCallback(uint8_t *macAddress, uint8_t *data, uint8_t length)
-void ICACHE_FLASH_ATTR m2mMeshClass::espNowReceiveCallback(uint8_t *macAddress, uint8_t *data, uint8_t length)
+	//void IRAM_ATTR m2mMeshClass::espNowReceiveCallback(uint8_t *macAddress, uint8_t *data, uint8_t length)
+	void ICACHE_FLASH_ATTR m2mMeshClass::espNowReceiveCallback(uint8_t *macAddress, uint8_t *data, uint8_t length)
 #elif defined(ESP32)
-//void IRAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
-void ICACHE_FLASH_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
+	//void IRAM_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
+	#if ESP_IDF_VERSION_MAJOR >= 5	// IDF 5+
+		void ICACHE_FLASH_ATTR m2mMeshClass::espNowReceiveCallback(const esp_now_recv_info *rcvinfo, const uint8_t *data, int length)
+	#else
+		void ICACHE_FLASH_ATTR m2mMeshClass::espNowReceiveCallback(const uint8_t *macAddress, const uint8_t *data, int32_t length)
+	#endif
 #endif
 {
+	#if defined(ESP32) && ESP_IDF_VERSION_MAJOR >= 5	// IDF 5+
+		//Pointer to src MAC address to simplify conbversion to IDF 5+
+		uint8_t *macAddress = rcvinfo->src_addr;
+	#endif
 	//Immediately check the checksum to avoid processing invalid packets
 	uint8_t checksum = 0;
 	//for(uint8_t index = 2; index < length; index++)
@@ -3231,6 +3282,13 @@ bool ICACHE_FLASH_ATTR m2mMeshClass::_dataIsValid(const uint8_t originatorId, co
 		//We've dropped two or more packets recently
 		return(false);
 	}
+}
+
+//Return the current channel
+//Return the local node name
+uint8_t ICACHE_FLASH_ATTR m2mMeshClass::getChannel()
+{
+	return(_currentChannel);
 }
 
 //Return the local node name
