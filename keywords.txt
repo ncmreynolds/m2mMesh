@@ -11,6 +11,7 @@ getNodeName	KEYWORD2
 nodeIsReachableNode	KEYWORD2
 joined	KEYWORD2
 stable	KEYWORD2
+getChannel	KEYWORD2
 supplyVoltage	KEYWORD2
 enableDynamicGrowth	KEYWORD2
 disableDynamicGrowth	KEYWORD2
